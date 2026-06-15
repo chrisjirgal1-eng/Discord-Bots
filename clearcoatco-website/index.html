@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClearCoat Co. | Premium Auto Detailing</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+  <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #050507;
+      --surface: #0e0e12;
+      --card: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.08);
+      --blue: #3b82f6;
+      --blue-glow: rgba(59,130,246,0.35);
+      --cyan: #06b6d4;
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --radius: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 3px; }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5%;
+      height: 70px;
+      background: rgba(5,5,7,0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    .nav-logo {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.5rem; font-weight: 700;
+      color: var(--text);
+      letter-spacing: 1px;
+    }
+    .nav-logo span { color: var(--blue); }
+    .nav-links { display: flex; gap: 2rem; list-style: none; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none;
+      font-size: 0.9rem; font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--blue); color: #fff;
+      padding: 0.5rem 1.4rem; border-radius: 8px;
+      text-decoration: none; font-size: 0.9rem; font-weight: 600;
+      transition: all 0.2s;
+      box-shadow: 0 0 20px var(--blue-glow);
+    }
+    .nav-cta:hover { background: #2563eb; transform: translateY(-1px); }
+    .nav-hamburger { display: none; cursor: pointer; color: var(--text); font-size: 1.4rem; }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 0 5%;
+      overflow: hidden;
+    }
+    #vanta-bg {
+      position: absolute; inset: 0; z-index: 0;
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 800px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: var(--blue); border-radius: 50px;
+      padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase;
+      margin-bottom: 1.5rem;
+      animation: fadeDown 0.8s ease forwards;
+    }
+    .hero-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 700; line-height: 1;
+      letter-spacing: -1px;
+      animation: fadeUp 0.9s ease 0.1s both;
+    }
+    .hero-title .blue { color: var(--blue); }
+    .hero-sub {
+      color: var(--muted); font-size: 1.15rem;
+      margin: 1.2rem auto 2.5rem;
+      max-width: 520px; line-height: 1.7;
+      animation: fadeUp 0.9s ease 0.25s both;
+    }
+    .hero-btns {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      animation: fadeUp 0.9s ease 0.4s both;
+    }
+    .btn-primary {
+      background: var(--blue); color: #fff;
+      padding: 0.9rem 2.2rem; border-radius: 10px;
+      text-decoration: none; font-weight: 600; font-size: 1rem;
+      box-shadow: 0 0 30px var(--blue-glow);
+      transition: all 0.25s;
+    }
+    .btn-primary:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 0 40px var(--blue-glow); }
+    .btn-secondary {
+      background: transparent; color: var(--text);
+      padding: 0.9rem 2.2rem; border-radius: 10px;
+      border: 1px solid var(--border);
+      text-decoration: none; font-weight: 500; font-size: 1rem;
+      transition: all 0.25s;
+    }
+    .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+    .scroll-hint {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      color: var(--muted); font-size: 0.8rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+      animation: bounce 2s infinite;
+    }
+    .scroll-hint i { font-size: 1.2rem; }
+
+    /* ── SECTION BASE ── */
+    section { padding: 6rem 5%; }
+    .section-label {
+      color: var(--blue); font-size: 0.8rem; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700; line-height: 1.1;
+    }
+    .section-sub { color: var(--muted); margin-top: 0.75rem; max-width: 520px; line-height: 1.7; }
+    .section-header { margin-bottom: 3.5rem; }
+    .section-header.center { text-align: center; }
+    .section-header.center .section-sub { margin: 0.75rem auto 0; }
+
+    /* ── STATS BAR ── */
+    #stats {
+      padding: 2.5rem 5%;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+      gap: 2rem; text-align: center; max-width: 800px; margin: 0 auto;
+    }
+    .stat-num {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 2.5rem; font-weight: 700; color: var(--blue);
+    }
+    .stat-label { color: var(--muted); font-size: 0.85rem; margin-top: 0.25rem; }
+
+    /* ── SERVICES ── */
+    #services { background: var(--bg); }
+    .services-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr));
+      gap: 1.5rem; perspective: 1200px;
+    }
+    .service-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.5rem 2rem;
+      position: relative; overflow: hidden;
+      transition: transform 0.12s, box-shadow 0.3s;
+      cursor: default;
+      transform-style: preserve-3d;
+    }
+    .service-card::before {
+      content: ''; position: absolute;
+      inset: 0; border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(59,130,246,0.08), transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .service-card:hover::before { opacity: 1; }
+    .service-card.featured {
+      border-color: rgba(59,130,246,0.4);
+      box-shadow: 0 0 40px rgba(59,130,246,0.12);
+    }
+    .featured-badge {
+      position: absolute; top: 1.2rem; right: 1.2rem;
+      background: var(--blue); color: #fff;
+      font-size: 0.7rem; font-weight: 700;
+      padding: 0.3rem 0.8rem; border-radius: 50px;
+      letter-spacing: 1px; text-transform: uppercase;
+    }
+    .service-icon {
+      width: 56px; height: 56px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: var(--blue);
+      margin-bottom: 1.5rem;
+    }
+    .service-name {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.5rem; font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .service-desc { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem; }
+    .service-price {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 2.8rem; font-weight: 700; color: var(--blue);
+      line-height: 1;
+    }
+    .service-price span { font-size: 1.2rem; color: var(--muted); font-weight: 400; }
+    .service-features {
+      list-style: none; margin-top: 1.5rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .service-features li {
+      color: var(--muted); font-size: 0.88rem;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .service-features li i { color: var(--blue); font-size: 0.75rem; }
+    .service-btn {
+      display: block; margin-top: 2rem;
+      text-align: center; padding: 0.75rem;
+      border-radius: 8px; border: 1px solid var(--border);
+      color: var(--text); text-decoration: none;
+      font-weight: 600; font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .service-btn:hover, .service-card.featured .service-btn {
+      background: var(--blue); border-color: var(--blue); color: #fff;
+    }
+
+    /* ── HOW IT WORKS ── */
+    #how {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+      gap: 2rem;
+    }
+    .step {
+      text-align: center; padding: 2rem 1.5rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+      transition: border-color 0.3s, transform 0.3s;
+    }
+    .step:hover { border-color: rgba(59,130,246,0.3); transform: translateY(-4px); }
+    .step-num {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 3.5rem; font-weight: 700;
+      color: rgba(59,130,246,0.15); line-height: 1;
+      margin-bottom: 1rem;
+    }
+    .step h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .step p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+    .step-icon {
+      font-size: 2rem; color: var(--blue); margin-bottom: 0.75rem;
+    }
+
+    /* ── SCHEDULE ── */
+    #schedule { background: var(--bg); }
+    .calendly-wrap {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      min-height: 700px;
+    }
+    .calendly-inline-widget {
+      min-width: 320px; height: 700px;
+    }
+
+    /* ── REVIEWS ── */
+    #reviews { background: var(--surface); border-top: 1px solid var(--border); }
+    .reviews-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr));
+      gap: 1.5rem;
+    }
+    .review-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.75rem;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+    .review-card:hover { border-color: rgba(59,130,246,0.25); transform: translateY(-3px); }
+    .stars { color: #f59e0b; font-size: 0.9rem; margin-bottom: 1rem; letter-spacing: 2px; }
+    .review-text { color: #cbd5e1; font-size: 0.92rem; line-height: 1.7; margin-bottom: 1.25rem; }
+    .reviewer {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .reviewer-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.9rem; color: #fff;
+    }
+    .reviewer-name { font-weight: 600; font-size: 0.88rem; }
+    .reviewer-date { color: var(--muted); font-size: 0.78rem; }
+    .review-cta {
+      text-align: center; margin-top: 3rem;
+    }
+
+    /* ── REVIEW FORM ── */
+    #leave-review {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+    .form-wrap {
+      max-width: 600px; margin: 0 auto;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 2.5rem;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label {
+      display: block; margin-bottom: 0.4rem;
+      font-size: 0.85rem; font-weight: 500; color: #94a3b8;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    .form-group input:focus, .form-group select,
+    .form-group textarea:focus { border-color: var(--blue); }
+    .form-group select option { background: #0e0e12; }
+    .form-group textarea { resize: vertical; min-height: 120px; }
+    .star-select { display: flex; gap: 0.4rem; margin-top: 0.4rem; }
+    .star-select input { display: none; }
+    .star-select label {
+      font-size: 1.6rem; cursor: pointer; color: #334155;
+      transition: color 0.15s; margin-bottom: 0;
+    }
+    .star-select label:hover,
+    .star-select label:hover ~ label { color: #f59e0b; }
+    .star-select input:checked ~ label { color: #f59e0b; }
+    .star-select:hover label { color: #f59e0b; }
+    .star-select label:hover ~ label { color: #334155; }
+    .form-submit {
+      width: 100%; padding: 0.9rem;
+      background: var(--blue); color: #fff; border: none;
+      border-radius: 8px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 0 20px var(--blue-glow);
+    }
+    .form-submit:hover { background: #2563eb; transform: translateY(-1px); }
+    #form-success {
+      display: none; text-align: center; padding: 2rem;
+      color: #4ade80; font-weight: 600;
+    }
+
+    /* ── CONNECT / LINKTREE ── */
+    #connect { background: var(--surface); border-top: 1px solid var(--border); }
+    .links-wrap {
+      max-width: 480px; margin: 0 auto;
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .social-link {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.5rem; border-radius: 12px;
+      border: 1px solid var(--border);
+      text-decoration: none; color: var(--text);
+      font-weight: 600; font-size: 0.95rem;
+      background: var(--card);
+      transition: all 0.2s;
+    }
+    .social-link:hover { border-color: var(--blue); transform: translateX(4px); box-shadow: -4px 0 0 var(--blue); }
+    .social-link i { font-size: 1.3rem; width: 28px; text-align: center; }
+    .social-link .link-arrow { margin-left: auto; color: var(--muted); }
+    .tiktok-icon { color: #fff; }
+    .insta-icon { color: #e1306c; }
+    .fb-icon { color: #1877f2; }
+    .site-icon { color: var(--blue); }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 5%;
+      text-align: center;
+    }
+    .footer-logo {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.4rem; font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .footer-logo span { color: var(--blue); }
+    footer p { color: var(--muted); font-size: 0.85rem; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%       { transform: translateX(-50%) translateY(8px); }
+    }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-hamburger { display: block; }
+      .nav-links.open {
+        display: flex; flex-direction: column;
+        position: fixed; top: 70px; left: 0; right: 0;
+        background: var(--bg); padding: 1.5rem 5%;
+        border-bottom: 1px solid var(--border);
+        gap: 1.25rem;
+      }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">Clear<span>Coat</span> Co.</div>
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#services" onclick="closeNav()">Services</a></li>
+    <li><a href="#how" onclick="closeNav()">How It Works</a></li>
+    <li><a href="#schedule" onclick="closeNav()">Book</a></li>
+    <li><a href="#reviews" onclick="closeNav()">Reviews</a></li>
+    <li><a href="#connect" onclick="closeNav()">Connect</a></li>
+  </ul>
+  <a href="#schedule" class="nav-cta">Book Now</a>
+  <div class="nav-hamburger" onclick="toggleNav()"><i class="fas fa-bars"></i></div>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <div id="vanta-bg"></div>
+  <div class="hero-content">
+    <div class="hero-badge"><i class="fas fa-star"></i> Premium Auto Detailing</div>
+    <h1 class="hero-title">
+      Your Car.<br />
+      <span class="blue">Spotless.</span>
+    </h1>
+    <p class="hero-sub">
+      Professional interior, exterior, and full detail packages — starting at $50.
+      Book online in seconds.
+    </p>
+    <div class="hero-btns">
+      <a href="#schedule" class="btn-primary"><i class="fas fa-calendar-check"></i> &nbsp;Book a Detail</a>
+      <a href="#services" class="btn-secondary">See Packages</a>
+    </div>
+  </div>
+  <div class="scroll-hint">
+    <span>Scroll</span>
+    <i class="fas fa-chevron-down"></i>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<div id="stats">
+  <div class="stats-grid">
+    <div data-aos="fade-up">
+      <div class="stat-num" data-target="150">0</div>
+      <div class="stat-label">Cars Detailed</div>
+    </div>
+    <div data-aos="fade-up" data-aos-delay="100">
+      <div class="stat-num" data-target="5">0</div>
+      <div class="stat-label">Star Rating</div>
+    </div>
+    <div data-aos="fade-up" data-aos-delay="200">
+      <div class="stat-num" data-target="100">0</div>
+      <div class="stat-label">% Satisfaction</div>
+    </div>
+    <div data-aos="fade-up" data-aos-delay="300">
+      <div class="stat-num" data-target="24">0</div>
+      <div class="stat-label">Hr Turnaround</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SERVICES ── -->
+<section id="services">
+  <div class="section-header center" data-aos="fade-up">
+    <div class="section-label">Packages</div>
+    <h2 class="section-title">Pick Your Detail</h2>
+    <p class="section-sub">Every package done right, every time. No shortcuts.</p>
+  </div>
+
+  <div class="services-grid">
+
+    <div class="service-card" data-aos="fade-up" data-aos-delay="0">
+      <div class="service-icon"><i class="fas fa-star"></i></div>
+      <div class="service-name">Exterior Detail</div>
+      <p class="service-desc">Full exterior wash, clay bar, hand wax, tire dressing, and window clean.</p>
+      <div class="service-price">$50 <span>/ session</span></div>
+      <ul class="service-features">
+        <li><i class="fas fa-check"></i> Hand wash & dry</li>
+        <li><i class="fas fa-check"></i> Clay bar treatment</li>
+        <li><i class="fas fa-check"></i> Wax & paint protection</li>
+        <li><i class="fas fa-check"></i> Tire & trim dressing</li>
+        <li><i class="fas fa-check"></i> Window clean</li>
+      </ul>
+      <a href="#schedule" class="service-btn">Book Exterior</a>
+    </div>
+
+    <div class="service-card featured" data-aos="fade-up" data-aos-delay="100">
+      <div class="featured-badge">Most Popular</div>
+      <div class="service-icon"><i class="fas fa-car"></i></div>
+      <div class="service-name">Interior Detail</div>
+      <p class="service-desc">Deep clean of every surface inside — vacuumed, steam cleaned, and conditioned.</p>
+      <div class="service-price">$70 <span>/ session</span></div>
+      <ul class="service-features">
+        <li><i class="fas fa-check"></i> Full vacuum & shampoo</li>
+        <li><i class="fas fa-check"></i> Steam clean surfaces</li>
+        <li><i class="fas fa-check"></i> Leather conditioning</li>
+        <li><i class="fas fa-check"></i> Odor elimination</li>
+        <li><i class="fas fa-check"></i> Dashboard & console detail</li>
+      </ul>
+      <a href="#schedule" class="service-btn">Book Interior</a>
+    </div>
+
+    <div class="service-card" data-aos="fade-up" data-aos-delay="200">
+      <div class="service-icon"><i class="fas fa-shield-halved"></i></div>
+      <div class="service-name">Full Detail</div>
+      <p class="service-desc">The complete package — interior + exterior, top to bottom. Best value.</p>
+      <div class="service-price">$100 <span>/ session</span></div>
+      <ul class="service-features">
+        <li><i class="fas fa-check"></i> Everything in Exterior</li>
+        <li><i class="fas fa-check"></i> Everything in Interior</li>
+        <li><i class="fas fa-check"></i> Engine bay wipe-down</li>
+        <li><i class="fas fa-check"></i> Door jamb clean</li>
+        <li><i class="fas fa-check"></i> Priority scheduling</li>
+      </ul>
+      <a href="#schedule" class="service-btn">Book Full Detail</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how">
+  <div class="section-header center" data-aos="fade-up">
+    <div class="section-label">Process</div>
+    <h2 class="section-title">How It Works</h2>
+  </div>
+  <div class="steps-grid">
+    <div class="step" data-aos="fade-up" data-aos-delay="0">
+      <div class="step-icon"><i class="fas fa-calendar-check"></i></div>
+      <div class="step-num">01</div>
+      <h3>Book Online</h3>
+      <p>Pick your package, choose a date and time that works for you — no phone calls needed.</p>
+    </div>
+    <div class="step" data-aos="fade-up" data-aos-delay="100">
+      <div class="step-icon"><i class="fas fa-envelope-open-text"></i></div>
+      <div class="step-num">02</div>
+      <h3>Get Confirmed</h3>
+      <p>You'll receive an automatic confirmation with price, time, and everything you need.</p>
+    </div>
+    <div class="step" data-aos="fade-up" data-aos-delay="200">
+      <div class="step-icon"><i class="fas fa-car-wash"></i></div>
+      <div class="step-num">03</div>
+      <h3>We Show Up</h3>
+      <p>ClearCoat Co. comes to you. We handle everything while you relax.</p>
+    </div>
+    <div class="step" data-aos="fade-up" data-aos-delay="300">
+      <div class="step-icon"><i class="fas fa-star"></i></div>
+      <div class="step-num">04</div>
+      <h3>Drive Clean</h3>
+      <p>Your car comes back spotless. Leave a review and book your next appointment.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SCHEDULE ── -->
+<section id="schedule">
+  <div class="section-header" data-aos="fade-up">
+    <div class="section-label">Booking</div>
+    <h2 class="section-title">Book Your Detail</h2>
+    <p class="section-sub">
+      Pick a time below — you'll get an automatic confirmation email with everything you need.
+      <br /><br />
+      <strong>Need to set this up?</strong> Create a free account at
+      <a href="https://calendly.com" target="_blank" style="color:var(--blue)">calendly.com</a>,
+      set your availability, then replace the URL below with your Calendly link.
+    </p>
+  </div>
+  <div class="calendly-wrap" data-aos="fade-up">
+    <!-- REPLACE the URL below with your Calendly link, e.g. https://calendly.com/clearcoatco -->
+    <div class="calendly-inline-widget"
+         data-url="https://calendly.com/YOUR_USERNAME?hide_landing_page_details=1&background_color=0e0e12&text_color=f1f5f9&primary_color=3b82f6"
+         style="min-width:320px;height:700px;">
+    </div>
+  </div>
+</section>
+
+<!-- ── REVIEWS ── -->
+<section id="reviews">
+  <div class="section-header center" data-aos="fade-up">
+    <div class="section-label">Testimonials</div>
+    <h2 class="section-title">What People Are Saying</h2>
+  </div>
+  <div class="reviews-grid" id="reviewsGrid">
+
+    <div class="review-card" data-aos="fade-up" data-aos-delay="0">
+      <div class="stars">★★★★★</div>
+      <p class="review-text">"My car looks better than when I bought it. Incredible attention to detail — the interior was absolutely spotless. 100% booking again."</p>
+      <div class="reviewer">
+        <div class="reviewer-avatar">JM</div>
+        <div>
+          <div class="reviewer-name">Jake M.</div>
+          <div class="reviewer-date">Full Detail</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="review-card" data-aos="fade-up" data-aos-delay="100">
+      <div class="stars">★★★★★</div>
+      <p class="review-text">"Super professional, showed up on time, and the exterior shine is unreal. Booked the $50 package and it was worth every penny."</p>
+      <div class="reviewer">
+        <div class="reviewer-avatar">SR</div>
+        <div>
+          <div class="reviewer-name">Sofia R.</div>
+          <div class="reviewer-date">Exterior Detail</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="review-card" data-aos="fade-up" data-aos-delay="200">
+      <div class="stars">★★★★★</div>
+      <p class="review-text">"Got the interior done and the smell is gone completely. My kids had that car destroyed — ClearCoat brought it back to life. Highly recommend."</p>
+      <div class="reviewer">
+        <div class="reviewer-avatar">DL</div>
+        <div>
+          <div class="reviewer-name">Darius L.</div>
+          <div class="reviewer-date">Interior Detail</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- User-submitted reviews appear here -->
+  <div id="userReviews" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:1.5rem; margin-top:1.5rem;"></div>
+
+  <div class="review-cta" data-aos="fade-up">
+    <a href="#leave-review" class="btn-primary" style="display:inline-block; margin-top:1.5rem;">
+      <i class="fas fa-pen"></i> &nbsp;Leave a Review
+    </a>
+  </div>
+</section>
+
+<!-- ── REVIEW FORM ── -->
+<section id="leave-review">
+  <div class="section-header center" data-aos="fade-up">
+    <div class="section-label">Share Your Experience</div>
+    <h2 class="section-title">Leave a Review</h2>
+  </div>
+  <div class="form-wrap" data-aos="fade-up">
+    <form id="reviewForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Your Name</label>
+          <input type="text" id="rName" placeholder="John Doe" required />
+        </div>
+        <div class="form-group">
+          <label>Service</label>
+          <select id="rService" required>
+            <option value="">Select one...</option>
+            <option>Interior Detail — $70</option>
+            <option>Exterior Detail — $50</option>
+            <option>Full Detail — $100</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rating</label>
+        <div class="star-select" id="starSelect">
+          <input type="radio" name="stars" id="s5" value="5" />
+          <label for="s5" title="5 stars">★</label>
+          <input type="radio" name="stars" id="s4" value="4" />
+          <label for="s4" title="4 stars">★</label>
+          <input type="radio" name="stars" id="s3" value="3" />
+          <label for="s3" title="3 stars">★</label>
+          <input type="radio" name="stars" id="s2" value="2" />
+          <label for="s2" title="2 stars">★</label>
+          <input type="radio" name="stars" id="s1" value="1" />
+          <label for="s1" title="1 star">★</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Your Review</label>
+        <textarea id="rText" placeholder="Tell us about your experience..." required></textarea>
+      </div>
+      <button type="submit" class="form-submit">Submit Review</button>
+    </form>
+    <div id="form-success">
+      <i class="fas fa-check-circle" style="font-size:2.5rem; margin-bottom:1rem; display:block;"></i>
+      Thanks for the review! It's been posted.
+    </div>
+  </div>
+</section>
+
+<!-- ── CONNECT ── -->
+<section id="connect">
+  <div class="section-header center" data-aos="fade-up">
+    <div class="section-label">Socials</div>
+    <h2 class="section-title">Connect With Us</h2>
+    <p class="section-sub">Follow along for before & afters, deals, and updates.</p>
+  </div>
+  <div class="links-wrap" data-aos="fade-up">
+
+    <!-- REPLACE href values with your real links -->
+    <a href="https://tiktok.com/@clearcoatco" target="_blank" class="social-link">
+      <i class="fab fa-tiktok tiktok-icon"></i>
+      <span>TikTok — @clearcoatco</span>
+      <i class="fas fa-arrow-right link-arrow"></i>
+    </a>
+    <a href="https://instagram.com/clearcoatco" target="_blank" class="social-link">
+      <i class="fab fa-instagram insta-icon"></i>
+      <span>Instagram — @clearcoatco</span>
+      <i class="fas fa-arrow-right link-arrow"></i>
+    </a>
+    <a href="https://facebook.com/clearcoatco" target="_blank" class="social-link">
+      <i class="fab fa-facebook fb-icon"></i>
+      <span>Facebook — ClearCoat Co.</span>
+      <i class="fas fa-arrow-right link-arrow"></i>
+    </a>
+    <a href="#schedule" class="social-link">
+      <i class="fas fa-calendar-check site-icon"></i>
+      <span>Book a Detail</span>
+      <i class="fas fa-arrow-right link-arrow"></i>
+    </a>
+
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">Clear<span>Coat</span> Co.</div>
+  <p style="margin-top:0.4rem;">Premium Auto Detailing</p>
+  <p style="margin-top:1rem;">&copy; 2026 ClearCoat Co. All rights reserved.</p>
+</footer>
+
+<!-- ── SCRIPTS ── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+
+<script>
+// ── Vanta animated background ──
+VANTA.NET({
+  el: '#vanta-bg',
+  mouseControls: true,
+  touchControls: true,
+  gyroControls: false,
+  minHeight: 200.00,
+  minWidth: 200.00,
+  scale: 1.0,
+  scaleMobile: 1.0,
+  color: 0x3b82f6,
+  backgroundColor: 0x050507,
+  points: 10.0,
+  maxDistance: 22.0,
+  spacing: 18.0,
+});
+
+// ── AOS init ──
+AOS.init({ duration: 700, once: true, offset: 60 });
+
+// ── Stat counter ──
+function animateCounters() {
+  document.querySelectorAll('.stat-num[data-target]').forEach(el => {
+    const target = +el.dataset.target;
+    const step = Math.ceil(target / 60);
+    let current = 0;
+    const tick = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = current + (target === 5 ? '★' : '+');
+      if (current >= target) clearInterval(tick);
+    }, 30);
+  });
+}
+const statsEl = document.getElementById('stats');
+const statsObserver = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) { animateCounters(); statsObserver.disconnect(); }
+}, { threshold: 0.4 });
+statsObserver.observe(statsEl);
+
+// ── 3D tilt on service cards ──
+document.querySelectorAll('.service-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width  - 0.5;
+    const y = (e.clientY - rect.top)  / rect.height - 0.5;
+    card.style.transform = `perspective(800px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) translateZ(6px)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'perspective(800px) rotateY(0) rotateX(0) translateZ(0)';
+  });
+});
+
+// ── Nav mobile toggle ──
+function toggleNav() {
+  document.getElementById('navLinks').classList.toggle('open');
+}
+function closeNav() {
+  document.getElementById('navLinks').classList.remove('open');
+}
+
+// ── Review form ──
+// Star rating CSS hack: reverse them so clicking works left-to-right visually
+(function setupStars() {
+  const wrap = document.getElementById('starSelect');
+  wrap.style.flexDirection = 'row-reverse';
+  wrap.style.justifyContent = 'flex-end';
+})();
+
+const reviewForm = document.getElementById('reviewForm');
+const formSuccess = document.getElementById('form-success');
+const userReviews = document.getElementById('userReviews');
+
+// Load any previously stored reviews from localStorage
+(function loadStoredReviews() {
+  const stored = JSON.parse(localStorage.getItem('cc_reviews') || '[]');
+  stored.forEach(r => renderReview(r));
+})();
+
+reviewForm.addEventListener('submit', function(e) {
+  e.preventDefault();
+  const name    = document.getElementById('rName').value.trim();
+  const service = document.getElementById('rService').value;
+  const text    = document.getElementById('rText').value.trim();
+  const stars   = document.querySelector('input[name="stars"]:checked');
+
+  if (!name || !service || !text || !stars) {
+    alert('Please fill in all fields and select a rating.');
+    return;
+  }
+
+  const review = {
+    name,
+    service,
+    text,
+    stars: +stars.value,
+    initials: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+  };
+
+  // Save to localStorage (persists in the same browser)
+  const stored = JSON.parse(localStorage.getItem('cc_reviews') || '[]');
+  stored.unshift(review);
+  localStorage.setItem('cc_reviews', JSON.stringify(stored));
+
+  renderReview(review);
+  reviewForm.style.display = 'none';
+  formSuccess.style.display = 'block';
+  formSuccess.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+function renderReview(r) {
+  const starsStr = '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars);
+  const div = document.createElement('div');
+  div.className = 'review-card';
+  div.innerHTML = `
+    <div class="stars" style="color:#f59e0b">${starsStr}</div>
+    <p class="review-text">"${r.text}"</p>
+    <div class="reviewer">
+      <div class="reviewer-avatar">${r.initials}</div>
+      <div>
+        <div class="reviewer-name">${r.name}</div>
+        <div class="reviewer-date">${r.service}</div>
+      </div>
+    </div>`;
+  userReviews.prepend(div);
+}
+</script>
+
+</body>
+</html>
