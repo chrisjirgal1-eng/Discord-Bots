@@ -1,0 +1,4 @@
+{
+  "outputDirectory": "clearcoatco-website",
+  "rewrites": [{ "source": "/(.*)", "destination": "/clearcoatco-website/$1" }]
+}
