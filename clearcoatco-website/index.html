@@ -395,6 +395,27 @@
     .fb-icon { color: #1877f2; }
     .site-icon { color: var(--blue); }
 
+    /* ── ADMIN PANEL ── */
+    #admin-panel {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+      align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    #admin-panel.open { display: flex; }
+    .admin-box {
+      background: #0e0e12; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 440px;
+    }
+    .admin-box h2 {
+      font-family: 'Rajdhani', sans-serif; font-size: 1.5rem;
+      font-weight: 700; margin-bottom: 1.5rem;
+    }
+    .admin-box h2 span { color: var(--blue); }
+    .admin-close {
+      float: right; background: none; border: none;
+      color: var(--muted); font-size: 1.3rem; cursor: pointer; margin-top: -4px;
+    }
+
     /* ── FOOTER ── */
     footer {
       background: var(--bg);
@@ -484,20 +505,20 @@
 <div id="stats">
   <div class="stats-grid">
     <div data-aos="fade-up">
-      <div class="stat-num" data-target="150">0</div>
-      <div class="stat-label">Cars Detailed</div>
+      <div class="stat-num" id="stat-jobs" data-target="0" data-prefix="" data-is-star="0">0+</div>
+      <div class="stat-label">Jobs Completed</div>
     </div>
     <div data-aos="fade-up" data-aos-delay="100">
-      <div class="stat-num" data-target="5">0</div>
-      <div class="stat-label">Star Rating</div>
+      <div class="stat-num" id="stat-rating" data-target="5" data-prefix="" data-is-star="1">5.0★</div>
+      <div class="stat-label">Avg Rating</div>
     </div>
     <div data-aos="fade-up" data-aos-delay="200">
-      <div class="stat-num" data-target="100">0</div>
-      <div class="stat-label">% Satisfaction</div>
+      <div class="stat-num" id="stat-revenue" data-target="0" data-prefix="$" data-is-star="0">$0+</div>
+      <div class="stat-label">Revenue Earned</div>
     </div>
     <div data-aos="fade-up" data-aos-delay="300">
-      <div class="stat-num" data-target="24">0</div>
-      <div class="stat-label">Hr Turnaround</div>
+      <div class="stat-num" id="stat-reviews" data-target="0" data-prefix="" data-is-star="0">0+</div>
+      <div class="stat-label">Reviews</div>
     </div>
   </div>
 </div>
@@ -762,6 +783,38 @@
   </div>
 </section>
 
+<!-- ── ADMIN PANEL (open via url #admin) ── -->
+<div id="admin-panel">
+  <div class="admin-box">
+    <h2><span>Log</span> Completed Job <button class="admin-close" onclick="closeAdmin()">✕</button></h2>
+    <form id="jobForm">
+      <div class="form-group">
+        <label>Service Completed</label>
+        <select id="jService" required>
+          <option value="">Select...</option>
+          <option value="Interior Detail">Interior Detail — $70</option>
+          <option value="Exterior Detail">Exterior Detail — $50</option>
+          <option value="Full Detail">Full Detail — $100</option>
+          <option value="Custom">Custom</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Amount Charged ($)</label>
+        <input type="number" id="jAmount" placeholder="100" min="0" required />
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <input type="text" id="jNotes" placeholder="e.g. 2020 Honda Civic, black" />
+      </div>
+      <button type="submit" class="form-submit">Log Job</button>
+    </form>
+    <div id="job-success" style="display:none; text-align:center; padding:1.5rem; color:#4ade80; font-weight:600;">
+      <i class="fas fa-check-circle" style="font-size:2rem; display:block; margin-bottom:0.5rem;"></i>
+      Job logged! Stats will update automatically.
+    </div>
+  </div>
+</div>
+
 <!-- ── FOOTER ── -->
 <footer>
   <div class="footer-logo">Clear<span>Coat</span> Co.</div>
@@ -781,131 +834,192 @@
 <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
 
 <script>
-// ── Vanta animated background ──
+// ── CONFIG — paste your Apps Script URL here after setup ──────────────────────
+const SCRIPT_URL = 'YOUR_SCRIPT_URL_HERE';
+
+// ── Vanta animated background ─────────────────────────────────────────────────
 VANTA.NET({
   el: '#vanta-bg',
-  mouseControls: true,
-  touchControls: true,
-  gyroControls: false,
-  minHeight: 200.00,
-  minWidth: 200.00,
-  scale: 1.0,
-  scaleMobile: 1.0,
-  color: 0x3b82f6,
-  backgroundColor: 0x050507,
-  points: 10.0,
-  maxDistance: 22.0,
-  spacing: 18.0,
+  mouseControls: true, touchControls: true, gyroControls: false,
+  minHeight: 200, minWidth: 200, scale: 1, scaleMobile: 1,
+  color: 0x3b82f6, backgroundColor: 0x050507,
+  points: 10, maxDistance: 22, spacing: 18,
 });
 
-// ── AOS init ──
+// ── AOS ───────────────────────────────────────────────────────────────────────
 AOS.init({ duration: 700, once: true, offset: 60 });
 
-// ── Stat counter ──
+// ── Live data from Google Sheet ───────────────────────────────────────────────
+async function loadLiveData() {
+  if (!SCRIPT_URL || SCRIPT_URL.includes('YOUR_')) return;
+  try {
+    const res  = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if (!data.success) return;
+
+    // Update stat counters
+    const s = data.stats;
+    setCounter('stat-jobs',    s.totalJobs,    false);
+    setCounter('stat-rating',  parseFloat(s.avgRating), true);
+    setCounter('stat-revenue', s.totalRevenue, false, '$');
+    setCounter('stat-reviews', s.reviewCount,  false);
+
+    // Render live reviews (replace placeholder cards if we have real ones)
+    if (data.reviews && data.reviews.length) {
+      const grid = document.getElementById('reviewsGrid');
+      grid.innerHTML = '';
+      data.reviews.forEach(r => renderReviewCard(r, grid));
+    }
+  } catch (e) {
+    console.warn('Live data unavailable:', e);
+  }
+}
+
+function setCounter(id, value, isStar, prefix = '') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.dataset.target  = value;
+  el.dataset.prefix  = prefix;
+  el.dataset.isStar  = isStar ? '1' : '0';
+}
+
+// ── Stat counter animation ────────────────────────────────────────────────────
 function animateCounters() {
   document.querySelectorAll('.stat-num[data-target]').forEach(el => {
-    const target = +el.dataset.target;
-    const step = Math.ceil(target / 60);
-    let current = 0;
+    const target  = parseFloat(el.dataset.target) || 0;
+    const isStar  = el.dataset.isStar === '1';
+    const prefix  = el.dataset.prefix || '';
+    const steps   = 60;
+    const step    = target / steps;
+    let   current = 0;
     const tick = setInterval(() => {
       current = Math.min(current + step, target);
-      el.textContent = current + (target === 5 ? '★' : '+');
+      const display = isStar ? current.toFixed(1) : Math.round(current);
+      el.textContent = prefix + display + (isStar ? '★' : '+');
       if (current >= target) clearInterval(tick);
-    }, 30);
+    }, 20);
   });
 }
-const statsEl = document.getElementById('stats');
 const statsObserver = new IntersectionObserver(entries => {
   if (entries[0].isIntersecting) { animateCounters(); statsObserver.disconnect(); }
 }, { threshold: 0.4 });
-statsObserver.observe(statsEl);
+statsObserver.observe(document.getElementById('stats'));
 
-// ── 3D tilt on service cards ──
+// ── 3D tilt on service cards ──────────────────────────────────────────────────
 document.querySelectorAll('.service-card').forEach(card => {
   card.addEventListener('mousemove', e => {
-    const rect = card.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width  - 0.5;
-    const y = (e.clientY - rect.top)  / rect.height - 0.5;
-    card.style.transform = `perspective(800px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) translateZ(6px)`;
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width  - 0.5;
+    const y = (e.clientY - r.top)  / r.height - 0.5;
+    card.style.transform = `perspective(800px) rotateY(${x*12}deg) rotateX(${-y*12}deg) translateZ(6px)`;
   });
   card.addEventListener('mouseleave', () => {
     card.style.transform = 'perspective(800px) rotateY(0) rotateX(0) translateZ(0)';
   });
 });
 
-// ── Nav mobile toggle ──
-function toggleNav() {
-  document.getElementById('navLinks').classList.toggle('open');
-}
-function closeNav() {
-  document.getElementById('navLinks').classList.remove('open');
-}
+// ── Nav ───────────────────────────────────────────────────────────────────────
+function toggleNav() { document.getElementById('navLinks').classList.toggle('open'); }
+function closeNav()  { document.getElementById('navLinks').classList.remove('open'); }
 
-// ── Review form ──
-// Star rating CSS hack: reverse them so clicking works left-to-right visually
+// ── Admin panel (#admin in URL) ───────────────────────────────────────────────
+function openAdmin()  { document.getElementById('admin-panel').classList.add('open'); }
+function closeAdmin() {
+  document.getElementById('admin-panel').classList.remove('open');
+  document.getElementById('jobForm').style.display = '';
+  document.getElementById('job-success').style.display = 'none';
+}
+if (location.hash === '#admin') openAdmin();
+window.addEventListener('hashchange', () => {
+  if (location.hash === '#admin') openAdmin(); else closeAdmin();
+});
+
+document.getElementById('jobForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const service = document.getElementById('jService').value;
+  const amount  = document.getElementById('jAmount').value;
+  const notes   = document.getElementById('jNotes').value;
+  if (!service || !amount) return;
+
+  const btn = this.querySelector('button');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  if (SCRIPT_URL && !SCRIPT_URL.includes('YOUR_')) {
+    try {
+      const url = `${SCRIPT_URL}?action=log_job&service=${encodeURIComponent(service)}&amount=${amount}&notes=${encodeURIComponent(notes)}`;
+      await fetch(url);
+    } catch(err) { console.warn('Job log failed:', err); }
+  }
+
+  document.getElementById('jobForm').style.display = 'none';
+  document.getElementById('job-success').style.display = 'block';
+  setTimeout(closeAdmin, 2500);
+});
+
+// ── Review form ───────────────────────────────────────────────────────────────
 (function setupStars() {
   const wrap = document.getElementById('starSelect');
   wrap.style.flexDirection = 'row-reverse';
   wrap.style.justifyContent = 'flex-end';
 })();
 
-const reviewForm = document.getElementById('reviewForm');
+const reviewForm  = document.getElementById('reviewForm');
 const formSuccess = document.getElementById('form-success');
-const userReviews = document.getElementById('userReviews');
 
-// Load any previously stored reviews from localStorage
-(function loadStoredReviews() {
-  const stored = JSON.parse(localStorage.getItem('cc_reviews') || '[]');
-  stored.forEach(r => renderReview(r));
-})();
-
-reviewForm.addEventListener('submit', function(e) {
+reviewForm.addEventListener('submit', async function(e) {
   e.preventDefault();
   const name    = document.getElementById('rName').value.trim();
   const service = document.getElementById('rService').value;
   const text    = document.getElementById('rText').value.trim();
   const stars   = document.querySelector('input[name="stars"]:checked');
-
   if (!name || !service || !text || !stars) {
     alert('Please fill in all fields and select a rating.');
     return;
   }
 
-  const review = {
-    name,
-    service,
-    text,
-    stars: +stars.value,
-    initials: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-  };
+  const btn = this.querySelector('button');
+  btn.textContent = 'Submitting…'; btn.disabled = true;
 
-  // Save to localStorage (persists in the same browser)
-  const stored = JSON.parse(localStorage.getItem('cc_reviews') || '[]');
-  stored.unshift(review);
-  localStorage.setItem('cc_reviews', JSON.stringify(stored));
+  // Send to Google Sheet if configured
+  if (SCRIPT_URL && !SCRIPT_URL.includes('YOUR_')) {
+    try {
+      const url = `${SCRIPT_URL}?action=submit_review`
+        + `&name=${encodeURIComponent(name)}`
+        + `&service=${encodeURIComponent(service)}`
+        + `&stars=${stars.value}`
+        + `&text=${encodeURIComponent(text)}`;
+      await fetch(url);
+    } catch(err) { console.warn('Review submit failed:', err); }
+  }
 
-  renderReview(review);
   reviewForm.style.display = 'none';
   formSuccess.style.display = 'block';
   formSuccess.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 
-function renderReview(r) {
-  const starsStr = '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars);
+// ── Render a review card ──────────────────────────────────────────────────────
+function renderReviewCard(r, container) {
+  const s   = Math.round(r.stars || 5);
+  const str = '★'.repeat(s) + '☆'.repeat(5 - s);
+  const ini = (r.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   const div = document.createElement('div');
   div.className = 'review-card';
+  div.setAttribute('data-aos', 'fade-up');
   div.innerHTML = `
-    <div class="stars" style="color:#f59e0b">${starsStr}</div>
+    <div class="stars" style="color:#f59e0b">${str}</div>
     <p class="review-text">"${r.text}"</p>
     <div class="reviewer">
-      <div class="reviewer-avatar">${r.initials}</div>
+      <div class="reviewer-avatar">${ini}</div>
       <div>
         <div class="reviewer-name">${r.name}</div>
-        <div class="reviewer-date">${r.service}</div>
+        <div class="reviewer-date">${r.service}${r.date ? ' · ' + r.date : ''}</div>
       </div>
     </div>`;
-  userReviews.prepend(div);
+  (container || document.getElementById('userReviews')).appendChild(div);
 }
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadLiveData();
 </script>
 
 </body>
