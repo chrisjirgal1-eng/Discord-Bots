@@ -1,3 +1,4 @@
+import logging
 import os
 import asyncio
 import discord
@@ -6,6 +7,8 @@ from dotenv import load_dotenv
 
 from audio import fetch_tracks, FFMPEG_OPTIONS
 from queue_manager import QueueManager
+
+log = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -29,18 +32,21 @@ class MusicBot(discord.Client):
 
     async def setup_hook(self):
         dev_guild_id = os.getenv('DEV_GUILD_ID')
-        if dev_guild_id:
-            guild_obj = discord.Object(id=int(dev_guild_id))
-            self.tree.copy_global_to(guild=guild_obj)
-            await self.tree.sync(guild=guild_obj)
-            print(f'Slash commands synced to dev guild {dev_guild_id}')
-        else:
-            await self.tree.sync()
-            print('Slash commands synced globally')
+        try:
+            if dev_guild_id:
+                guild_obj = discord.Object(id=int(dev_guild_id))
+                self.tree.copy_global_to(guild=guild_obj)
+                await self.tree.sync(guild=guild_obj)
+                log.info('Slash commands synced to dev guild %s', dev_guild_id)
+            else:
+                await self.tree.sync()
+                log.info('Slash commands synced globally')
+        except discord.HTTPException:
+            log.exception('Failed to sync slash commands')
 
     async def on_ready(self):
-        print(f'Logged in as {self.user} (ID: {self.user.id})')
-        print(f'Active in {len(self.guilds)} server(s)')
+        log.info('Logged in as %s (ID: %s)', self.user, self.user.id)
+        log.info('Active in %d server(s)', len(self.guilds))
         await self.change_presence(
             activity=discord.Activity(type=discord.ActivityType.listening, name='/play')
         )
@@ -60,12 +66,14 @@ class MusicBot(discord.Client):
             return
         try:
             vc = await best.connect()
-            print(f'Auto-joined #{best.name} in {guild.name}')
+            log.info('Auto-joined #%s in %s', best.name, guild.name)
             q = self.queues.get(guild.id)
             if q.current or len(q):
                 self.play_next(vc, guild.id)
-        except Exception as e:
-            print(f'Auto-join failed in {guild.name}: {e}')
+        except discord.ClientException:
+            log.warning('Already connected in %s, skipping auto-join', guild.name)
+        except Exception:
+            log.exception('Auto-join failed in %s', guild.name)
 
     async def on_voice_state_update(
         self,
@@ -98,12 +106,14 @@ class MusicBot(discord.Client):
                 if guild.voice_client is None:
                     try:
                         vc = await after.channel.connect()
-                        print(f'Auto-joined #{after.channel.name} in {guild.name}')
+                        log.info('Auto-joined #%s in %s', after.channel.name, guild.name)
                         q = self.queues.get(guild.id)
                         if (q.current or len(q)) and not vc.is_playing():
                             self.play_next(vc, guild.id)
-                    except Exception as e:
-                        print(f'Auto-join on member join failed: {e}')
+                    except discord.ClientException:
+                        log.warning('Already connected in %s during member-join auto-join', guild.name)
+                    except Exception:
+                        log.exception('Auto-join on member join failed in %s', guild.name)
 
     def play_next(self, vc: discord.VoiceClient, guild_id: int):
         if not vc.is_connected():
@@ -121,17 +131,25 @@ class MusicBot(discord.Client):
 
         def after_cb(error):
             if error:
-                print(f'Playback error [{track.title}]: {error}')
-            asyncio.run_coroutine_threadsafe(self._advance(vc, guild_id), self.loop)
+                log.error('Playback error [%s]: %s', track.title, error)
+            fut = asyncio.run_coroutine_threadsafe(self._advance(vc, guild_id), self.loop)
+            try:
+                fut.result(timeout=10)
+            except Exception:
+                log.exception('Failed to advance queue after [%s]', track.title)
 
         try:
             vc.play(source, after=after_cb)
-        except Exception as e:
-            print(f'vc.play error: {e}')
+        except Exception:
+            log.exception('vc.play failed for [%s], advancing queue', track.title)
+            asyncio.run_coroutine_threadsafe(self._advance(vc, guild_id), self.loop)
 
     async def _advance(self, vc: discord.VoiceClient, guild_id: int):
-        if vc.is_connected():
-            self.play_next(vc, guild_id)
+        try:
+            if vc.is_connected():
+                self.play_next(vc, guild_id)
+        except Exception:
+            log.exception('Error advancing playback in guild %s', guild_id)
 
 
 bot = MusicBot()
@@ -151,10 +169,15 @@ async def cmd_play(interaction: discord.Interaction, query: str):
     vc = guild.voice_client
     user_channel = interaction.user.voice.channel
 
-    if vc is None:
-        vc = await user_channel.connect()
-    elif vc.channel != user_channel:
-        await vc.move_to(user_channel)
+    try:
+        if vc is None:
+            vc = await user_channel.connect()
+        elif vc.channel != user_channel:
+            await vc.move_to(user_channel)
+    except Exception:
+        log.exception('Failed to connect/move to voice channel')
+        await interaction.followup.send('Failed to join your voice channel.', ephemeral=True)
+        return
 
     try:
         tracks = await fetch_tracks(query)

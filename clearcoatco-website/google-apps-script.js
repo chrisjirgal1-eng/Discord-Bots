@@ -55,6 +55,7 @@ function getData() {
 
   // Reviews
   const rSheet = ss.getSheetByName('Reviews');
+  if (!rSheet) throw new Error('Missing "Reviews" sheet in spreadsheet');
   const rData  = rSheet.getLastRow() > 1
     ? rSheet.getRange(2, 1, rSheet.getLastRow() - 1, 6).getValues()
     : [];
@@ -77,6 +78,7 @@ function getData() {
 
   // Jobs
   const jSheet = ss.getSheetByName('Jobs');
+  if (!jSheet) throw new Error('Missing "Jobs" sheet in spreadsheet');
   const jData  = jSheet.getLastRow() > 1
     ? jSheet.getRange(2, 1, jSheet.getLastRow() - 1, 4).getValues()
     : [];
@@ -98,6 +100,7 @@ function submitReview(p) {
 
   const ss     = SpreadsheetApp.openById(SHEET_ID);
   const sheet  = ss.getSheetByName('Reviews');
+  if (!sheet) throw new Error('Missing "Reviews" sheet in spreadsheet');
 
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(['Date', 'Name', 'Service', 'Stars', 'Review', 'Approved']);
@@ -114,6 +117,7 @@ function logJob(p) {
 
   const ss    = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName('Jobs');
+  if (!sheet) throw new Error('Missing "Jobs" sheet in spreadsheet');
 
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(['Date', 'Service', 'Amount', 'Notes']);
