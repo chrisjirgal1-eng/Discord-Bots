@@ -6,6 +6,12 @@ from dotenv import load_dotenv
 
 from audio import fetch_tracks, FFMPEG_OPTIONS
 from queue_manager import QueueManager
+from utils import (
+    ensure_voice_connection,
+    format_duration,
+    require_playing_or_paused,
+    require_voice_client,
+)
 
 load_dotenv()
 
@@ -148,13 +154,7 @@ async def cmd_play(interaction: discord.Interaction, query: str):
     await interaction.response.defer()
 
     guild = interaction.guild
-    vc = guild.voice_client
-    user_channel = interaction.user.voice.channel
-
-    if vc is None:
-        vc = await user_channel.connect()
-    elif vc.channel != user_channel:
-        await vc.move_to(user_channel)
+    vc = await ensure_voice_connection(interaction)
 
     try:
         tracks = await fetch_tracks(query)
@@ -183,7 +183,7 @@ async def cmd_play(interaction: discord.Interaction, query: str):
 @bot.tree.command(name='skip', description='Skip the current track')
 async def cmd_skip(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
-    if not vc or not (vc.is_playing() or vc.is_paused()):
+    if not require_playing_or_paused(vc):
         await interaction.response.send_message('Nothing is playing.', ephemeral=True)
         return
     title = bot.queues.get(interaction.guild.id).current
@@ -195,9 +195,8 @@ async def cmd_skip(interaction: discord.Interaction):
 
 @bot.tree.command(name='pause', description='Pause playback')
 async def cmd_pause(interaction: discord.Interaction):
-    vc = interaction.guild.voice_client
-    if not vc or not vc.is_playing():
-        await interaction.response.send_message('Nothing is playing.', ephemeral=True)
+    vc = await require_voice_client(interaction, playing=True, error_msg='Nothing is playing.')
+    if not vc:
         return
     vc.pause()
     await interaction.response.send_message('Paused.')
@@ -205,9 +204,8 @@ async def cmd_pause(interaction: discord.Interaction):
 
 @bot.tree.command(name='resume', description='Resume paused playback')
 async def cmd_resume(interaction: discord.Interaction):
-    vc = interaction.guild.voice_client
-    if not vc or not vc.is_paused():
-        await interaction.response.send_message('Not paused.', ephemeral=True)
+    vc = await require_voice_client(interaction, paused=True, error_msg='Not paused.')
+    if not vc:
         return
     vc.resume()
     await interaction.response.send_message('Resumed.')
@@ -229,8 +227,7 @@ async def cmd_nowplaying(interaction: discord.Interaction):
     if t.thumbnail:
         embed.set_thumbnail(url=t.thumbnail)
     if t.duration:
-        m, s = divmod(int(t.duration), 60)
-        embed.add_field(name='Duration', value=f'{m}:{s:02d}', inline=True)
+        embed.add_field(name='Duration', value=format_duration(t.duration), inline=True)
     if t.uploader:
         embed.set_footer(text=f'Uploaded by {t.uploader}')
     await interaction.response.send_message(embed=embed)
@@ -266,9 +263,8 @@ async def cmd_queue(interaction: discord.Interaction):
 @bot.tree.command(name='volume', description='Set playback volume (0–100)')
 @app_commands.describe(level='Volume level from 0 to 100')
 async def cmd_volume(interaction: discord.Interaction, level: app_commands.Range[int, 0, 100]):
-    vc = interaction.guild.voice_client
+    vc = await require_voice_client(interaction)
     if not vc:
-        await interaction.response.send_message('Not connected.', ephemeral=True)
         return
     q = bot.queues.get(interaction.guild.id)
     q.volume = level / 100
@@ -280,12 +276,11 @@ async def cmd_volume(interaction: discord.Interaction, level: app_commands.Range
 
 @bot.tree.command(name='stop', description='Stop playback and clear the queue')
 async def cmd_stop(interaction: discord.Interaction):
-    vc = interaction.guild.voice_client
+    vc = await require_voice_client(interaction)
     if not vc:
-        await interaction.response.send_message('Not connected.', ephemeral=True)
         return
     bot.queues.get(interaction.guild.id).clear()
-    if vc.is_playing() or vc.is_paused():
+    if require_playing_or_paused(vc):
         vc.stop()
     await interaction.response.send_message('Stopped and queue cleared.')
 
@@ -293,9 +288,8 @@ async def cmd_stop(interaction: discord.Interaction):
 
 @bot.tree.command(name='leave', description='Disconnect the bot from voice')
 async def cmd_leave(interaction: discord.Interaction):
-    vc = interaction.guild.voice_client
+    vc = await require_voice_client(interaction, error_msg='Not in a voice channel.')
     if not vc:
-        await interaction.response.send_message('Not in a voice channel.', ephemeral=True)
         return
     bot.queues.get(interaction.guild.id).clear()
     await vc.disconnect()
