@@ -35,7 +35,7 @@ class Track:
 
 
 async def fetch_tracks(query: str) -> list[Track]:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     def _extract():
         with yt_dlp.YoutubeDL(YTDL_OPTIONS) as ytdl:
@@ -53,4 +53,7 @@ async def fetch_tracks(query: str) -> list[Track]:
             raise ValueError('No playable tracks in playlist.')
         return tracks
 
-    return [Track(data)]
+    track = Track(data)
+    if not track.stream_url:
+        raise ValueError('No playable audio stream found.')
+    return [track]
