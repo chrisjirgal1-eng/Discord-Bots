@@ -14,11 +14,19 @@ judgment half: extract what is worth applying, skip the hype, apply the real upg
 A directory of `.txt` transcripts (default `transcripts/`). Files starting with `__FAILED__`
 are skipped (the download or transcribe failed for that video).
 
+## The goal videos come first
+
+Three transcripts are the north star, the "become the true Claude" targets (pinned at the
+top of `tools/video-urls.txt`): `DZlQ7GZnJR7`, `DZu4FFeDtIH`, `DZVEN4gMRXV`. Read and
+understand these FIRST. They define what the end state looks like. Then judge every training
+video against that goal: a technique earns its place only if it moves the setup toward what
+the goal videos describe. Capture the goal in 3 to 5 lines at the top of TECHNIQUES.md.
+
 ## Steps
 
-1. Read each transcript. For large batches, fan out: a Haiku subagent per chunk extracts the
-   technique(s) from its files and returns structured notes (per model-routing.md). Keep the
-   main context clean.
+1. Read the three goal transcripts first, then the rest. For large batches, fan out: a Haiku
+   subagent per chunk extracts the technique(s) from its files and returns structured notes
+   (per model-routing.md). Keep the main context clean.
 2. For each video, capture: the core technique in one line, the specific claim, and whether it
    applies to Chris's Claude Code setup.
 3. Dedupe hard against what already exists: the rules (model-routing, verification, learning,

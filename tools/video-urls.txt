@@ -1,6 +1,12 @@
-# Paste one video URL per line. Lines starting with # are ignored.
-# These run through tools/watch-batch.sh on your LOCAL machine (the cloud proxy blocks Instagram).
-# Instagram reels and posts, YouTube, TikTok, anything yt-dlp supports.
-# Example:
-# https://www.instagram.com/reel/DY02HIfyGHk/
-# https://www.youtube.com/watch?v=...
+# One video URL per line. Lines starting with # are ignored.
+# Runs through tools/watch-batch.sh on your LOCAL machine (the cloud proxy blocks Instagram).
+# Order matters: the batch processes top to bottom, so the goal videos come first.
+
+# === PRIORITY: the goal (what "the true Claude" looks like) ===
+# Process and understand these first. The training set below is judged against them.
+https://www.instagram.com/p/DZlQ7GZnJR7/
+https://www.instagram.com/p/DZu4FFeDtIH/
+https://www.instagram.com/reel/DZVEN4gMRXV/
+
+# === TRAINING SET: paste your other links below, one per line ===
+# (the ~65 technique videos)
