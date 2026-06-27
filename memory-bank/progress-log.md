@@ -46,3 +46,8 @@ Keep entries short. One idea per line.
   (adversarially verified). Core lesson: the model that writes work must never grade it.
 - Chris set a standing directive: keep working autonomously until told to stop. Working the
   roadmap overnight, committing each result.
+- Overnight builds: PR #13 autonomous-potential plan, #14 verification-discipline rule,
+  #15 bot review + 2 safe audio.py fixes.
+- "add everything": applied all 5 held bot fixes (per-guild lock in play/advance, auto-disconnect
+  on empty channel, guild_only on 9 commands, reconnect finally, locked _auto_join). A fresh
+  Opus reviewer verified the diff: no deadlock, no regressions. Still needs a dev-guild smoke test.

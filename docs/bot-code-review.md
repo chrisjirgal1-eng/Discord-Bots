@@ -14,7 +14,21 @@ the per-guild asyncio lock exists but the playback path does not use it.
   `stream_url=''`, which made `FFmpegPCMAudio('')` fail in the playback thread and stall
   silently. Now raises a clear `ValueError` instead. The playlist path already guarded this.
 
-## Needs your approval (touches concurrency or behavior, no test suite to verify overnight)
+## Applied 2026-06-27 (Chris said "add everything")
+
+All five below are now in bot.py. A fresh Opus reviewer checked the diff: no deadlock
+(the lock is never acquired re-entrantly), auto-disconnect has no false triggers, the
+play_next guard does not block normal advance, guild_only is safe with copy_global_to.
+Still recommended: a dev-guild smoke test before relying on them in production, since the
+review verified logic, not a live run.
+
+1. Per-guild lock now wraps `_auto_join`, and `play_next` early-returns if `vc.is_playing()`.
+2. Auto-disconnect when the last human leaves the bot's channel (clears the queue first).
+3. `@app_commands.guild_only()` on all 9 commands (no more DM crash).
+4. Reconnect `discard(gid)` moved into a `finally`.
+5. `_auto_join` guard runs under the lock for the on_ready and reconnect paths.
+
+### Original findings (for reference)
 
 Ranked by value.
 
