@@ -30,3 +30,9 @@ Keep entries short. One idea per line.
   non-interactive setup command; kept it out of the cloud hook. PR #6, merged.
 - Chris granted standing authority to do build/dev work and merge PRs without asking,
   and to evolve the coding setup. Guardrails recorded in active-context.md.
+- Added model-routing convention (.claude/rules/model-routing.md, always loaded): the
+  Claude Code equivalent of Copilot auto model selection. Route cheap mechanical work to
+  Haiku subagents, real coding to Sonnet 4.6, design/debug/review to Opus 4.8, Fable 5 for
+  the hardest problems. Built and fact-verified via a 5-agent workflow. See tools.md.
+- Set .claude/settings.json permissions: defaultMode acceptEdits + allow-list for common
+  build commands + deny-list for catastrophic ones. Stops permission prompts on routine work.
