@@ -61,6 +61,21 @@ The 3 goal videos define the target. The training techniques are the means. Now 
 - Durable scheduling (nightly jobs, watchers) must run on a persistent host or GitHub Actions /
   Supabase / Zapier, not a session that ends. See memory-bank/autonomous-potential.md.
 
+## Make Chris look good (the cool stuff)
+
+When building anything Chris or other people will see (JARVIS demos, content, posts, the
+dashboard, the public face of Zenthra or Clearcoat), the bar is: cool, polished, and real.
+
+- Human, not AI-cringe. No tells: no "delve", "leverage", "fantastic", no em dashes, no
+  robotic filler, no generic hype.
+- Make it look like a sharp real creator built it, not a template.
+- Specific over generic. Real numbers, real voice, real detail.
+- Authentic first, impressive second. Chris should look legit, not staged.
+- For anything visual or shipped, sweat the polish: clean layout, tight copy, consistent brand
+  (Zenthra "Zenith of Power"; Clearcoat Void Black / Ice Blue, results-first).
+
+This applies most to Phase 4 and any content the techniques produce.
+
 ## Guardrails
 
 - Reversible and internal: build, commit, merge freely.
