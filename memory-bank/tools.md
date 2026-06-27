@@ -122,9 +122,13 @@ The real control is the per-call `model` on Agent subagents (sonnet|opus|haiku|f
 
 ## Permissions (fewer prompts)
 
-`.claude/settings.json` sets `defaultMode: acceptEdits` and an allow-list for the common
-build commands (git, uv, pip, npm/npx/pnpm, node, python, graphify, and safe shell tools),
-plus a deny-list for catastrophic commands (rm -rf /, mkfs, dd, fork bombs). This stops
-the permission prompts on routine build work in every session. To go fully prompt-free,
-switch `defaultMode` to `bypassPermissions` (removes all safety prompts, including for
-destructive commands). Adjust in `.claude/settings.json`.
+`.claude/settings.json` sets `defaultMode: bypassPermissions` by Chris's explicit request,
+so tools run with no approval prompts. A deny-list still blocks catastrophic commands
+(rm -rf /, rm -rf ~, mkfs, dd, fork bombs) because deny rules take precedence even in
+bypass mode. The allow-list for common build commands is kept as documentation of the
+expected toolset. To dial back, set `defaultMode` to `acceptEdits` (auto-accept edits,
+prompt for other commands) or `default` (prompt for everything).
+
+Caveat for web sessions: project settings apply at session launch and may be gated by the
+environment's permission policy. If prompts still appear, set the permission mode for the
+Claude Code web environment itself (the per-session/environment control), not just this file.
