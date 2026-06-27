@@ -1,12 +1,74 @@
 # One video URL per line. Lines starting with # are ignored.
 # Runs through tools/watch-batch.sh on your LOCAL machine (the cloud proxy blocks Instagram).
 # Order matters: the batch processes top to bottom, so the goal videos come first.
+# Note: /p/ posts that are image carousels have no audio and will not transcribe;
+# the batch marks them failed and moves on. Reels (video) transcribe fine.
 
 # === PRIORITY: the goal (what "the true Claude" looks like) ===
-# Process and understand these first. The training set below is judged against them.
 https://www.instagram.com/p/DZlQ7GZnJR7/
 https://www.instagram.com/p/DZu4FFeDtIH/
 https://www.instagram.com/reel/DZVEN4gMRXV/
 
-# === TRAINING SET: paste your other links below, one per line ===
-# (the ~65 technique videos)
+# === TRAINING SET (deduped) ===
+https://www.instagram.com/reel/DY02HIfyGHk/
+https://www.instagram.com/p/DZ_QxqvlEAI/
+https://www.instagram.com/reel/DYf-n9PguD5/
+https://www.instagram.com/reel/DW7WShljcWg/
+https://www.instagram.com/reel/DZF2UMYMflM/
+https://www.instagram.com/reel/DXmVjvwjpgQ/
+https://www.instagram.com/reel/DZltJGZsGnG/
+https://www.instagram.com/reel/DY8ctYnNzyy/
+https://www.instagram.com/reel/DZ7kMxgMboD/
+https://www.instagram.com/reel/DYPld5xRb8u/
+https://www.instagram.com/reel/DX5NOnFtUDj/
+https://www.instagram.com/reel/DaDX6NitGHd/
+https://www.instagram.com/reel/DZsVsK_DaTn/
+https://www.instagram.com/reel/DVe_2itjw5a/
+https://www.instagram.com/reel/DZqViOYxmru/
+https://www.instagram.com/reel/DZDUd0kS7lw/
+https://www.instagram.com/reel/DY7B5dCgb8j/
+https://www.instagram.com/reel/DXEy4gWDhib/
+https://www.instagram.com/reel/DXCxXufElFW/
+https://www.instagram.com/reel/DYMV3cmMip3/
+https://www.instagram.com/reel/DVlHPqgEm9j/
+https://www.instagram.com/reel/DV1muB2EXvd/
+https://www.instagram.com/reel/DY-nz5ygaG-/
+https://www.instagram.com/reel/DYU6TXpDxtt/
+https://www.instagram.com/reel/DZ_xzicxQPx/
+https://www.instagram.com/reel/DZc6e5MByuj/
+https://www.instagram.com/reel/DXpsxCtD-tU/
+https://www.instagram.com/reel/DZY7s0LK2vj/
+https://www.instagram.com/reel/DZsAke9RXxu/
+https://www.instagram.com/reel/DaBJZy8ovVY/
+https://www.instagram.com/reel/DaBWMuYtZRq/
+https://www.instagram.com/reel/DZDkJUgIBtf/
+https://www.instagram.com/reel/DZrCxB5NTxb/
+https://www.instagram.com/reel/DXFc6EjDdgy/
+https://www.instagram.com/reel/DYNWWdiMiH7/
+https://www.instagram.com/reel/DaAJokYBusj/
+https://www.instagram.com/reel/DZirH1hNQ8c/
+https://www.instagram.com/reel/DXKeid0jyqG/
+https://www.instagram.com/reel/DY05H1EMDMH/
+https://www.instagram.com/p/DZbzF7VgXwT/
+https://www.instagram.com/p/DZkyFMrkcLZ/
+https://www.instagram.com/reel/DZAm8rtKkBW/
+https://www.instagram.com/reel/DZzVhJfSZ4V/
+https://www.instagram.com/reel/DXKVkq5DZEr/
+https://www.instagram.com/p/DZXsQkKgEeQ/
+https://www.instagram.com/reel/DZG6aKYNnpr/
+https://www.instagram.com/p/DZ8JVSpGOtK/
+https://www.instagram.com/reel/DZ7lPp6slQl/
+https://www.instagram.com/reel/DZyyYCJuCal/
+https://www.instagram.com/reel/DYpu1CiMF9c/
+https://www.instagram.com/reel/DYhj-PPMMvF/
+https://www.instagram.com/p/DZB60nMxwJa/
+https://www.instagram.com/reel/DWtsJ4XAgw_/
+https://www.instagram.com/p/DZzzH4Cje60/
+https://www.instagram.com/reel/DZT5cH-RLsV/
+https://www.instagram.com/reel/DZvyqXmplyD/
+https://www.instagram.com/reel/DZnJxLdAm_v/
+https://www.instagram.com/reel/DYpsvyDu2by/
+https://www.instagram.com/reel/DYtJmUQtL4r/
+https://www.instagram.com/reel/DW4Gc3PDibh/
+https://www.instagram.com/reel/DZqgkWQTxkU/
+https://www.instagram.com/reel/DZDDaZ9NJBQ/
