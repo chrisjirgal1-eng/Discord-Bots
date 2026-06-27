@@ -132,3 +132,22 @@ prompt for other commands) or `default` (prompt for everything).
 Caveat for web sessions: project settings apply at session launch and may be gated by the
 environment's permission policy. If prompts still appear, set the permission mode for the
 Claude Code web environment itself (the per-session/environment control), not just this file.
+
+## VoltAgent subagents (154 specialists)
+
+Marketplace `voltagent-subagents` from VoltAgent/awesome-claude-code-subagents. 154 specialist
+subagents across 10 bundles: core-dev, lang, infra, qa-sec, data-ai, dev-exp, domains, biz,
+meta, research. They appear as Agent tool types like `voltagent-core-dev:backend-developer`
+or `voltagent-qa-sec:code-reviewer`, and register at session start.
+
+Install note: `git clone` of third-party repos is blocked in this network, so the canonical
+`claude plugin marketplace add VoltAgent/awesome-claude-code-subagents` fails with 403. The
+working path (and what the SessionStart hook does) is to fetch the repo tarball with curl,
+extract it to `~/.volt-subagents`, add that local directory as the marketplace, then
+`claude plugin install <bundle>@voltagent-subagents` for each bundle. Auto-runs every web
+session via `.claude/hooks/session-start.sh`.
+
+How to use: route a task to the matching specialist via the Agent tool (e.g. a security pass
+to `voltagent-qa-sec:code-reviewer`, a Discord/websocket feature to
+`voltagent-core-dev:websocket-developer`). Pair this with the model-routing rule: pick the
+specialist AND the right model tier.

@@ -47,6 +47,27 @@ fi
 # in an ephemeral cloud container, so it cannot persist across web sessions.
 # Run `npx claude-mem install` on a local machine instead. See memory-bank/tools.md.
 
+# === Tool: VoltAgent subagents (154 specialist subagents) ===
+# Marketplace: VoltAgent/awesome-claude-code-subagents. git clone of third-party
+# repos is blocked in this network, so fetch the tarball with curl and add it as a
+# local directory marketplace, then install all 10 bundles. Idempotent.
+if command -v claude >/dev/null 2>&1; then
+  VOLT_DIR="$HOME/.volt-subagents"
+  if [ ! -f "$VOLT_DIR/.claude-plugin/marketplace.json" ]; then
+    mkdir -p "$VOLT_DIR"
+    curl -sSL "https://codeload.github.com/VoltAgent/awesome-claude-code-subagents/tar.gz/refs/heads/main" \
+      | tar -xz -C "$VOLT_DIR" --strip-components=1 >/dev/null 2>&1 || true
+  fi
+  if [ -f "$VOLT_DIR/.claude-plugin/marketplace.json" ]; then
+    claude plugin marketplace add "$VOLT_DIR" >/dev/null 2>&1 || true
+    for p in voltagent-core-dev voltagent-lang voltagent-infra voltagent-qa-sec \
+             voltagent-data-ai voltagent-dev-exp voltagent-domains voltagent-biz \
+             voltagent-meta voltagent-research; do
+      claude plugin install "$p@voltagent-subagents" >/dev/null 2>&1 || true
+    done
+  fi
+fi
+
 # === Add new auto-setup tools below, one block each ===
 
 exit 0
