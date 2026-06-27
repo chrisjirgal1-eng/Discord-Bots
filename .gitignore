@@ -16,3 +16,7 @@ venv/
 
 # Local-only Claude notes
 CLAUDE.local.md
+
+# Scaffolded separate project (prompts.chat platform). Belongs in its own repo,
+# not committed here. Regenerable via `npx prompts.chat new`. 127MB + secrets.
+my-prompt-library/
