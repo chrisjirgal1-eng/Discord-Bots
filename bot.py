@@ -48,24 +48,25 @@ class MusicBot(discord.Client):
             await self._auto_join(guild)
 
     async def _auto_join(self, guild: discord.Guild):
-        if guild.voice_client:
-            return
-        # Join the most populated VC that has at least one human
-        best = max(
-            (c for c in guild.voice_channels if any(not m.bot for m in c.members)),
-            key=lambda c: sum(1 for m in c.members if not m.bot),
-            default=None,
-        )
-        if not best:
-            return
-        try:
-            vc = await best.connect()
-            print(f'Auto-joined #{best.name} in {guild.name}')
-            q = self.queues.get(guild.id)
-            if q.current or len(q):
-                self.play_next(vc, guild.id)
-        except Exception as e:
-            print(f'Auto-join failed in {guild.name}: {e}')
+        async with self._lock(guild.id):
+            if guild.voice_client:
+                return
+            # Join the most populated VC that has at least one human
+            best = max(
+                (c for c in guild.voice_channels if any(not m.bot for m in c.members)),
+                key=lambda c: sum(1 for m in c.members if not m.bot),
+                default=None,
+            )
+            if not best:
+                return
+            try:
+                vc = await best.connect()
+                print(f'Auto-joined #{best.name} in {guild.name}')
+                q = self.queues.get(guild.id)
+                if q.current or len(q):
+                    self.play_next(vc, guild.id)
+            except Exception as e:
+                print(f'Auto-join failed in {guild.name}: {e}')
 
     async def on_voice_state_update(
         self,
@@ -80,17 +81,26 @@ class MusicBot(discord.Client):
             gid = guild.id
             if gid not in self._reconnecting:
                 self._reconnecting.add(gid)
-                await asyncio.sleep(5)
-                self._reconnecting.discard(gid)
-                q = self.queues.get(gid)
-                if q.current or len(q):
-                    await self._auto_join(guild)
+                try:
+                    await asyncio.sleep(5)
+                    q = self.queues.get(gid)
+                    if q.current or len(q):
+                        await self._auto_join(guild)
+                finally:
+                    self._reconnecting.discard(gid)
             return
 
         if member.bot:
             return
 
         vc = guild.voice_client
+
+        # Last human left the bot's channel: disconnect and clear the queue
+        if vc and before.channel == vc.channel and after.channel != vc.channel:
+            if not any(not m.bot for m in vc.channel.members):
+                self.queues.get(guild.id).clear()
+                await vc.disconnect()
+                return
 
         # Human joined a VC while bot is not connected anywhere
         if after.channel and after.channel != before.channel and vc is None:
@@ -106,7 +116,7 @@ class MusicBot(discord.Client):
                         print(f'Auto-join on member join failed: {e}')
 
     def play_next(self, vc: discord.VoiceClient, guild_id: int):
-        if not vc.is_connected():
+        if not vc.is_connected() or vc.is_playing():
             return
 
         q = self.queues.get(guild_id)
@@ -139,6 +149,7 @@ bot = MusicBot()
 # ── /play ─────────────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='play', description='Queue a song or playlist (URL or search query)')
+@app_commands.guild_only()
 @app_commands.describe(query='YouTube URL, SoundCloud link, or search terms')
 async def cmd_play(interaction: discord.Interaction, query: str):
     if not interaction.user.voice:
@@ -181,6 +192,7 @@ async def cmd_play(interaction: discord.Interaction, query: str):
 # ── /skip ─────────────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='skip', description='Skip the current track')
+@app_commands.guild_only()
 async def cmd_skip(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
     if not vc or not (vc.is_playing() or vc.is_paused()):
@@ -194,6 +206,7 @@ async def cmd_skip(interaction: discord.Interaction):
 # ── /pause / /resume ──────────────────────────────────────────────────────────
 
 @bot.tree.command(name='pause', description='Pause playback')
+@app_commands.guild_only()
 async def cmd_pause(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
     if not vc or not vc.is_playing():
@@ -204,6 +217,7 @@ async def cmd_pause(interaction: discord.Interaction):
 
 
 @bot.tree.command(name='resume', description='Resume paused playback')
+@app_commands.guild_only()
 async def cmd_resume(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
     if not vc or not vc.is_paused():
@@ -215,6 +229,7 @@ async def cmd_resume(interaction: discord.Interaction):
 # ── /nowplaying ───────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='nowplaying', description='Show the currently playing track')
+@app_commands.guild_only()
 async def cmd_nowplaying(interaction: discord.Interaction):
     q = bot.queues.get(interaction.guild.id)
     if not q.current:
@@ -238,6 +253,7 @@ async def cmd_nowplaying(interaction: discord.Interaction):
 # ── /queue ────────────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='queue', description='Show the upcoming queue')
+@app_commands.guild_only()
 async def cmd_queue(interaction: discord.Interaction):
     q = bot.queues.get(interaction.guild.id)
     upcoming = q.peek()
@@ -264,6 +280,7 @@ async def cmd_queue(interaction: discord.Interaction):
 # ── /volume ───────────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='volume', description='Set playback volume (0–100)')
+@app_commands.guild_only()
 @app_commands.describe(level='Volume level from 0 to 100')
 async def cmd_volume(interaction: discord.Interaction, level: app_commands.Range[int, 0, 100]):
     vc = interaction.guild.voice_client
@@ -279,6 +296,7 @@ async def cmd_volume(interaction: discord.Interaction, level: app_commands.Range
 # ── /stop ─────────────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='stop', description='Stop playback and clear the queue')
+@app_commands.guild_only()
 async def cmd_stop(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
     if not vc:
@@ -292,6 +310,7 @@ async def cmd_stop(interaction: discord.Interaction):
 # ── /leave ────────────────────────────────────────────────────────────────────
 
 @bot.tree.command(name='leave', description='Disconnect the bot from voice')
+@app_commands.guild_only()
 async def cmd_leave(interaction: discord.Interaction):
     vc = interaction.guild.voice_client
     if not vc:
