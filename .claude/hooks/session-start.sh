@@ -1,21 +1,34 @@
 #!/bin/bash
-# SessionStart hook: re-assemble Chris's setup on every (ephemeral) web session.
-# The container resets each session; this rebuilds the tooling in seconds so the
-# committed memory bank + graphify knowledge graph are ready automatically.
+# SessionStart hook: the single auto-setup script for Chris's cloud sessions.
+#
+# Cloud containers reset every session. This rebuilds the whole tooling stack in
+# the background so the committed memory bank + graphify knowledge graph are ready
+# automatically, with no manual steps and no added startup wait.
+#
+# TO ADD A NEW TOOL: append a new "=== Tool: <name> ===" block in the section below.
+# Keep each block idempotent (safe to run every session) and non-interactive.
 set -euo pipefail
 
-# Only meaningful in Claude Code on the web (fresh container each time).
+# Non-remote (local machine): nothing to do, return immediately.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   exit 0
 fi
 
-# Make ~/.local/bin (where uv tool installs land) available for the whole session.
+# Async: the session starts instantly; everything below runs in the background.
+echo '{"async": true, "asyncTimeout": 300000}'
+
+# ---------------------------------------------------------------------------
+# Everything below this line runs in the background after the session starts.
+# ---------------------------------------------------------------------------
+
+# Make ~/.local/bin (uv tool install target) available for the whole session.
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$CLAUDE_ENV_FILE"
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-# 1. Install graphify (code knowledge graph) if missing. Idempotent.
+# === Tool: graphify (code knowledge graph) ===
+# Lets Claude query the committed graph instead of reading every file. Idempotent.
 if ! command -v graphify >/dev/null 2>&1; then
   if command -v uv >/dev/null 2>&1; then
     uv tool install graphifyy -q >/dev/null 2>&1 || true
@@ -24,16 +37,16 @@ if ! command -v graphify >/dev/null 2>&1; then
       || pip install graphifyy -q --break-system-packages >/dev/null 2>&1 || true
   fi
 fi
-
-# 2. Install the /graphify skill into Claude config. Idempotent.
 if command -v graphify >/dev/null 2>&1; then
   graphify install --platform claude >/dev/null 2>&1 || true
 fi
 
-# 3. Status line. The memory bank itself auto-loads via CLAUDE.md @imports;
-#    this just confirms the tooling is ready and points at the committed graph.
-if command -v graphify >/dev/null 2>&1 && [ -f graphify-out/graph.json ]; then
-  echo "Setup ready: memory-bank auto-loaded, graphify installed, committed graph at graphify-out/graph.json (query with: graphify query \"...\")."
-else
-  echo "Setup ready: memory-bank auto-loaded. graphify not available this session."
-fi
+# === Tool: claude-mem (automatic session memory) ===
+# Intentionally NOT installed here. claude-mem is local-machine only: its store
+# lives in ~/.claude-mem and its worker/browser UI (localhost:37700) have no home
+# in an ephemeral cloud container, so it cannot persist across web sessions.
+# Run `npx claude-mem install` on a local machine instead. See memory-bank/tools.md.
+
+# === Add new auto-setup tools below, one block each ===
+
+exit 0
