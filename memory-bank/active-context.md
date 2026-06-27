@@ -9,9 +9,20 @@ What is in flight right now. Updated each session. This is the first thing to tr
 - Installed graphify (code knowledge graph). Built semantic graph of this repo:
   83 nodes, 119 edges, 10 communities. Committed graph.json so future sessions query
   for ~0 tokens. See memory-bank/tools.md. DONE.
-- Added SessionStart hook (.claude/hooks/session-start.sh) so every web session
+- Added SessionStart hook (.claude/hooks/session-start.sh, async) so every web session
   auto-installs graphify and loads the setup. Functionally permanent. DONE.
-- Documented claude-mem: works on local machine, not cloud sessions. DONE.
+- Documented claude-mem and openclaw: both work on a local machine/VPS, not cloud. DONE.
+- All of the above merged to the default branch (PRs #5 and #6). The setup is now LIVE:
+  the hook runs automatically on every future web session. DONE.
+
+## Standing authority (granted 2026-06-27)
+
+- Chris granted blanket permission to do build/dev work without asking: write code,
+  run commands, commit, push, open AND merge PRs, install dev tooling, and choose the
+  best options to evolve and improve the coding setup.
+- Guardrails kept by judgment, not permission: do not delete work I did not create,
+  do not send outward-facing messages to other people, and flag credentialed or
+  irreversible security config before doing it.
 
 ## Recently established
 
