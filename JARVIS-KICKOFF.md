@@ -10,7 +10,7 @@ Work autonomously through the phases. Follow the rules in `.claude/rules/` the w
 verification (route quality judgment to a fresh subagent), learning (read memory-bank/lessons.md
 first, append a lesson after a mistake), coding-discipline, throughput, model-routing.
 Branch off the default branch for each change, scan for em dashes and the banned words
-delve/leverage/fantastic before every commit, commit and push each step. Chris has until July 5.
+delve/leverage/fantastic before every commit, commit and push each step. Chris has until July 7.
 
 ## Phase 0: setup
 
