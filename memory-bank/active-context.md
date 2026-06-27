@@ -6,8 +6,12 @@ What is in flight right now. Updated each session. This is the first thing to tr
 
 - Set up this persistent memory bank so Claude remembers across sessions. DONE this session.
 - Added token-efficiency playbook and terse output rules. DONE.
-- Installed graphify (code knowledge graph). Built graph of this repo: 104 nodes,
-  126 edges, 14 communities. Queries cost ~0 tokens. See memory-bank/tools.md. DONE.
+- Installed graphify (code knowledge graph). Built semantic graph of this repo:
+  83 nodes, 119 edges, 10 communities. Committed graph.json so future sessions query
+  for ~0 tokens. See memory-bank/tools.md. DONE.
+- Added SessionStart hook (.claude/hooks/session-start.sh) so every web session
+  auto-installs graphify and loads the setup. Functionally permanent. DONE.
+- Documented claude-mem: works on local machine, not cloud sessions. DONE.
 
 ## Recently established
 

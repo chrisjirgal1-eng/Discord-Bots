@@ -18,3 +18,8 @@ Keep entries short. One idea per line.
 - Ran full /graphify semantic pipeline on the repo: 83 nodes, 119 edges, 10 communities.
   God nodes: Track, MusicBot, GuildQueue, Persistent Memory Bank, QueueManager.
   Committed graph.json + GRAPH_REPORT.md so future sessions query for ~0 tokens.
+- Added SessionStart hook (.claude/hooks/session-start.sh + .claude/settings.json):
+  every web session auto-installs graphify and sets PATH. Container resets, hook
+  re-assembles in seconds. Functionally permanent, automatic. Validated, exit 0.
+- Installed and documented claude-mem (npx claude-mem install). Works on local
+  Claude Code, not cloud sessions (machine-local store, container wipes). See tools.md.
