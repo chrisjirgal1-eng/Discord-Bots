@@ -62,6 +62,42 @@ The store is machine-local and the container wipes on reset, so it does not pers
 across web sessions, and the worker/browser UI (localhost:37700) has no home in cloud.
 For cloud sessions, the committed memory-bank/ is the durable memory instead.
 
+## openclaw (self-hosted agent gateway)
+
+What it is: a self-hosted gateway daemon that connects messaging channels (Discord,
+Slack, etc.) to coding agents. Meant to run 24/7 on a persistent host.
+
+Install: `npm install -g openclaw@latest` (or `pnpm add -g openclaw@latest`).
+
+WHERE IT WORKS: a persistent machine, Chris's own computer or a small VPS. NOT cloud/web
+sessions. `--install-daemon` stands up a background gateway service that dies when an
+ephemeral container resets, and there is no stable host for channels to reach. Onboarding
+also needs an auth provider, channel credentials, and a security model, so it is not safe
+to auto-run unattended. Keep openclaw OUT of the cloud SessionStart hook.
+
+Recommended non-interactive setup (run on the persistent host):
+
+```
+openclaw onboard \
+  --non-interactive --accept-risk \
+  --flow quickstart --mode local \
+  --auth-choice claude-cli \
+  --install-daemon --daemon-runtime node \
+  --gateway-bind loopback --gateway-auth token \
+  --skip-channels
+```
+
+Then add a channel and audit:
+
+```
+openclaw channels add        # pick Discord, paste bot token, set allowlist
+openclaw security audit --deep
+```
+
+Notes: `--auth-choice claude-cli` reuses the existing Claude login (no separate API key).
+`--gateway-bind loopback` keeps it reachable only from the host. Add channels after the
+gateway is up so tokens and allowlists are set deliberately.
+
 ## SessionStart hook (cloud auto-setup)
 
 `.claude/hooks/session-start.sh` runs at the start of every web session. It reinstalls
