@@ -104,3 +104,27 @@ gateway is up so tokens and allowlists are set deliberately.
 graphify and loads PATH so the tool and the committed graph are ready automatically.
 The container resets each session; the hook re-assembles the setup in seconds.
 Functionally permanent without manual steps. Active in the repo once merged to the default branch.
+
+## Model routing
+
+Convention for routing work across model tiers to save tokens without losing quality.
+Full rule: `.claude/rules/model-routing.md` (always loaded, advisory).
+
+Principle: frontier tokens buy judgment, mechanical work goes to the cheapest model that won't botch it.
+
+Defaults applied automatically:
+- Real coding work defaults to Sonnet 4.6.
+- Search, discovery, and bulk mechanical edits go to Haiku subagents (also keeps the main context clean).
+- Opus 4.8 only for design, hard debugging, and PR-grade review.
+- Fable 5 reserved for genuinely hard, high-value problems.
+
+The real control is the per-call `model` on Agent subagents (sonnet|opus|haiku|fable) and the `model` plus `effort` (low|medium|high|xhigh|max) on workflow agents. Frontmatter `model` is a hard override. The rule file is a nudge. The main session model stays Chris's choice, and do not switch it mid-session (it invalidates the prompt cache).
+
+## Permissions (fewer prompts)
+
+`.claude/settings.json` sets `defaultMode: acceptEdits` and an allow-list for the common
+build commands (git, uv, pip, npm/npx/pnpm, node, python, graphify, and safe shell tools),
+plus a deny-list for catastrophic commands (rm -rf /, mkfs, dd, fork bombs). This stops
+the permission prompts on routine build work in every session. To go fully prompt-free,
+switch `defaultMode` to `bypassPermissions` (removes all safety prompts, including for
+destructive commands). Adjust in `.claude/settings.json`.
