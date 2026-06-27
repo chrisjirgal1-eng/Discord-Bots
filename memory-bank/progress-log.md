@@ -50,4 +50,6 @@ Keep entries short. One idea per line.
   #15 bot review + 2 safe audio.py fixes.
 - "add everything": applied all 5 held bot fixes (per-guild lock in play/advance, auto-disconnect
   on empty channel, guild_only on 9 commands, reconnect finally, locked _auto_join). A fresh
-  Opus reviewer verified the diff: no deadlock, no regressions. Still needs a dev-guild smoke test.
+  Opus reviewer verified the diff: no deadlock, no regressions. Still needs a dev-guild smoke test. PR #16.
+- Built two on-demand skills (#17): coach-email (D1 outreach drafts in Chris's voice, Texas-priority,
+  draft-only) and caption (3 labeled social captions for Zenthra/Clearcoat). Both encode his rules.
