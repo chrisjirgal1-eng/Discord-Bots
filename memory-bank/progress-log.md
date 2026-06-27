@@ -15,3 +15,6 @@ Keep entries short. One idea per line.
 - Installed graphify code knowledge graph tool. Built repo graph (104 nodes, 126 edges).
   Documented setup and query commands in memory-bank/tools.md. Gitignored graphify-out/.
 - Clarified: graphify is a code knowledge graph, not the social-media content puller.
+- Ran full /graphify semantic pipeline on the repo: 83 nodes, 119 edges, 10 communities.
+  God nodes: Track, MusicBot, GuildQueue, Persistent Memory Bank, QueueManager.
+  Committed graph.json + GRAPH_REPORT.md so future sessions query for ~0 tokens.
