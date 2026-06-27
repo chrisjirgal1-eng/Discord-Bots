@@ -151,3 +151,22 @@ How to use: route a task to the matching specialist via the Agent tool (e.g. a s
 to `voltagent-qa-sec:code-reviewer`, a Discord/websocket feature to
 `voltagent-core-dev:websocket-developer`). Pair this with the model-routing rule: pick the
 specialist AND the right model tier.
+
+## claude-video (watch streaming and video links)
+
+Marketplace `claude-video` from bradautomates/claude-video. The `watch` plugin downloads a
+video with yt-dlp, extracts frames, and transcribes with whisper, so a pasted video URL can
+be analyzed. Invoke with `/watch <url-or-path>`.
+
+Install path (git clone of third-party repos is 403-blocked, so use the tarball):
+fetch `codeload.github.com/bradautomates/claude-video/tar.gz/refs/heads/main` with curl,
+extract to `~/.claude-video-src`, `claude plugin marketplace add` that dir, then
+`claude plugin install watch@claude-video`. Auto-runs every session via the SessionStart hook.
+
+Dependencies (this container ships neither, the hook installs them):
+- yt-dlp via `uv tool install yt-dlp`.
+- ffmpeg via `pip install imageio-ffmpeg`, then symlink its static binary to `~/.local/bin/ffmpeg`.
+
+Works on public streaming URLs that yt-dlp supports (YouTube, public reels, and similar).
+It does NOT bypass login walls: a private Instagram saved collection or any auth-gated page
+returns 403 and cannot be opened. For those, Chris pastes the public video links directly.

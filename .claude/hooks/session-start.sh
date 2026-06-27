@@ -68,6 +68,30 @@ if command -v claude >/dev/null 2>&1; then
   fi
 fi
 
+# === Tool: claude-video (watch streaming / video links) ===
+# Marketplace: bradautomates/claude-video. The watch plugin downloads a video with
+# yt-dlp, extracts frames, and transcribes with whisper so a pasted video URL can be
+# analyzed. git clone is blocked, so use the curl tarball. Needs yt-dlp + ffmpeg;
+# this container ships neither, so install yt-dlp and a static ffmpeg.
+if command -v claude >/dev/null 2>&1; then
+  CV_DIR="$HOME/.claude-video-src"
+  if [ ! -f "$CV_DIR/.claude-plugin/marketplace.json" ]; then
+    mkdir -p "$CV_DIR"
+    curl -sSL "https://codeload.github.com/bradautomates/claude-video/tar.gz/refs/heads/main" \
+      | tar -xz -C "$CV_DIR" --strip-components=1 >/dev/null 2>&1 || true
+  fi
+  if [ -f "$CV_DIR/.claude-plugin/marketplace.json" ]; then
+    claude plugin marketplace add "$CV_DIR" >/dev/null 2>&1 || true
+    claude plugin install watch@claude-video >/dev/null 2>&1 || true
+  fi
+  command -v yt-dlp >/dev/null 2>&1 || uv tool install yt-dlp -q >/dev/null 2>&1 || true
+  if ! command -v ffmpeg >/dev/null 2>&1; then
+    pip install imageio-ffmpeg -q --break-system-packages >/dev/null 2>&1 || true
+    FF="$(python3 -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())' 2>/dev/null || true)"
+    [ -n "$FF" ] && ln -sf "$FF" "$HOME/.local/bin/ffmpeg" 2>/dev/null || true
+  fi
+fi
+
 # === Add new auto-setup tools below, one block each ===
 
 exit 0
