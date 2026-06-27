@@ -53,3 +53,9 @@ Keep entries short. One idea per line.
   Opus reviewer verified the diff: no deadlock, no regressions. Still needs a dev-guild smoke test. PR #16.
 - Built two on-demand skills (#17): coach-email (D1 outreach drafts in Chris's voice, Texas-priority,
   draft-only) and caption (3 labeled social captions for Zenthra/Clearcoat). Both encode his rules.
+- Added zen-announce + clearcoat-post skills (#18). Four draft-only content skills total.
+- Added the learning loop (#19): memory-bank/lessons.md (anti-repetition memory, seeded with 7 real
+  lessons from this run) + .claude/rules/learning.md (Reflexion-style, always loaded). In use.
+- Added the portable installer (#20): tools/install-claude-setup.sh installs the rules, skills, and
+  memory bank to ~/.claude (global) or another repo. Tested both modes. See tools/PORTABLE-SETUP.md.
+- Refreshed active-context to reflect the full overnight run.

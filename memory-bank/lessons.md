@@ -42,3 +42,9 @@ See `.claude/rules/learning.md` for the loop.
   - Mistake: tempted to apply concurrency rewrites to the bot with no test suite.
   - Fix: applied only safe fixes, routed the diff to a fresh Opus reviewer, flagged a smoke test.
   - Prevent: no tests means a fresh-reviewer pass plus a human smoke-test flag before shipping logic.
+
+- Banned words slipped into committed docs.
+  - Mistake: "leverage" reached active-context.md and autonomous-potential.md, past a workflow verify pass.
+  - Fix: grep -rnE for em dashes and delve/leverage/fantastic across ALL changed files, fixed each.
+  - Prevent: run the banned-word scan on docs and workflow output too, not just code. Tell workflow
+    verify agents to grep for the banned words explicitly, since a prose reviewer can miss one.

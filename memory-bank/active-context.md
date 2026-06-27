@@ -15,11 +15,26 @@ What is in flight right now. Updated each session. This is the first thing to tr
 - All of the above merged to the default branch (PRs #5 and #6). The setup is now LIVE:
   the hook runs automatically on every future web session. DONE.
 
+## Overnight autonomous run (2026-06-27, merged on its own)
+
+Standing directive: keep building and merging cloud-safe work until Chris says stop.
+Shipped and merged this run:
+- PR #13 autonomous-potential plan (memory-bank/autonomous-potential.md, ARIS-blueprinted).
+- PR #14 verification rule, #19 learning rule, plus model-routing rule. All always-loaded now.
+- PR #15/#16 Discord bot: review + all concurrency/leak/DM fixes (verified, needs a dev-guild smoke test).
+- PR #17/#18 four draft-only skills: coach-email, caption, zen-announce, clearcoat-post.
+- PR #19 learning loop: memory-bank/lessons.md anti-repetition memory + .claude/rules/learning.md.
+- PR #20 portable installer: tools/install-claude-setup.sh (global or per-repo) so any project
+  or plain Claude Code gets this whole setup. See tools/PORTABLE-SETUP.md.
+
+Active discipline rules (read them): verification.md (writer never grades its own work),
+learning.md (read lessons.md before similar work, append after a mistake), model-routing.md.
+
 ## Autonomous roadmap (read this first when back, 2026-06-27 overnight)
 
 - Full plan: `memory-bank/autonomous-potential.md`. Built from the ARIS harness via a
   6-agent research workflow, adversarially verified.
-- First move (highest leverage): fix the KOS 409 deploy. Needs a session scoped to the KOS
+- First move (highest value): fix the KOS 409 deploy. Needs a session scoped to the KOS
   repo, which this session cannot reach.
 - Cloud-safe autonomous builds I am working through overnight: commit a chosen ARIS skill
   subset so it persists, audit the 154 VoltAgents, then the roadmap NEXT items.
