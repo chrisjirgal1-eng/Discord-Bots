@@ -34,5 +34,6 @@ When the work calls for it, read these:
 ## The one ritual that keeps this alive
 
 When Chris says "update memory bank" (or at the end of meaningful work), update
-`active-context.md` and add a dated entry to `progress-log.md`. A memory bank that
+`active-context.md` and add a dated entry to `progress-log.md`.
+Commit and push those changes so they survive the session. A memory bank that
 is not maintained drifts from reality and starts misleading. See `memory-bank/README.md`.
