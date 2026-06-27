@@ -13,6 +13,13 @@ In ephemeral web/cloud sessions, only committed files survive. This is the durab
 @memory-bank/preferences.md
 @memory-bank/active-context.md
 
+## Output style (conserve tokens)
+
+- No preambles ("Great question", "Sure"). No closings ("Hope this helps").
+- Do not restate the question before answering. Answer it.
+- Short lines. One idea per line. Cut filler.
+- Token-saving playbook: `memory-bank/token-efficiency.md`.
+
 ## Read on demand (not auto-loaded, saves context)
 
 When the work calls for it, read these:
@@ -20,6 +27,7 @@ When the work calls for it, read these:
 - `memory-bank/projects.md` - Zenthra, Clearcoat Co., KOS, JARVIS, with live status
 - `memory-bank/career.md` - D1 track and field recruitment
 - `memory-bank/progress-log.md` - dated session history
+- `memory-bank/token-efficiency.md` - how to conserve tokens
 - `memory-bank/README.md` - how this memory bank works and how to update it
 
 ## The one ritual that keeps this alive
