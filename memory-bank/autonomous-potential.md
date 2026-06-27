@@ -25,7 +25,7 @@ True scheduling needs an external host: GitHub Actions, Supabase, or Zapier. All
 
 Six of your jobs can run with no human in the loop.
 Four need a checkpoint. Outbound email to real coaches is always one of the four.
-The first build is the KOS 409 deploy fix. It unblocks the highest-leverage job you have.
+The first build is the KOS 409 deploy fix. It unblocks the highest-value job you have.
 
 ---
 
@@ -217,5 +217,5 @@ Avoid it: no recurring job depends on a live session. All recurring jobs run on 
 
 Fix the KOS 409 deploy.
 It is narrow, bounded, and has a clear pass condition: Actions go green.
-It unblocks the nightly indexing job, which is the single highest-leverage automation you have.
+It unblocks the nightly indexing job, which is the single highest-value automation you have.
 The KOS repo is out of scope in this session, so the next session that can reach it should start there and do nothing else until it is green.

@@ -34,7 +34,7 @@ learning.md (read lessons.md before similar work, append after a mistake), model
 
 - Full plan: `memory-bank/autonomous-potential.md`. Built from the ARIS harness via a
   6-agent research workflow, adversarially verified.
-- First move (highest leverage): fix the KOS 409 deploy. Needs a session scoped to the KOS
+- First move (highest value): fix the KOS 409 deploy. Needs a session scoped to the KOS
   repo, which this session cannot reach.
 - Cloud-safe autonomous builds I am working through overnight: commit a chosen ARIS skill
   subset so it persists, audit the 154 VoltAgents, then the roadmap NEXT items.
