@@ -11,3 +11,7 @@ Keep entries short. One idea per line.
 - Researched best patterns: Anthropic official memory docs, Cline Memory Bank, russbeye token-tuning.
 - Committed and pushed to claude/kos-setup-rlf1c8.
 - Open: decide whether to move this to a dedicated memory repo so it applies across all projects.
+- Added token-efficiency playbook (memory-bank/token-efficiency.md) and terse output rules in CLAUDE.md.
+- Installed graphify code knowledge graph tool. Built repo graph (104 nodes, 126 edges).
+  Documented setup and query commands in memory-bank/tools.md. Gitignored graphify-out/.
+- Clarified: graphify is a code knowledge graph, not the social-media content puller.

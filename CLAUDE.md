@@ -28,6 +28,7 @@ When the work calls for it, read these:
 - `memory-bank/career.md` - D1 track and field recruitment
 - `memory-bank/progress-log.md` - dated session history
 - `memory-bank/token-efficiency.md` - how to conserve tokens
+- `memory-bank/tools.md` - graphify code knowledge graph, setup and query commands
 - `memory-bank/README.md` - how this memory bank works and how to update it
 
 ## The one ritual that keeps this alive

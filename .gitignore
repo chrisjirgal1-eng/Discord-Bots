@@ -1,0 +1,15 @@
+# graphify generated artifacts (rebuild with `graphify update .`, no API cost)
+graphify-out/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env and secrets
+.env
+.env.local
+
+# Local-only Claude notes
+CLAUDE.local.md

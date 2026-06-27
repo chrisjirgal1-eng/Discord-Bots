@@ -5,6 +5,9 @@ What is in flight right now. Updated each session. This is the first thing to tr
 ## Current focus (2026-06-27)
 
 - Set up this persistent memory bank so Claude remembers across sessions. DONE this session.
+- Added token-efficiency playbook and terse output rules. DONE.
+- Installed graphify (code knowledge graph). Built graph of this repo: 104 nodes,
+  126 edges, 14 communities. Queries cost ~0 tokens. See memory-bank/tools.md. DONE.
 
 ## Recently established
 
