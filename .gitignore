@@ -1,0 +1,18 @@
+# graphify generated artifacts. Keep the queryable graph + report so future
+# sessions query without re-running semantic extraction. Ignore the rest.
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/GRAPH_REPORT.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env and secrets
+.env
+.env.local
+
+# Local-only Claude notes
+CLAUDE.local.md
