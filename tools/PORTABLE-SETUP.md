@@ -56,3 +56,33 @@ What it does:
 | Memory bank (who you are, projects, lessons) | Copied to ~/.claude/memory-bank or the repo |
 | graphify, VoltAgent subagents | Reinstalled per session via the hook or the one-liners above |
 | MCP connectors (GitHub, Supabase, ...) | Already global; auth lives in MCP config, not a repo |
+
+## Process videos in bulk (the fix for the Instagram wall)
+
+The cloud session cannot download Instagram (its proxy returns 403) and has no transcription
+key. The fix: run the heavy part on your own computer, then commit the text output, which
+Claude reads in any session.
+
+1. Get a free Groq API key at https://groq.com (free tier, fast Whisper).
+2. Put your links in `tools/video-urls.txt`, one per line.
+3. Run, on your machine:
+
+```sh
+export GROQ_API_KEY=gsk_your_key
+tools/watch-batch.sh tools/video-urls.txt transcripts/
+```
+
+It downloads each video's audio with yt-dlp and transcribes it with Groq Whisper, writing
+one `.txt` per video. Failures are marked and skipped, so a blocked or removed video does
+not stop the batch.
+
+4. Commit the transcripts:
+
+```sh
+git add transcripts/ && git commit -m "Add video transcripts" && git push
+```
+
+5. Tell Claude to read `transcripts/` and apply the lessons. Text works everywhere, no proxy,
+   no key needed on the cloud side.
+
+Needs yt-dlp and ffmpeg locally. The global installer note above covers both.
