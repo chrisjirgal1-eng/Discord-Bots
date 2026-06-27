@@ -41,3 +41,8 @@ Keep entries short. One idea per line.
 - Installed VoltAgent subagents: marketplace voltagent-subagents (tarball workaround, git clone
   of third-party repos is 403-blocked), all 10 bundles, 154 specialist subagents. Wired the
   install into the SessionStart hook so they persist across web sessions. See tools.md.
+- Studied the ARIS harness (wanshuiyin/Auto-claude-code-research-in-sleep) and ran a 6-agent
+  research workflow on autonomous potential. Committed memory-bank/autonomous-potential.md
+  (adversarially verified). Core lesson: the model that writes work must never grade it.
+- Chris set a standing directive: keep working autonomously until told to stop. Working the
+  roadmap overnight, committing each result.

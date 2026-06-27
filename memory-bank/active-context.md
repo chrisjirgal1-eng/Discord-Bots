@@ -15,6 +15,18 @@ What is in flight right now. Updated each session. This is the first thing to tr
 - All of the above merged to the default branch (PRs #5 and #6). The setup is now LIVE:
   the hook runs automatically on every future web session. DONE.
 
+## Autonomous roadmap (read this first when back, 2026-06-27 overnight)
+
+- Full plan: `memory-bank/autonomous-potential.md`. Built from the ARIS harness via a
+  6-agent research workflow, adversarially verified.
+- First move (highest leverage): fix the KOS 409 deploy. Needs a session scoped to the KOS
+  repo, which this session cannot reach.
+- Cloud-safe autonomous builds I am working through overnight: commit a chosen ARIS skill
+  subset so it persists, audit the 154 VoltAgents, then the roadmap NEXT items.
+- Key limit confirmed: no schedule fires on its own after a web session ends. Durable
+  scheduling must run on GitHub Actions, Supabase, or Zapier (all free).
+- Standing directive: keep working autonomously, commit each result, until Chris says stop.
+
 ## Standing authority (granted 2026-06-27)
 
 - Chris granted blanket permission to do build/dev work without asking: write code,
