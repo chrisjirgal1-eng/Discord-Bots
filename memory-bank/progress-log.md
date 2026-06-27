@@ -23,3 +23,10 @@ Keep entries short. One idea per line.
   re-assembles in seconds. Functionally permanent, automatic. Validated, exit 0.
 - Installed and documented claude-mem (npx claude-mem install). Works on local
   Claude Code, not cloud sessions (machine-local store, container wipes). See tools.md.
+- Made the SessionStart hook async and the single extensible auto-setup script.
+- Opened PR #5, handled CodeRabbit review (fixed CLAUDE.md ritual to commit+push;
+  declined wrong graphifyy->graphify rename with evidence; kept email per Chris). Merged.
+- Installed openclaw (self-hosted agent gateway). Documented as local/VPS-only with a
+  non-interactive setup command; kept it out of the cloud hook. PR #6, merged.
+- Chris granted standing authority to do build/dev work and merge PRs without asking,
+  and to evolve the coding setup. Guardrails recorded in active-context.md.
