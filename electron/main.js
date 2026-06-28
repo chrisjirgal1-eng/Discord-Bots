@@ -29,6 +29,7 @@ const CONTROL_PORT = 7766;
 // tray and Zoe just listens; say "hey zoe" to open it. A manual launch (npm start) shows normally.
 const START_HIDDEN = process.argv.includes('--hidden') || process.env.ZOE_START_HIDDEN === '1';
 let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
+let paletteHotkey = null;
 
 // ---- python resolution (the bare `python` on PATH is the Windows Store stub) ----
 function pythonExe() {
@@ -102,6 +103,8 @@ function refreshTrayMenu() {
   const wsItems = wsm.list().map(w => ({ label: w.name, click: () => wsm.run(w) }));
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Show Zoe', click: showWindow },
+    { label: paletteHotkey ? `Command bar  (${paletteHotkey.replace('CommandOrControl', 'Ctrl')})`
+                           : 'Command bar', click: togglePalette },
     { label: 'Hide to tray', click: () => win && win.hide() },
     { type: 'separator' },
     { label: 'Workspaces', submenu: wsItems.length ? wsItems : [{ label: '(none yet)', enabled: false }] },
@@ -251,8 +254,17 @@ function registerShortcuts() {
   globalShortcut.register('CommandOrControl+Shift+Z', () => {
     if (win && win.isVisible()) win.hide(); else showWindow();
   });
-  // command bar: Spotlight-style open/close
-  globalShortcut.register('CommandOrControl+Space', togglePalette);
+  // command bar: Spotlight-style open/close. Ctrl+Space is frequently owned by the Windows IME
+  // (language switch), so register() silently fails -- try a list and keep the first that takes.
+  const candidates = ['CommandOrControl+Alt+Space', 'CommandOrControl+Space',
+                      'CommandOrControl+Shift+Period', 'Alt+Space'];
+  paletteHotkey = null;
+  for (const key of candidates) {
+    try { if (globalShortcut.register(key, togglePalette)) { paletteHotkey = key; break; } }
+    catch (e) { /* combo unavailable, try the next */ }
+  }
+  console.log('Zoe: command bar hotkey =', paletteHotkey || '(none registered; use the tray)');
+  if (tray) refreshTrayMenu();   // reflect the working hotkey in the tray label
 }
 
 // ---- lifecycle ----
