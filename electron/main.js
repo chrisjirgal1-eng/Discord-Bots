@@ -41,10 +41,32 @@ function pythonExe() {
 // pythonw.exe is the windowless interpreter: background services use it (with windowsHide) so a
 // packaged Zoe never flashes a console window.
 function pythonwExe() {
-  const local = process.env.LOCALAPPDATA &&
-    path.join(process.env.LOCALAPPDATA, 'Python', 'pythoncore-3.14-64', 'pythonw.exe');
-  if (local && fs.existsSync(local)) return local;
+  const base = process.env.LOCALAPPDATA &&
+    path.join(process.env.LOCALAPPDATA, 'Python', 'pythoncore-3.14-64');
+  if (base) {
+    const w = path.join(base, 'pythonw.exe');
+    if (fs.existsSync(w)) return w;
+    const p = path.join(base, 'python.exe');   // pythonw missing -> python.exe (has the packages)
+    if (fs.existsSync(p)) return p;            // never fall back to the bare packageless stub
+  }
   return 'pythonw';
+}
+// Capture each Python service's output to a log so a silent crash is debuggable. Lands in
+// %APPDATA%\Zoe\ (zoe-telemetry.log, zoe-voice.log). Returns an fd, or 'ignore' if it can't open.
+function openLog(name) {
+  try { return fs.openSync(path.join(app.getPath('userData'), name), 'a'); }
+  catch (e) { return 'ignore'; }
+}
+// Kill any leftover Zoe Python services from a previous crashed/force-killed run, so we never end
+// up with several voice listeners fighting over the microphone. Runs once at startup.
+function killStrayServices() {
+  if (process.platform !== 'win32') return;
+  try {
+    spawn('powershell', ['-NoProfile', '-Command',
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_assistant.py*' " +
+      "-or $_.CommandLine -like '*zoe_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
+      { windowsHide: true, stdio: 'ignore' });
+  } catch (e) { /* best-effort */ }
 }
 
 // ---- tray / window icon ----
@@ -56,8 +78,9 @@ function icon() {
 // ---- start the Python telemetry server so the HUD has live data ----
 function startTelemetry() {
   try {
-    telemetryProc = spawn(pythonwExe(), [path.join(ROOT, 'tools', 'zoe_server.py')],
-      { cwd: ROOT, stdio: 'ignore', windowsHide: true });
+    const log = openLog('zoe-telemetry.log');
+    telemetryProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_server.py')],
+      { cwd: ROOT, stdio: ['ignore', log, log], windowsHide: true });
   } catch (e) { console.error('telemetry start failed', e); }
 }
 
@@ -180,8 +203,9 @@ function runCommandText(text) {
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
   if (voiceProc) return;
-  voiceProc = spawn(pythonwExe(), [path.join(ROOT, 'tools', 'zoe_assistant.py')],
-    { cwd: ROOT, stdio: 'ignore', windowsHide: true,
+  const vlog = openLog('zoe-voice.log');
+  voiceProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_assistant.py')],
+    { cwd: ROOT, stdio: ['ignore', vlog, vlog], windowsHide: true,
       env: { ...process.env, ZOE_CONTROL: `http://127.0.0.1:${CONTROL_PORT}` } });
   voiceProc.on('exit', () => { voiceProc = null; sendVoiceState('off'); });
   sendVoiceState('listening');
@@ -273,8 +297,9 @@ else {
   app.on('second-instance', showWindow);
   app.whenReady().then(() => {
     app.setAppUserModelId('com.chris.zoe');   // so Windows attributes notifications to "Zoe"
-    startTelemetry();
-    setTimeout(createWindow, 1100);   // give the telemetry server a moment
+    killStrayServices();              // clear orphaned voice/telemetry from a previous crashed run
+    setTimeout(startTelemetry, 800);  // start after the stray-kill snapshot, so it is not caught
+    setTimeout(createWindow, 1500);   // give the telemetry server a moment
     createPalette();                  // command bar, hidden until Ctrl+Space
     buildTray();
     if (START_HIDDEN) {

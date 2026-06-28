@@ -205,6 +205,21 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   JS (not React) on purpose -- matches the existing secure no-build-step renderer; COMMAND_SYSTEM_GUIDE
   section 15.
 
+- [x] K8 DONE 2026-06-28. Fixed "voice does not open Zoe / backend offline". Root cause: the
+  Python services (telemetry + voice) were spawned with stdio:'ignore', so when they failed in a
+  build they failed INVISIBLY; the installed app the user ran had no Python side at all. Confirmed
+  the latest dev code starts everything (7717 + 7766 up, pythonw zoe_assistant.py running, voice log
+  shows "ZOE is listening", threshold 1911). Hardening in main.js: (1) pythonwExe() now falls back to
+  the pythoncore python.exe if pythonw.exe is absent, never to the packageless WindowsApps stub;
+  (2) openLog() captures each service's output to %APPDATA%\<app>\zoe-telemetry.log / zoe-voice.log;
+  (3) spawn Python with -u so those logs are live (block-buffering kept them empty); (4)
+  killStrayServices() runs at startup to kill orphaned voice/telemetry from a crashed run so multiple
+  listeners never fight the mic; startup re-timed (killStray -> telemetry@800ms -> window@1500ms ->
+  voice@2600ms) so the kill snapshot never catches the fresh services. NOTE: the installer (Zoe Setup
+  0.1.0.exe) predates all of K6.5-K8; it must be rebuilt (npm run dist) for the installed app to get
+  the command bar, hotkey, and these fixes. For now run zoe.bat (verified working). Mic threshold 1911
+  may be too high for normal speaking volume; lower ZOE_MIC_THRESHOLD in .env if she misses you.
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
