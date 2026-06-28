@@ -30,3 +30,27 @@ Checkpoint 2: command transparency (process() returns a timed per-step trace; de
 - 88997c3 Max out Zoe's voice volume (speech-normalize to the ceiling)
 - 6bb0d05 Auto-start hidden + always listening: open Zoe by voice anytime
 - f17dff4 Wake word summons the window: 'hey zoe' brings Zoe to the front
+
+## 2026-06-28 18:43:48
+Checkpoint 3: deep Obsidian sync (Phase 3/6). zoe_memory.sync_knowledge() imports docs/memory-bank/skills/plugins/project-memory into organized, tagged, deduped vault folders + categorized index; the evolution engine is the single re-sync point so new skills/plugins auto-import.
+
+- 0660005 Checkpoint 2: live command transparency (Phase 5) + session intelligence (Phase 4)
+- 79999e0 Evolution engine: avoid literal em dash in the dash sanitizer (use chr)
+- 11db93f Add Evolution Engine + persistent project memory (Phases 8/9/10)
+- 2dc361a Rebuild deck to match the ZOE Command Center design, more detailed
+- 92e9691 Recolor JARVIS core to purple/white, dim the glow, add detail + a command bar
+- 8f7324d Fix em dashes in the JARVIS deck HUD
+- 4e37601 Rebuild main HUD as the JARVIS deck: gold voice-reactive core + purple panels
+- 54bf47b Rebuild 3D Command Center as a live memory knowledge graph
+- e1ccec0 Install external 3D + design skill packs (documented, gitignored)
+- 60a548a Log K9 (Obsidian memory + 3D Command Center) in handoff
+- e49aa3b Add 3D Command Center: Three.js depth UI wired to the same pipeline
+- 82e71cc Fix em dashes in vault README
+- 316c9fb Add Obsidian memory vault: read/write/sync/resume, recall command, command log
+- fed534e Fix invisible voice/telemetry failures: logging, unbuffered, stray-kill, safe python fallback
+- 0093bc1 Command bar: reliable hotkey (Ctrl+Space often taken by IME) + tray entry
+- 213f5d9 Command bar (Spotlight-style palette) + explainable actions, one engine with voice
+- aacfa84 Package Zoe as a real desktop app: installable .exe, no console window
+- 34ae4f8 Make Zoe hear you: auto-calibrate the mic + a mic test tool
+- 88997c3 Max out Zoe's voice volume (speech-normalize to the ceiling)
+- 6bb0d05 Auto-start hidden + always listening: open Zoe by voice anytime

@@ -228,19 +228,16 @@ def main():
     elif not os.path.exists(os.path.join(PM, "SESSION_HISTORY.md")):
         write("SESSION_HISTORY.md", "# Session History\n\nAppend-only log of Claude Code sessions.\n")
 
-    # mirror the key indexes into the Obsidian vault so they are searchable there too
+    # deep Obsidian sync (Phase 3/6): import all project knowledge into organized, tagged,
+    # deduped vault folders (docs/project/skills/plugins/system) and rebuild the index.
     synced = 0
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import zoe_memory
-        for n in ("MASTER_MEMORY", "ARCHITECTURE", "FEATURE_INDEX", "COMMAND_REFERENCE",
-                  "PLUGIN_INDEX", "SKILL_INDEX"):
-            p = os.path.join(PM, n + ".md")
-            if os.path.exists(p):
-                zoe_memory.write(n, read(p), folder="system", tags=["system", "auto"]); synced += 1
+        synced = zoe_memory.sync_knowledge()
     except Exception:
         pass
-    print("evolution: wrote %d/%d project-memory files; synced %d to the vault." % (ok, len(files) + 1, synced))
+    print("evolution: wrote %d/%d project-memory files; synced %d notes into the vault." % (ok, len(files) + 1, synced))
 
 if __name__ == "__main__":
     main()

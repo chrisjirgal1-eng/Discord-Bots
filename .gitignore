@@ -54,3 +54,7 @@ CLAUDE.local.md
 # not committed here. Regenerable via `npx prompts.chat new`. 127MB + secrets.
 my-prompt-library/
 vault/system/
+vault/docs/
+vault/project/
+vault/skills/
+vault/plugins/

@@ -191,21 +191,64 @@ def _load_state():
         except Exception:
             return {}
 
+VAULT_FOLDERS = ["system", "docs", "project", "skills", "plugins", "sessions", "notes"]
+
 def _build_index():
+    """Rebuild a categorized index (vault/index.md) with [[wikilinks]] into every folder."""
     _ensure()
-    notes = sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(VAULT, "notes", "*.md")))
-    sessions = sorted((os.path.basename(p)[:-3] for p in glob.glob(os.path.join(VAULT, "sessions", "*.md"))),
-                      reverse=True)
     lines = ["# Zoe Memory Vault", "",
-             "Long-term memory for Zoe and Claude. Open this folder as an Obsidian vault.", "",
-             "## Recent sessions", ""]
-    lines += [f"- [[sessions/{s}|{s}]]" for s in sessions[:12]] or ["- (none yet)"]
-    lines += ["", "## Notes", ""]
-    lines += [f"- [[notes/{n}|{n}]]" for n in notes] or ["- (none yet)"]
-    lines += ["", "## Log", "", "- [[log/commands|command log]]", ""]
+             "Long-term memory for Zoe and Claude. Open this folder as an Obsidian vault.",
+             "Auto-organized by `tools/zoe_evolution.py` -> `zoe_memory.sync_knowledge()`.", ""]
+    for fo in VAULT_FOLDERS:
+        files = sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(VAULT, fo, "*.md")))
+        if not files:
+            continue
+        if fo == "sessions":
+            files = sorted(files, reverse=True)[:20]
+        lines += ["## " + fo.capitalize(), ""]
+        lines += [f"- [[{fo}/{n}|{n}]]" for n in files] + [""]
+    lines += ["## Log", "", "- [[log/commands|command log]]", ""]
     content = "\n".join(lines)
     _write(os.path.join(VAULT, "index.md"), content)
     return content
+
+def sync_knowledge():
+    """Phase 3/6: import the project's knowledge into the vault, organized into folders, tagged,
+    and deduped (same title overwrites -> no duplicate notes), then rebuild the index. Idempotent
+    and best-effort. Run by the evolution engine, so newly installed skills/plugins/docs auto-import."""
+    _ensure()
+    n = 0
+    def imp(title, content, folder, tags):
+        if not content:
+            return 0
+        write(title, content, folder=folder, tags=tags)
+        return 1
+    try:
+        for fn, tag in (("COMMAND_SYSTEM_GUIDE.md", "guide"), ("JARVIS.md", "guide"),
+                        ("README.md", "guide"), ("CLAUDE.md", "config")):
+            n += imp(fn[:-3], _read(os.path.join(ROOT, fn)), "docs", ["docs", tag])
+        for p in glob.glob(os.path.join(ROOT, "memory-bank", "*.md")):
+            n += imp(os.path.basename(p)[:-3], _read(p), "project", ["project", "memory-bank"])
+        for p in glob.glob(os.path.join(ROOT, "project-memory", "*.md")):
+            n += imp(os.path.basename(p)[:-3], _read(p), "system", ["system", "auto"])
+        for d in glob.glob(os.path.join(ROOT, ".claude", "skills", "*")):
+            sk = os.path.join(d, "SKILL.md")
+            if os.path.isfile(sk):
+                m = re.search(r"description:\s*\"?(.+)", _read(sk))
+                body = ("Skill **%s**\n\n%s\n\nSource: `.claude/skills/%s/`\n"
+                        % (os.path.basename(d), (m.group(1).strip().strip('"') if m else ""), os.path.basename(d)))
+                n += imp("skill " + os.path.basename(d), body, "skills", ["skill"])
+        for p in glob.glob(os.path.join(ROOT, "plugins", "*.py")):
+            if os.path.basename(p).startswith("__"):
+                continue
+            txt = _read(p)
+            name = re.search(r'plugin_name"\s*:\s*"([^"]+)"', txt)
+            body = "Plugin `%s`\n\n```python\n%s\n```\n" % (os.path.basename(p), txt[:700])
+            n += imp("plugin " + (name.group(1) if name else os.path.basename(p)[:-3]), body, "plugins", ["plugin"])
+    except Exception:
+        pass
+    _build_index()
+    return n
 
 if __name__ == "__main__":
     op = sys.argv[1] if len(sys.argv) > 1 else "resume"
