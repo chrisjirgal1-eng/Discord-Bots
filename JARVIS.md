@@ -30,7 +30,7 @@ never just display.
 | Reach into real services | MCP: GitHub, Supabase, Vercel, Gmail, Drive, Calendar, Notion, Slack, Stripe, Zapier | wired, credentialed |
 | Loops that act, verify, report | verification.md discipline (verifier not the writer, budget cap) | rule wired, runtime needs a host |
 | Voice in and out ("Wide awake, sir") | 11 Labs TTS + Deepgram STT | needs Chris's keys |
-| Content pipeline of named agents | scout, hook, voice, topic, script roles + orchestrator | designed, needs build sign-off |
+| Content pipeline of named agents | `content-pipeline` skill: scout, topic, hook, script stages, routes to caption | wired, draft only |
 | Always-on, 24/7 | GitHub Actions / Supabase / Zapier (a web session cannot stay alive) | needs a host |
 
 ## What runs locally today
@@ -52,10 +52,11 @@ Honest about the gap, so nothing is wired blind:
 2. **24/7 loops.** A web session cannot fire a schedule after it ends. The nightly and
    watcher jobs run on GitHub Actions (free) or Zapier. Each writes a heartbeat so a missed
    run is visible. See `memory-bank/autonomous-potential.md`.
-3. **Content pipeline.** The named-agent model (DZ_xzicxQPx and the goal reel) is designed.
-   Building it reuses the existing `caption` and `zen-announce` skills as the workers, with an
-   orchestrator. Worth a quick sign-off on scope before the build. Roadmap detail lives in
-   `memory-bank/autonomous-potential.md` (items H and K); this is the one source of scope.
+3. **Auto-posting.** The content pipeline is built and wired as the `content-pipeline` skill
+   (scout, topic, hook, script, then routes to caption), draft only. It produces a review-ready
+   package; Chris records and posts. The only piece left needing his sign-off is letting it
+   post on its own, which is outward-facing and stays gated by guardrail. Roadmap detail:
+   `memory-bank/autonomous-potential.md` items H and K.
 
 ## Architecture in one read
 

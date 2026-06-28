@@ -29,6 +29,7 @@ move is chess (DZY7s0LK2vj).
 |---|---|
 | "draft a coach email", D1 recruiting outreach | `coach-email` skill (drafts only, Chris sends) |
 | "write a caption", content hook for a post | `caption` skill |
+| "run the content pipeline", a full post draft from scout to caption | `content-pipeline` skill |
 | "announce ... in the guild", Zenthra news | `zen-announce` skill (draft, then Discord via Zapier) |
 | "post for Clearcoat", detailing content | `clearcoat-post` skill |
 | "digest these videos", learn from saved reels | `digest-transcripts` skill + `tools/watch_batch.py` |
