@@ -220,6 +220,21 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   the command bar, hotkey, and these fixes. For now run zoe.bat (verified working). Mic threshold 1911
   may be too high for normal speaking volume; lower ZOE_MIC_THRESHOLD in .env if she misses you.
 
+- [x] K9 DONE 2026-06-28. Obsidian memory + 3D Command Center (4-part request). (1) Scanned: no
+  vault existed; memory was zoe_state.json + memory-bank/*.md + ~/.claude MEMORY.md. (2) Built
+  tools/zoe_memory.py = an Obsidian-compatible markdown vault (vault/): write/read/search/sync/
+  resume/log_command, best-effort. sync() snapshots zoe_state into a dated session note; resume()
+  returns last session + state; auto index.md with [[wikilinks]]. (3) zoe_router: new 'memory'
+  action (recall/'what did I say last session') through the same process(); every command logged to
+  the vault. zoe_server: GET /memory/read, GET /session/resume, POST /memory/write, POST /memory/sync,
+  POST /command (runs process()), + load_env() for the Groq key; serves /3d. zoe_assistant syncs on
+  shutdown. (4) zoe-ui/os3d.html: real Three.js 3D HUD (PBR orb + glow + rings, depth particle field,
+  soft purple/cyan lights, parallax camera) with CSS3D glass panels (memory timeline, live processes,
+  command console) wired to /stats + /session/resume + /command; degrades to a fallback without WebGL/
+  CDN. main.js: openCommandCenter() window + tray '3D Command Center'. vault/ committed (README +
+  notes/), runtime (sessions/, log/, index.md) gitignored. Verified: all endpoints live, recall works,
+  /3d serves, diagnostics 100/100. The 3D UI is a strong v1 foundation (Three.js from CDN, needs net).
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
