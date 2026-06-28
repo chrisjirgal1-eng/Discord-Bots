@@ -65,7 +65,7 @@
   <div class="corelabel">J A R V I S</div></div>
 
 <div class="col">
-  <div class="pan"><h3>NETWORK MAP — OBSIDIAN</h3><div id="netwrap"><canvas id="net" class="mini"></canvas><span class="hint">click → 3D graph</span></div></div>
+  <div class="pan"><h3>NETWORK MAP - OBSIDIAN</h3><div id="netwrap"><canvas id="net" class="mini"></canvas><span class="hint">click → 3D graph</span></div></div>
   <div class="pan"><h3>REAL-TIME ANALYTICS</h3><canvas id="ana" class="mini"></canvas></div>
   <div class="pan"><h3>SYSTEM RESOURCES</h3><div id="res">…</div></div>
   <div class="pan"><h3>ACTIVE PROCESSES</h3><div id="procs"></div></div>
@@ -172,8 +172,8 @@ try {
 // ---------- live stats + backend status ----------
 function setWarn(state){ const w=$('#warn'), o=$('#online');
   if(state==='live'){ w.classList.remove('show'); o.textContent='● ONLINE'; o.style.color='var(--ok)'; }
-  else if(state==='error'){ w.className='warn err show'; w.textContent='Backend error — showing simulated data.'; o.textContent='● ERROR'; o.style.color='var(--bad)'; }
-  else { w.className='warn show'; w.textContent='Backend offline — telemetry unavailable, showing a simulated feed. Start it from the tray.'; o.textContent='● OFFLINE'; o.style.color='#fbbf24'; } }
+  else if(state==='error'){ w.className='warn err show'; w.textContent='Backend error - showing simulated data.'; o.textContent='● ERROR'; o.style.color='var(--bad)'; }
+  else { w.className='warn show'; w.textContent='Backend offline - telemetry unavailable, showing a simulated feed. Start it from the tray.'; o.textContent='● OFFLINE'; o.style.color='#fbbf24'; } }
 function applyStats(s){
   $('#status').innerHTML =
     `<div>CPU <b>${s.cpu|0}%</b><div class="bar"><i style="width:${s.cpu}%"></i></div></div>`+
