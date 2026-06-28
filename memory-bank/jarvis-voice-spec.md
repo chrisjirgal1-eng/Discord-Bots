@@ -23,9 +23,9 @@ brain; it only carries sound in and out.
 In the gitignored `.env` (never commit these):
 
 ```
-ELEVENLABS_API_KEY=...        # from elevenlabs.io, account settings
-ELEVENLABS_VOICE_ID=...       # pick a voice in 11 Labs, copy its Voice ID
-DEEPGRAM_API_KEY=...          # from deepgram.com console
+ELEVENLABS_API_KEY=...                 # from elevenlabs.io, account settings (the one thing still needed)
+ELEVENLABS_VOICE_ID=L1QogKoobNwLy4IaMsyA   # already chosen by Chris and preset in .env
+DEEPGRAM_API_KEY=...                   # from deepgram.com console (only needed for listening)
 ```
 
 ## Dependencies

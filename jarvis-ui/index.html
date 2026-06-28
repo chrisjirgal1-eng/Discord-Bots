@@ -202,7 +202,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
         <div class="rname">JARVIS</div>
         <div class="rtag" id="tag"></div>
         <div class="voice">
-          <div class="wave" id="wave"></div><div class="vstate" id="vstate">VOICE: STANDBY</div>
+          <div class="wave" id="wave"></div><div class="vstate" id="vstate">VOICE: SELECTED ◂ KEY PENDING</div>
         </div>
         <div class="qa" id="qa"></div>
       </div>
@@ -224,8 +224,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
     <div class="col">
       <div class="card next">
         <h2>Next move <span>PRIORITY</span></h2>
-        <div class="m" id="nm">Wire voice: add 11 Labs + Deepgram keys</div>
-        <div class="w" id="nw">The one piece that makes it the "wide awake, sir" assistant. The loop reuses every skill through claude -p, so no rebuild.</div>
+        <div class="m" id="nm">Voice picked. Add your ElevenLabs API key to bring her online.</div>
+        <div class="w" id="nw">The voice is chosen and preset in .env. One key away from "wide awake, sir." The loop reuses every skill through claude -p, so no rebuild.</div>
         <button onclick="fire('jarvis, build the voice loop from memory-bank/jarvis-voice-spec.md')">EXECUTE WHEN KEYS ARE IN</button>
       </div>
       <div class="card"><h2>System status <span>LIVE</span></h2><ul class="stat" id="status"></ul></div>
@@ -269,7 +269,7 @@ const CONFIG = {
   status:[
     ["ok","Memory + knowledge graph","400 nodes"],["ok","Test suite","76 green"],
     ["ok","JARVIS router + 9 skills","wired"],["ok","154 specialist agents","loaded"],
-    ["ok","Content pipeline","draft only"],["warn","Voice (11 Labs + Deepgram)","needs keys"],
+    ["ok","Content pipeline","draft only"],["warn","Voice selected","needs API key"],
     ["warn","24/7 automation","needs a host"],["warn","Auto-posting","needs approval"],
   ],
   connectors:["GitHub","Supabase","Vercel","Gmail","Drive","Calendar","Notion","Slack","Stripe","Zapier"],

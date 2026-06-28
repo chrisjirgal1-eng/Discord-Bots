@@ -4,6 +4,13 @@ Shortlist for a warm, feminine, JARVIS-style voice that talks back. All are Elev
 Preview them by name in the ElevenLabs voice library (elevenlabs.io > Voices), pick one, then the
 chosen Voice ID goes in `.env` as `ELEVENLABS_VOICE_ID` and JARVIS speaks in it.
 
+## SELECTED (2026-06-28)
+
+Chris picked Voice ID `L1QogKoobNwLy4IaMsyA` (an ElevenLabs voice-library voice). It is set in
+`.env` and `.env.example` as `ELEVENLABS_VOICE_ID`. The name resolves once an ElevenLabs API key
+is added (the API returns it). To bring the voice online: add `ELEVENLABS_API_KEY` to `.env`, then
+build the loop per `jarvis-voice-spec.md`.
+
 IDs below are the long-standing default Voice IDs, given as a convenience. Confirm the exact ID in
 your own ElevenLabs account before wiring, since the library can change. Names are stable.
 
