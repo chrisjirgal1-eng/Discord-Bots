@@ -21,6 +21,11 @@ graphify install --platform claude   # installs the /graphify skill into Claude 
 graphify update .                # build/refresh the graph, NO LLM, no API cost
 ```
 
+No uv on the machine? `pip install graphifyy` works too. The `graphify` binary lands in the
+Python Scripts dir (on Chris's Windows box: `%LOCALAPPDATA%\Python\pythoncore-3.14-64\Scripts`),
+which may not be on PATH, so call it by full path or add that dir to PATH. graphify 0.8.50 is
+installed locally as of 2026-06-27.
+
 Generated output lands in `graphify-out/` (gitignored). Rebuild anytime with
 `graphify update .`.
 

@@ -82,3 +82,17 @@ Keep entries short. One idea per line.
   specced honestly, not wired blind (need Chris's keys and a host). Fresh review caught a loop-guardrail
   wording slip, fixed to match verification.md. Merged.
 - Working branch this run: claude/vibrant-cray-tui7og (the default). Each phase committed and pushed.
+
+### Autonomous follow-on, Chris away (2026-06-27)
+
+- Chris said keep building solo. Did all the internal/reversible work, left credentialed pieces for him.
+- graphify made live on this machine: pip install graphifyy 0.8.50 (no uv needed; lands in the
+  Python Scripts dir). Rebuilt the graph: 400 nodes, 545 edges, 39 communities. Query tested, works.
+  Committed the refreshed graph.json + GRAPH_REPORT.md.
+- The 154 VoltAgents installed: claude plugin marketplace add VoltAgent/awesome-claude-code-subagents
+  (clones fine locally, unlike cloud), then installed all 10 bundles at user scope. Register next session.
+- Built the content-pipeline skill: named stages (scout, topic, hook, script) that route to the
+  existing caption/clearcoat-post skills. Draft only, scout is read-only search, never posts. Fresh
+  Sonnet review SHIP. Wired into the jarvis router and the JARVIS.md map. Merged and pushed.
+- Left for Chris (credentialed, not touched): 11 Labs + Deepgram voice keys, a 24/7 host, and the
+  auto-posting toggle. All flagged in JARVIS.md, none wired blind.

@@ -14,8 +14,14 @@ to the default branch and pushed.
 - Merged the 4 Devin branches (tests, error handling, shared utils, security). 53/53 tests pass.
 - Applied one new technique: the handoff skill. Skipped the hype, logged why in TECHNIQUES.md.
 - Built the JARVIS entry point: /jarvis router skill + root JARVIS.md map. One door that routes
-  and recommends the next move. Voice (11 Labs + Deepgram) and 24/7 hosting are specced, waiting
-  on Chris's keys and a host. That is the next build.
+  and recommends the next move.
+- Autonomous follow-on (Chris away, blanket authority): made the setup live on this machine.
+  graphify installed (pip graphifyy 0.8.50) and graph rebuilt (400 nodes, 545 edges). The 154
+  VoltAgents installed via the canonical marketplace (10 bundles, user scope), register next session.
+  Built the content-pipeline skill (scout, topic, hook, script, routes to caption), draft only,
+  verified, merged. Wired into the jarvis router.
+- Still needs Chris (credentialed, left untouched): voice keys (11 Labs + Deepgram) and a 24/7
+  host (GitHub Actions / Zapier). Auto-posting stays gated. Those are the next builds.
 
 ## Current focus (2026-06-27)
 

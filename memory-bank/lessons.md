@@ -74,3 +74,11 @@ See `.claude/rules/learning.md` for the loop.
   - Fix: resolved to the safer behavior (raise on missing URL) and updated the stale test to match.
   - Prevent: when merging several branches forked from one old base, expect them to contradict each
     other and the newer default; resolve to the safer behavior and reconcile tests, then run them.
+
+- Native Windows Python cannot open Git Bash mount paths.
+  - Mistake: passed a `/c/Users/...` path (from the Bash tool) into `python -c "open('/c/...')"` and got
+    FileNotFoundError, more than once.
+  - Fix: the Bash tool is Git Bash, but `python.exe` is native Windows. Use `C:/Users/...` or `C:\Users\...`,
+    or pipe data via stdin, or just use the Read tool which handles the path.
+  - Prevent: when handing a path from the Bash tool to native Python, convert `/c/` to `C:/` first, or
+    avoid the intermediate file and pipe through stdin.
