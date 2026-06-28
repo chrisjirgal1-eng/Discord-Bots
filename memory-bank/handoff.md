@@ -38,9 +38,11 @@ map honest about wired vs gated. Everything committed and pushed.
    client-side admin password; reviews auto-publish; stats computed over unfiltered rows; GET writes;
    raw error leakage). A fresh reviewer verified the findings and caught a missed stat-poisoning
    issue, which was added. No source behavior changed.
-2. [ ] Extend tests to the new modules: utils.py (ensure_voice_connection no-voice path,
-   format_duration, is_script_url_configured) and tools/watch_batch.py (vid_id parsing, load_env).
-   Keep them fast and offline (no network, no Discord). Verify green. Commit.
+2. [x] DONE 2026-06-27. Added tests/test_utils.py (23 tests: format_duration, is_script_url_configured,
+   require_playing_or_paused, require_voice_client, ensure_voice_connection connect/move/idle paths)
+   and tests/test_watch_batch.py (vid_id parsing). Suite now 76 green. A fresh reviewer claimed the
+   async tests were vacuous (missing the asyncio marker); verified empirically with a planted failing
+   assertion, which DID fail, proving asyncio_mode=auto runs them. Reviewer was wrong; tests are real.
 3. [ ] Add a clean root README.md that makes the repo legible (what it is, the bot, JARVIS, how
    the memory bank works). Confirm every skill/file it references exists. Commit.
 4. [ ] Write ready-to-run specs so the credentialed pieces are one step for Chris: a voice runbook
@@ -59,4 +61,4 @@ map honest about wired vs gated. Everything committed and pushed.
 
 ## Next step
 
-Item 2 (extend tests to utils.py and tools/watch_batch.py). Branch: claude/vibrant-cray-tui7og.
+Item 3 (add a clean root README.md). Branch: claude/vibrant-cray-tui7og.
