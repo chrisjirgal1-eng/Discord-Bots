@@ -845,6 +845,35 @@
 // ── CONFIG — paste your Apps Script URL here after setup ──────────────────────
 const SCRIPT_URL = 'YOUR_SCRIPT_URL_HERE';
 
+// ── Shared utilities ──────────────────────────────────────────────────────────
+
+function isScriptConfigured() {
+  return SCRIPT_URL && !SCRIPT_URL.includes('YOUR_');
+}
+
+/**
+ * Generic form submission handler: disables button, posts to Apps Script,
+ * hides the form, and shows a success element.
+ */
+async function submitToScript(action, params, formEl, successEl, btn) {
+  btn.textContent = 'Submitting…';
+  btn.disabled = true;
+
+  if (isScriptConfigured()) {
+    try {
+      const qs = Object.entries(params)
+        .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+        .join('&');
+      await fetch(`${SCRIPT_URL}?action=${action}&${qs}`);
+    } catch (err) {
+      console.warn(`${action} failed:`, err);
+    }
+  }
+
+  formEl.style.display = 'none';
+  successEl.style.display = 'block';
+}
+
 // ── Vanta animated background ─────────────────────────────────────────────────
 VANTA.NET({
   el: '#vanta-bg',
@@ -859,7 +888,7 @@ AOS.init({ duration: 700, once: true, offset: 60 });
 
 // ── Live data from Google Sheet ───────────────────────────────────────────────
 async function loadLiveData() {
-  if (!SCRIPT_URL || SCRIPT_URL.includes('YOUR_')) return;
+  if (!isScriptConfigured()) return;
   try {
     const res  = await fetch(SCRIPT_URL);
     const data = await res.json();
@@ -964,18 +993,13 @@ document.getElementById('jobForm').addEventListener('submit', async function(e) 
   const notes   = document.getElementById('jNotes').value;
   if (!service || !amount) return;
 
-  const btn = this.querySelector('button');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-
-  if (SCRIPT_URL && !SCRIPT_URL.includes('YOUR_')) {
-    try {
-      const url = `${SCRIPT_URL}?action=log_job&service=${encodeURIComponent(service)}&amount=${amount}&notes=${encodeURIComponent(notes)}`;
-      await fetch(url);
-    } catch(err) { console.warn('Job log failed:', err); }
-  }
-
-  document.getElementById('jobForm').style.display = 'none';
-  document.getElementById('job-success').style.display = 'block';
+  await submitToScript(
+    'log_job',
+    { service, amount, notes },
+    this,
+    document.getElementById('job-success'),
+    this.querySelector('button')
+  );
   setTimeout(closeAdmin, 2500);
 });
 
@@ -1000,23 +1024,13 @@ reviewForm.addEventListener('submit', async function(e) {
     return;
   }
 
-  const btn = this.querySelector('button');
-  btn.textContent = 'Submitting…'; btn.disabled = true;
-
-  // Send to Google Sheet if configured
-  if (SCRIPT_URL && !SCRIPT_URL.includes('YOUR_')) {
-    try {
-      const url = `${SCRIPT_URL}?action=submit_review`
-        + `&name=${encodeURIComponent(name)}`
-        + `&service=${encodeURIComponent(service)}`
-        + `&stars=${stars.value}`
-        + `&text=${encodeURIComponent(text)}`;
-      await fetch(url);
-    } catch(err) { console.warn('Review submit failed:', err); }
-  }
-
-  reviewForm.style.display = 'none';
-  formSuccess.style.display = 'block';
+  await submitToScript(
+    'submit_review',
+    { name, service, stars: stars.value, text },
+    reviewForm,
+    formSuccess,
+    this.querySelector('button')
+  );
   formSuccess.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
 

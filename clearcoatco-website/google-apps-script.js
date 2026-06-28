@@ -25,6 +25,28 @@
 
 const SHEET_ID = 'YOUR_SHEET_ID_HERE'; // ← paste your spreadsheet ID here
 
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Open a named sheet tab, creating the header row if the sheet is empty.
+ */
+function getSheet(tabName, headers) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(tabName);
+  if (sheet.getLastRow() === 0 && headers) {
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+/**
+ * Read all data rows (excluding the header) from a sheet.
+ */
+function getDataRows(sheet, numCols) {
+  if (sheet.getLastRow() <= 1) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, numCols).getValues();
+}
+
 // ── Entry point for all requests ──────────────────────────────────────────────
 
 function doGet(e) {
@@ -51,14 +73,9 @@ function doGet(e) {
 // ── Get live stats + reviews ──────────────────────────────────────────────────
 
 function getData() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-
   // Reviews
-  const rSheet = ss.getSheetByName('Reviews');
-  if (!rSheet) throw new Error('Missing "Reviews" sheet in spreadsheet');
-  const rData  = rSheet.getLastRow() > 1
-    ? rSheet.getRange(2, 1, rSheet.getLastRow() - 1, 6).getValues()
-    : [];
+  const rSheet = getSheet('Reviews', ['Date', 'Name', 'Service', 'Stars', 'Review', 'Approved']);
+  const rData  = getDataRows(rSheet, 6);
 
   const reviews = rData
     .filter(r => r[0] && r[5] !== false) // has date + approved
@@ -77,12 +94,8 @@ function getData() {
     : '5.0';
 
   // Jobs
-  const jSheet = ss.getSheetByName('Jobs');
-  if (!jSheet) throw new Error('Missing "Jobs" sheet in spreadsheet');
-  const jData  = jSheet.getLastRow() > 1
-    ? jSheet.getRange(2, 1, jSheet.getLastRow() - 1, 4).getValues()
-    : [];
-
+  const jSheet = getSheet('Jobs', ['Date', 'Service', 'Amount', 'Notes']);
+  const jData  = getDataRows(jSheet, 4);
   const totalJobs    = jData.filter(r => r[0]).length;
   const totalRevenue = jData.reduce((s, r) => s + (Number(r[2]) || 0), 0);
 
@@ -108,14 +121,7 @@ function submitReview(p) {
   const stars   = Math.max(1, Math.min(5, Math.round(Number(p.stars) || 0)));
   if (!name || !text || !stars) throw new Error('Invalid fields');
 
-  const ss     = SpreadsheetApp.openById(SHEET_ID);
-  const sheet  = ss.getSheetByName('Reviews');
-  if (!sheet) throw new Error('Missing "Reviews" sheet in spreadsheet');
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['Date', 'Name', 'Service', 'Stars', 'Review', 'Approved']);
-  }
-
+  const sheet = getSheet('Reviews', ['Date', 'Name', 'Service', 'Stars', 'Review', 'Approved']);
   sheet.appendRow([new Date(), name, service, stars, text, true]);
   return { success: true };
 }
@@ -130,14 +136,7 @@ function logJob(p) {
   const notes   = sanitize(p.notes, 500);
   if (!service) throw new Error('Invalid service');
 
-  const ss    = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName('Jobs');
-  if (!sheet) throw new Error('Missing "Jobs" sheet in spreadsheet');
-
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['Date', 'Service', 'Amount', 'Notes']);
-  }
-
+  const sheet = getSheet('Jobs', ['Date', 'Service', 'Amount', 'Notes']);
   sheet.appendRow([new Date(), service, amount, notes]);
   return { success: true };
 }
