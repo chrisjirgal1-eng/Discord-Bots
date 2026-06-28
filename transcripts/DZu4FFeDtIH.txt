@@ -1,0 +1,23 @@
+[IMAGE POST - caption only, no audio]
+
+Comment “OS” for the full Agentic OS build playbook
+
+Your AI forgets everything the second you close the tab.
+
+That’s the bottleneck.
+
+Build it an OS instead.
+
+Step 1: map your data into a graph with Graphify + Obsidian. A brain Claude can search.
+
+Step 2: point PAUL at it. It builds your dashboard OS for you.
+
+Step 3: host it on Railway. Runs 24/7, even while you sleep.
+
+One command center. Yours, not rented.
+
+#ClaudeCode
+#AIAgents
+#Automation
+#BuildInPublic
+#AItools

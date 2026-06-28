@@ -1,0 +1,1 @@
+ I just asked Claude to create its own day trading strategy, and it made one with no stop losses and no take profits. It just invented investing.

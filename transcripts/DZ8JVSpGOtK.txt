@@ -1,0 +1,25 @@
+[IMAGE POST - caption only, no audio]
+
+Comment “LOOP” for the full playbook
+
+Prompt engineering is dead.
+
+If you still type prompt after prompt, you’re working backwards.
+
+A loop runs itself.
+You set one goal with an exit. The system does the rest, 24/7.
+
+Three steps:
+Define the goal.
+Set up Hermes so your skills run on cron.
+Let it run, it verifies, then reports to Slack.
+
+One trap: no checker, no stop, it burns your budget.
+
+That’s how you scale past your hours.
+
+#ClaudeCode
+#AIAgents
+#Automation
+#LoopEngineering
+#BuildInPublic

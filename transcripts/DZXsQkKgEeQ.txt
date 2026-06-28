@@ -1,0 +1,16 @@
+[IMAGE POST - caption only, no audio]
+
+🚨 The head of Claude Code at Anthropic says he doesn't prompt Claude anymore
+
+Speaking at the Acquired Unplugged event in San Francisco, Boris Cherny said his daily work has changed. "I don't prompt Claude anymore. I have loops running that prompt Claude and figuring out what to do. My job is to write loops."
+
+A year ago he wrote code by hand. Then he ran 5 to 10 Claude sessions at once, prompting each himself. Now he builds automated loops that feed Claude a task, let it act, check the result, and decide what to do next until the work is done.
+
+Old workflows put the developer at the keyboard, typing one prompt and reading the output before the next. The loop removes that step. 
+
+The system does the prompting, and the person designs the system. Cherny said this is the shift he expects to define the rest of the year.
+
+What are your thoughts on this? 🤔💬
+-
+
+➡️ If you want to keep up with all the AI news, useful tips, and important developments, join 100k+ subscribers reading our free newsletter

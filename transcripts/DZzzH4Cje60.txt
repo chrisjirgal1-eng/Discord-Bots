@@ -1,0 +1,23 @@
+[IMAGE POST - caption only, no audio]
+
+Most people tell Claude:
+
+“write the code.”
+
+Then they get messy output, random bugs, and files they don’t understand.
+
+That’s the wrong ask.
+
+Make Claude think like a senior engineer first.
+
+Tell it to design the architecture, explain the file structure, audit the codebase, find the bottlenecks, clean the backend, check security risks, and prepare deployment.
+
+That’s how you stop getting junior intern code.
+
+I put 10 prompts in this post you can copy today.
+
+Save this before your next coding session.
+
+➡️ Follow @itsaiguide for Claude prompts and AI workflows you can actually use.
+
+Follow @itsaiguide for more.

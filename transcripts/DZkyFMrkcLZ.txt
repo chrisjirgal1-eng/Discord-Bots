@@ -1,0 +1,24 @@
+[IMAGE POST - caption only, no audio]
+
+Comment “SKILL” for the free SkillSmith setup + skill folder template
+
+Building agents was the wrong move.
+
+Anthropic finally admitted it.
+
+The fix is smaller than you think.
+
+5 folders. 1 SKILL.md. That’s the whole stack.
+
+Discover. Scaffold. Distill. Audit.
+
+SkillSmith ships one in 10 minutes flat.
+
+Stop overengineering.
+Start shipping.
+
+#ClaudeCode
+#ClaudeAI
+#AIAgents
+#BuildInPublic
+#AItools

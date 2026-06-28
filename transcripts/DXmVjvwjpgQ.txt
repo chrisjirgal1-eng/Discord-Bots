@@ -1,0 +1,1 @@
+ You vibe code app. You put secret in code. You push code with secret to GitHub. Bot find your secret in three seconds. Your AWS bill, $4,000. You cry, what do? .m file. Put secrets like API key in .m file. .m file put in git ignore. GitHub never see .m file. Secret stay secret. Safe. AWS bill, $0. Very good, very nice.
