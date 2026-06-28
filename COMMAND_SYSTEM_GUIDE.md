@@ -147,3 +147,59 @@ Electron only reads it.
 It is fully best-effort: every state call swallows its own errors, so a missing, locked, or corrupt
 file never blocks a command, and ZOE falls back to safe defaults. The renderer can read the state
 read-only via `window.zoe.getState()`. The file is generated at runtime and gitignored.
+
+## 11. Versioned kernel (the compatibility contract)
+
+So the system stays compatible forever, all of it is versioned. `tools/zoe_versions.py` is the one
+place the versions live (core, command schema, plugin API, state schema -- all 1.0.0 today).
+
+Forward-compatibility law: upgrades are ADDITIVE ONLY, old fields are never removed, unknown
+fields are ignored or preserved, and a version MISMATCH degrades to fallback mode, never a crash.
+`zoe_versions.compatible(theirs, ours)` decides by MAJOR version; a different major still runs,
+just flagged `fallback: true` in the result.
+
+Locked command schema (core keys never change; new fields go inside `payload` only):
+
+```
+{ schema_version, source, intent, target, action, payload, timestamp, trace_id }
+  source: ui | assistant | voice | system | plugin
+  intent: open_app | close_app | navigate | system_action | plugin_action
+```
+
+`zoe_router.make_command(...)` builds one; `zoe_router.validate_command(...)` normalizes any input
+into it (fills missing core keys, tucks unknown top-level fields into `payload._extra`, never raises).
+
+Locked state schema (section 10) is v1.0.0: `schema_version`, `session`, `history` (FIFO, capped at
+`max_entries` = 50), `plugins`. The legacy keys (`system_mode`, `last_commands`, `workspace_state`,
+`preferences`) are kept and mirrored so older readers and the HUD keep working.
+
+## 12. route(): the structured command entry
+
+`zoe_router.route(command, ctrl=None, simulate=False)` is the ONE structured entry any source uses
+(the voice path still uses `handle()`; both live in the router, so routing stays centralized). It
+validates -> maps the intent to execution (or a plugin) -> records state -> returns:
+
+```
+{ schema_version, trace_id, source, intent, handled: bool, fallback: bool, result: {...} }
+```
+
+It never raises: any internal error returns `handled: false` with a structured error (noop
+fallback). `simulate=True` runs the decision without side effects -- used by diagnostics and any
+offline/dry-run path. Intent mapping: open_app->launch, close_app->close, navigate->web,
+system_action->workspace (or folder if `payload.folder` is set), plugin_action->the named plugin.
+
+## 13. Plugins
+
+`/plugins/*.py` extend ZOE without touching the core. Each exposes a `PLUGIN` metadata dict
+(`plugin_name`, `plugin_version`, `schema_version`, `supported_intents`) and an `execute(command)`
+returning `{handled, result}`. `zoe_router.load_plugins()` scans the folder at startup, validates
+the contract, skips anything incompatible or broken (isolated), and registers the rest. A
+`plugin_action` command is routed to the plugin named by its `target`. See `plugins/README.md` and
+the references `example_plugin.py` (echo) and `clock_plugin.py` (time).
+
+## 14. Diagnostics
+
+`python tools/zoe_diagnostics.py` runs six test groups (state, router, UI command, persistence,
+plugin, backend), prints PASS/FAIL per test, and reports a system health score (0-100) plus a final
+validation block. It points the state layer at a temp file (never touches real state) and never
+crashes. Exit 0 when every test passes, else 1.

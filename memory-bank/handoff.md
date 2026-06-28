@@ -123,6 +123,28 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   last commands, workspace state, preferences, system mode. memory/zoe_state.json is gitignored. State
   I/O never blocks the pipeline. Verified: load defaults, record persists, handle() writes, Electron boots.
 
+## Phase C: versioned compatibility kernel (Chris's bootstrap-kernel spec)
+
+Goal: make ZOE forever-compatible and extensible without breaking anything that works. ALL of it
+is additive; the 76-test suite still passes and every legacy state field is preserved + mirrored.
+
+- [x] K1 DONE 2026-06-28. Versioned kernel. New tools/zoe_versions.py is the single home of all
+  versions (core / command schema / plugin API / state schema, all 1.0.0) with compatible() by
+  major version (mismatch -> fallback, never crash). zoe_router.py gained the locked command schema
+  (make_command / validate_command -- 8 core keys, unknown fields tucked into payload._extra) and
+  route(command, ctrl, simulate) -- the ONE structured entry any source uses, returning
+  {handled, fallback, result, trace_id, ...}, never raising. Added a plugin system: /plugins/*.py
+  with a versioned contract, load_plugins() that scans + validates + isolates broken plugins, routed
+  by name; references plugins/example_plugin.py (echo) + clock_plugin.py (time). State schema bumped
+  to a locked v1.0.0 (schema_version/session.mode+workspace+last_active+trace_log/history FIFO cap 50/
+  plugins) additively -- legacy keys kept and mirrored so the HUD + the spawned HUD task still read
+  workspace_state.last and last_commands. New tools/zoe_diagnostics.py: 6 test groups (state, router,
+  UI command, persistence, plugin, backend), PASS/FAIL + health score 0-100, runs on a temp state
+  file, never crashes. Verified: diagnostics 15/15 = 100/100; pytest 76 green; legacy + new state
+  fields both present. Docs: COMMAND_SYSTEM_GUIDE.md sections 11-14. classify/execute/handle and the
+  voice loop untouched. Note: route() is the structured path; the Electron IPC/control endpoints
+  remain the execution layer the router calls (UI->router full rewire is a later, larger step).
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
