@@ -32,10 +32,12 @@ map honest about wired vs gated. Everything committed and pushed.
 
 ## Backlog (do the top undone item, mark it done with a date)
 
-1. [ ] Security + quality audit of the product code: bot.py, audio.py, utils.py, queue_manager.py,
-   and clearcoatco-website/ (google-apps-script.js handles untrusted input; index.html renders
-   sheet data). Route to a fresh reviewer (voltagent-qa-sec:security-auditor or :code-reviewer).
-   Apply ONLY high-confidence real fixes. Re-run pytest. Commit. If clean, record "audited, clean".
+1. [x] DONE 2026-06-27. Security + quality audit. Bot/Python clean (already verified in the Devin
+   merge, 53 tests pass). Website had real findings, flagged not auto-changed (they alter the live
+   deployed site, Chris's call): see clearcoatco-website/SECURITY-NOTES.md (public log_job write +
+   client-side admin password; reviews auto-publish; stats computed over unfiltered rows; GET writes;
+   raw error leakage). A fresh reviewer verified the findings and caught a missed stat-poisoning
+   issue, which was added. No source behavior changed.
 2. [ ] Extend tests to the new modules: utils.py (ensure_voice_connection no-voice path,
    format_duration, is_script_url_configured) and tools/watch_batch.py (vid_id parsing, load_env).
    Keep them fast and offline (no network, no Discord). Verify green. Commit.
@@ -57,4 +59,4 @@ map honest about wired vs gated. Everything committed and pushed.
 
 ## Next step
 
-Item 1 (security + quality audit). Branch: claude/vibrant-cray-tui7og.
+Item 2 (extend tests to utils.py and tools/watch_batch.py). Branch: claude/vibrant-cray-tui7og.
