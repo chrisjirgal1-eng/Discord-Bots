@@ -22,6 +22,11 @@ to the default branch and pushed.
   verified, merged. Wired into the jarvis router.
 - Still needs Chris (credentialed, left untouched): voice keys (11 Labs + Deepgram) and a 24/7
   host (GitHub Actions / Zapier). Auto-posting stays gated. Those are the next builds.
+- Cross-session autobuild armed: scheduled task `jarvis-autobuild` (daily ~9am) reads
+  `memory-bank/handoff.md` and does one verified backlog item per run while Chris is away until
+  July 5. It only does safe internal work and parks at "waiting on Chris" when the backlog drains
+  or hits a credentialed wall. Runs while the Claude app is open (or next launch), not a cloud
+  daemon. Manage or stop it from the Scheduled sidebar, or say "stop the autobuild".
 
 ## Current focus (2026-06-27)
 
