@@ -127,6 +127,9 @@ class H(http.server.BaseHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"ZOE online. Open http://localhost:{PORT}  (Ctrl+C to stop)")
     try:
-        http.server.HTTPServer(("127.0.0.1", PORT), H).serve_forever()
+        # threaded so a slow /command (Groq ~1s) never blocks /stats polling or the UI
+        http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
+    except OSError as e:
+        print(f"ZOE telemetry could not bind port {PORT} (already in use?): {e}")
     except KeyboardInterrupt:
         print("\nZOE offline.")
