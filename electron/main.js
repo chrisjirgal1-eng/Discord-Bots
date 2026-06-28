@@ -4,7 +4,7 @@
 // workspaces, tray, global shortcuts, native notifications, and a local control endpoint
 // the voice assistant uses to run desktop actions.
 
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, Notification, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, Notification, nativeImage, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -310,6 +310,8 @@ else {
   app.on('second-instance', showWindow);
   app.whenReady().then(() => {
     app.setAppUserModelId('com.chris.zoe');   // so Windows attributes notifications to "Zoe"
+    // let the HUD use the mic so the gold JARVIS core reacts to your voice (and Zoe's, via speakers)
+    session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'media'));
     killStrayServices();              // clear orphaned voice/telemetry from a previous crashed run
     setTimeout(startTelemetry, 800);  // start after the stray-kill snapshot, so it is not caught
     setTimeout(createWindow, 1500);   // give the telemetry server a moment

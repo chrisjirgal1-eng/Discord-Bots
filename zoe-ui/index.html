@@ -1,333 +1,229 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ZOE // Command Center</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZOE // JARVIS Command Deck</title>
 <style>
-/* ============================================================================
-   ZOE: Chris's personal AI OS HUD, Rainmeter / Iron Man telemetry style.
-   LIVE when served by tools/zoe_server.py (real CPU/RAM/net via psutil); falls
-   back to a simulated feed when opened as a plain file. Customize CONFIG below.
-   ============================================================================ */
-:root{
-  --acc:56,189,248; --acc2:34,211,238;
-  --bg:#01030a; --panel:rgba(8,16,28,.5); --line:rgba(var(--acc),.18);
-  --text:#cfe8ff; --muted:#5b7ba0; --ok:#34d399; --warn:#fbbf24; --hot:#fb7185;
-  --mono:"Consolas","Cascadia Code",ui-monospace,monospace;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden}
-body{background:var(--bg);color:var(--text);font-family:var(--mono);
-  background-image:radial-gradient(900px 500px at 50% 45%,rgba(var(--acc),.10),transparent 60%);}
-canvas{display:block}
-.grid-bg{position:fixed;inset:0;z-index:0;opacity:.25;pointer-events:none;
-  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
-  background-size:44px 44px;mask-image:radial-gradient(ellipse at center,#000 35%,transparent 90%)}
-.hud{position:relative;z-index:1;height:100vh;display:grid;
-  grid-template-columns:268px 1fr 300px;grid-template-rows:54px 1fr 132px;gap:12px;padding:12px}
-@media(max-width:900px){.hud{grid-template-columns:1fr;grid-template-rows:auto;height:auto;overflow:auto}}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-
-/* header */
-.bar{grid-column:1/4;display:flex;align-items:center;justify-content:space-between;
-  border:1px solid var(--line);border-radius:10px;padding:0 18px;background:var(--panel)}
-.brand{display:flex;align-items:center;gap:12px}
-.brand .core-dot{width:12px;height:12px;border-radius:50%;background:rgb(var(--acc2));
-  box-shadow:0 0 14px rgba(var(--acc),.8);animation:pl 2.2s infinite}
-@keyframes pl{50%{opacity:.4}}
-.brand b{font-size:1.5rem;letter-spacing:10px;color:#eaf6ff;font-weight:700;text-shadow:0 0 18px rgba(var(--acc),.5)}
-.brand small{font-size:.55rem;letter-spacing:3px;color:var(--muted)}
-.live{display:flex;align-items:center;gap:7px;font-size:.6rem;letter-spacing:2px;color:var(--ok)}
-.live i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 9px var(--ok);animation:pl 1.4s infinite}
-.live.sim{color:var(--warn)} .live.sim i{background:var(--warn);box-shadow:0 0 9px var(--warn)}
-.live.err{color:var(--hot)} .live.err i{background:var(--hot);box-shadow:0 0 9px var(--hot)}
-.warn-banner{position:fixed;top:0;left:0;right:0;z-index:50;display:none;align-items:center;gap:12px;
-  padding:9px 18px;background:rgba(251,191,36,.14);border-bottom:1px solid rgba(251,191,36,.5);
-  color:#fde68a;font-size:.66rem;letter-spacing:.5px;backdrop-filter:blur(6px)}
-.warn-banner.show{display:flex}
-.warn-banner.err{background:rgba(251,113,133,.14);border-bottom-color:rgba(251,113,133,.5);color:#fecdd3}
-.warn-banner b{color:#fff}
-.warn-banner code{background:rgba(255,255,255,.1);padding:2px 7px;border-radius:5px;color:#fff}
-.warn-banner .x{margin-left:auto;cursor:pointer;opacity:.7;font-size:.9rem}
-.warn-banner .x:hover{opacity:1}
-.clock{display:flex;flex-direction:column;align-items:flex-end}
-.clock .t{font-size:1.7rem;letter-spacing:3px;color:rgb(var(--acc));line-height:1;text-shadow:0 0 16px rgba(var(--acc),.5)}
-.clock .d{font-size:.6rem;letter-spacing:3px;color:var(--muted);margin-top:3px}
-
-.col{display:flex;flex-direction:column;gap:12px;min-height:0}
-.panel{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:11px 13px;position:relative;overflow:hidden}
-.panel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:rgb(var(--acc));opacity:.5}
-.panel h3{font-size:.56rem;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;margin-bottom:9px;
-  display:flex;justify-content:space-between}
-.panel h3 span{color:rgb(var(--acc2))}
-.kv{display:flex;justify-content:space-between;font-size:.66rem;padding:3px 0;color:var(--text)}
-.kv b{color:rgb(var(--acc2));font-weight:600}
-.graph{width:100%;height:64px}
-.cores{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:2px}
-.core{height:34px;background:rgba(var(--acc),.08);border-radius:3px;position:relative;overflow:hidden}
-.core i{position:absolute;left:0;right:0;bottom:0;background:rgb(var(--acc));transition:height .4s;display:block}
-.globe{width:100%;height:150px}
-
-/* center reactor */
-.center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
-.reactor{position:relative;width:340px;height:340px;max-width:46vh;max-height:46vh}
-.reactor .ring{position:absolute;border-radius:50%}
-.r1{inset:0;border:2px solid rgba(var(--acc),.3)}
-.r2{inset:14px;border:1px dashed rgba(var(--acc2),.5);animation:spin 26s linear infinite}
-.r3{inset:34px;border:6px solid rgba(var(--acc),.10);border-top-color:rgba(var(--acc),.7);border-bottom-color:rgba(var(--acc),.7);animation:spin 7s linear infinite}
-.r4{inset:64px;border:2px solid rgba(var(--acc2),.5);animation:spin 12s linear infinite reverse}
-.r5{inset:90px;border:14px solid rgba(var(--acc),.06);border-left-color:rgba(var(--acc2),.6);border-right-color:rgba(var(--acc2),.6);animation:spin 4s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.seg{position:absolute;inset:0}
-.seg i{position:absolute;top:0;left:50%;width:2px;height:14px;background:rgba(var(--acc),.5);transform-origin:50% 170px}
-.rcore{position:absolute;inset:128px;border-radius:50%;
-  background:radial-gradient(circle,#e8f8ff,rgb(var(--acc2)) 42%,#06324a);
-  box-shadow:0 0 40px rgba(var(--acc),.7),0 0 110px rgba(var(--acc),.5),inset 0 0 24px rgba(255,255,255,.7);
-  animation:breathe 3.2s infinite;display:flex;align-items:center;justify-content:center}
-@keyframes breathe{50%{box-shadow:0 0 60px rgba(var(--acc),.9),0 0 150px rgba(var(--acc),.6),inset 0 0 30px #fff}}
-.rcore b{font-size:1.1rem;letter-spacing:4px;color:#03222f;font-weight:700}
-.status-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.stat-pill{font-size:.58rem;letter-spacing:1.5px;color:var(--muted);border:1px solid var(--line);
-  border-radius:20px;padding:5px 11px;display:flex;align-items:center;gap:6px}
-.stat-pill i{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
-.tagline{font-size:.72rem;letter-spacing:1px;color:rgb(var(--acc2));min-height:1em;text-align:center}
-
-/* gauges footer */
-.foot{grid-column:1/4;display:grid;grid-template-columns:auto auto auto 1fr;gap:12px;align-items:stretch}
-@media(max-width:900px){.foot{grid-template-columns:1fr 1fr}}
-.gauge-card{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:8px 14px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:118px}
-.gauge{width:92px;height:92px}
-.gauge-card .lbl{font-size:.55rem;letter-spacing:2px;color:var(--muted);margin-top:2px}
-.netwrap{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px 13px;display:flex;flex-direction:column}
-.netwrap h3{font-size:.56rem;letter-spacing:2.5px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
-.netwrap h3 span b{color:rgb(var(--acc2))}
-.netgraph{flex:1;width:100%;min-height:60px}
-
-/* theme dots */
-.themes{display:flex;gap:6px;margin-left:14px}
-.themes b{width:13px;height:13px;border-radius:50%;cursor:pointer;border:1px solid rgba(255,255,255,.25)}
-.themes b:hover{transform:scale(1.25)}
+  :root{ --p:#9333ea; --p2:#b46bff; --pk:#d946ef; --gold:#ffa128; --gold2:#ffd9a0;
+    --bg:#0a0612; --pan:rgba(22,13,38,.5); --ln:rgba(147,51,234,.26); --tx:#ead7ff; --dm:#9a82c2;
+    --ok:#7ee0b0; --bad:#ff6b81; }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);
+    font-family:"Segoe UI",system-ui,sans-serif}
+  body{display:grid;grid-template-columns:21% 1fr 21%;grid-template-rows:1fr auto;gap:10px;padding:12px;
+    background:radial-gradient(120% 120% at 50% 46%,#160a26 0%,#0a0612 60%,#050308 100%)}
+  #core{position:absolute;inset:0;display:block;z-index:0}
+  .col{display:flex;flex-direction:column;gap:10px;min-height:0;z-index:2}
+  .pan{background:var(--pan);border:1px solid var(--ln);border-radius:12px;padding:11px 13px;
+    backdrop-filter:blur(11px) saturate(150%);-webkit-backdrop-filter:blur(11px);flex:1;min-height:0;overflow:hidden;
+    box-shadow:0 0 26px rgba(147,51,234,.08) inset,0 14px 34px rgba(0,0,0,.45)}
+  h3{font-size:9px;letter-spacing:2px;color:var(--p2);margin:0 0 7px;font-weight:600;display:flex;justify-content:space-between}
+  .mut{color:var(--dm)} .big{font-size:15px;color:#fff;line-height:1.35}
+  .stat{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:11px}
+  .stat b{color:#fff} .bar{height:3px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:2px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--p),var(--p2));box-shadow:0 0 8px var(--p)}
+  .proc{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .proc:last-child{border:0} .proc .r{color:var(--ok);font-size:8px;letter-spacing:1px} .dot{color:var(--p2)}
+  .center{position:relative;grid-row:1;grid-column:2;min-height:0;z-index:1}
+  .corelabel{position:absolute;bottom:8px;left:0;right:0;text-align:center;letter-spacing:10px;font-size:14px;color:var(--gold2);text-shadow:0 0 18px var(--gold);pointer-events:none}
+  .corestate{position:absolute;top:10px;left:0;right:0;text-align:center;letter-spacing:3px;font-size:10px;pointer-events:none}
+  canvas.mini{display:block;width:100%;height:100%}
+  .nav{grid-column:1/4;display:flex;align-items:center;justify-content:center;gap:30px;color:var(--dm);font-size:9px;letter-spacing:2px;z-index:2}
+  .nav .it{display:flex;flex-direction:column;align-items:center;gap:3px;opacity:.65;cursor:pointer}
+  .nav .it.on{opacity:1;color:#fff} .nav .it:hover{opacity:1} .ico{width:15px;height:15px;border:1.5px solid currentColor;border-radius:5px}
+  .gz{display:flex;align-items:center;gap:8px;font-size:11px;margin-bottom:6px} .gz b{margin-left:auto;color:#fff}
+  .gz .ring{width:26px;height:26px;border-radius:50%;border:3px solid rgba(147,51,234,.2);border-top-color:var(--p2);border-right-color:var(--p2)}
+  #netwrap{height:100%;cursor:pointer;position:relative}
+  #netwrap .hint{position:absolute;bottom:2px;right:4px;font-size:8px;color:var(--dm)}
+  #warn{position:fixed;top:0;left:0;right:0;z-index:9;display:none;padding:7px 16px;font-size:11px;
+    background:rgba(251,191,36,.14);border-bottom:1px solid rgba(251,191,36,.5);color:#fde68a;text-align:center}
+  #warn.show{display:block} #warn.err{background:rgba(255,107,129,.14);color:#fecdd3}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<h2 class="sr">ZOE command center: a live system telemetry HUD showing an arc reactor, real CPU, RAM, disk and network from the host machine, gauges, a wireframe globe, and assistant status.</h2>
-<div class="grid-bg"></div>
+<h2 class="sr">Zoe JARVIS command deck: a voice-reactive gold core with purple system panels and an Obsidian memory graph.</h2>
+<canvas id="core"></canvas>
+<div id="warn"></div>
 
-<div class="warn-banner" id="backendWarn">
-  <span id="backendWarnText"></span>
-  <span class="x" onclick="this.parentElement.classList.remove('show')">&times;</span>
+<div class="col">
+  <div class="pan"><h3>JARVIS SYSTEM <span id="online" style="color:var(--ok)">● ONLINE</span></h3>
+    <div class="big" id="greet">Hello, Sir. How can I assist you today?</div>
+    <div class="mut" style="font-size:10px;margin-top:6px">Ask anything, give a command, or run a workspace.</div></div>
+  <div class="pan"><h3>SYSTEM STATUS</h3><div class="stat" id="status">connecting…</div></div>
+  <div class="pan"><h3>CORE DIAGNOSTICS</h3><canvas id="diag" class="mini"></canvas></div>
+  <div class="pan"><h3>VOICE RECOGNITION</h3>
+    <div style="display:flex;align-items:center;gap:10px">
+      <canvas id="wave" class="mini" style="height:26px;flex:1"></canvas>
+      <div style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle,var(--gold2),var(--gold));box-shadow:0 0 16px var(--gold);flex:none;display:grid;place-items:center">🎙</div></div>
+    <div class="mut" style="font-size:10px;margin-top:6px" id="voicestate">Wake Word: <b style="color:var(--p2)">"Hey Zoe"</b></div></div>
 </div>
 
-<div class="hud">
-  <!-- header -->
-  <div class="bar">
-    <div class="brand">
-      <span class="core-dot"></span>
-      <div><b>ZOE</b> <small id="host">PERSONAL AI OS</small></div>
-      <div class="themes" id="themes"></div>
-    </div>
-    <div class="live" id="live"><i></i><span id="livetext">CONNECTING</span></div>
-    <div class="clock"><div class="t" id="clk">--:--:--</div><div class="d" id="date">---</div></div>
-  </div>
+<div class="center"><canvas id="coremini" style="display:none"></canvas>
+  <div class="corestate"><span id="cstate" style="color:var(--gold2)">○ standing by</span></div>
+  <div class="corelabel">J A R V I S</div></div>
 
-  <!-- left column -->
-  <div class="col">
-    <div class="panel"><h3>Geo <span>ORBIT</span></h3><canvas class="globe" id="globe"></canvas></div>
-    <div class="panel"><h3>System <span id="up">UPTIME</span></h3>
-      <div class="kv"><span>HOST</span><b id="k-host">--</b></div>
-      <div class="kv"><span>CORES</span><b id="k-cores">--</b></div>
-      <div class="kv"><span>MEMORY</span><b id="k-mem">--</b></div>
-      <div class="kv"><span>PROCESSES</span><b id="k-proc">--</b></div>
-    </div>
-    <div class="panel"><h3>CPU cores <span id="k-cpu">0%</span></h3><div class="cores" id="cores"></div></div>
-  </div>
-
-  <!-- center reactor -->
-  <div class="col center">
-    <div class="reactor">
-      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
-      <div class="ring r4"></div><div class="ring r5"></div>
-      <div class="seg" id="seg"></div>
-      <div class="rcore"><b>ZOE</b></div>
-    </div>
-    <div class="tagline" id="tag"></div>
-    <div class="status-row">
-      <div class="stat-pill"><i></i>CORE</div><div class="stat-pill"><i></i>MEMORY</div>
-      <div class="stat-pill"><i></i>VOICE: LILY</div><div class="stat-pill"><i></i>9 SKILLS</div>
-      <div class="stat-pill"><i></i>154 AGENTS</div>
-    </div>
-  </div>
-
-  <!-- right column -->
-  <div class="col">
-    <div class="panel"><h3>CPU load <span id="g-cpu">0%</span></h3><canvas class="graph" id="cpuGraph"></canvas></div>
-    <div class="panel"><h3>Memory <span id="g-ram">0%</span></h3><canvas class="graph" id="ramGraph"></canvas></div>
-    <div class="panel"><h3>Disk C: <span id="g-disk">0%</span></h3><canvas class="graph" id="diskGraph"></canvas></div>
-  </div>
-
-  <!-- footer gauges + network -->
-  <div class="foot">
-    <div class="gauge-card"><canvas class="gauge" id="gaugeCpu"></canvas><div class="lbl">CPU</div></div>
-    <div class="gauge-card"><canvas class="gauge" id="gaugeRam"></canvas><div class="lbl">RAM</div></div>
-    <div class="gauge-card"><canvas class="gauge" id="gaugeDisk"></canvas><div class="lbl">DISK</div></div>
-    <div class="netwrap">
-      <h3>Network <span>DOWN <b id="n-down">0</b> KB/s &nbsp; UP <b id="n-up">0</b> KB/s</span></h3>
-      <canvas class="netgraph" id="netGraph"></canvas>
-    </div>
-  </div>
+<div class="col">
+  <div class="pan"><h3>NETWORK MAP — OBSIDIAN</h3><div id="netwrap"><canvas id="net" class="mini"></canvas><span class="hint">click → 3D graph</span></div></div>
+  <div class="pan"><h3>REAL-TIME ANALYTICS</h3><canvas id="ana" class="mini"></canvas></div>
+  <div class="pan"><h3>SYSTEM RESOURCES</h3><div id="res">…</div></div>
+  <div class="pan"><h3>ACTIVE PROCESSES</h3><div id="procs"></div></div>
 </div>
 
-<script>
-/* ============================ CONFIG ===================================== */
-const CONFIG = {
-  name: "ZOE",
-  taglines: ["Wide awake, sir.", "All systems nominal.", "Standing by.", "Monitoring the grid."],
-  themes: [["56,189,248","34,211,238"],["168,85,247","192,132,252"],["52,211,153","45,212,191"],["245,214,123","251,191,36"]],
-  statsUrl: "/stats",
-  pollMs: 1000,
-};
-/* ======================================================================== */
-const $=s=>document.querySelector(s);
-const CAP=70;
-const buf={cpu:[],ram:[],disk:[],down:[],up:[]};
-let LIVE=false, simState={cpu:30,ram:60,disk:47,down:40,up:8};
+<div class="nav">
+  <div class="it on"><div class="ico"></div>HOME</div>
+  <div class="it" onclick="location.href='/3d'"><div class="ico"></div>NETWORK</div>
+  <div class="it" onclick="location.href='/3d'"><div class="ico"></div>MEMORY</div>
+  <div class="it"><div class="ico"></div>TOOLS</div>
+  <div class="it"><div class="ico"></div>DATA</div>
+  <div class="it"><div class="ico"></div>SETTINGS</div>
+</div>
 
-// theme switcher
-const th=$('#themes');
-CONFIG.themes.forEach((t,i)=>{const b=document.createElement('b');b.style.background=`rgb(${t[0]})`;
-  b.onclick=()=>{const r=document.documentElement.style;r.setProperty('--acc',t[0]);r.setProperty('--acc2',t[1]);};
-  th.appendChild(b);});
+<script type="module">
+const $ = s => document.querySelector(s);
+const sim = () => ({ cpu: 20+Math.random()*30, ram: 55+Math.random()*15, disk: 64, gpu: 30+Math.random()*20,
+  cores: Array.from({length:8},()=>Math.random()*70), procs: 240, net_up: 40, net_down: 800 });
 
-// reactor segments
-for(let i=0;i<60;i++){const s=document.createElement('i');s.style.transform=`rotate(${i*6}deg)`;$('#seg').appendChild(s);}
-// cpu core bars
-let coreEls=[];
-function buildCores(n){const c=$('#cores');c.innerHTML='';coreEls=[];
-  for(let i=0;i<n;i++){const d=document.createElement('div');d.className='core';const ii=document.createElement('i');
-    d.appendChild(ii);c.appendChild(d);coreEls.push(ii);}}
-buildCores(12);
+// ---------- the gold voice-reactive JARVIS core (Three.js) ----------
+let setAudio = () => 0;
+try {
+  const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+  const canvas = $('#core'); const center = document.querySelector('.center').getBoundingClientRect();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const W = () => innerWidth, H = () => innerHeight;
+  renderer.setSize(W(), H());
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, W()/H(), 0.1, 100); camera.position.set(0,0,4.4);
+  const core = new THREE.Group(); scene.add(core);
+  const GOLD = new THREE.Color(0xffa128);
+  const N = 8000, pos = new Float32Array(N*3), ph = new Float32Array(N), bs = new Float32Array(N);
+  for (let i=0;i<N;i++){ const y=1-(i/(N-1))*2, rad=Math.sqrt(1-y*y), th=i*2.399963; let r=1;
+    if(Math.random()<0.35) r=0.2+Math.random()*0.8;
+    pos[i*3]=Math.cos(th)*rad*r; pos[i*3+1]=y*r; pos[i*3+2]=Math.sin(th)*rad*r;
+    ph[i]=Math.random(); bs[i]=Math.random()<0.06?7+Math.random()*9:1.3+Math.random()*3; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('phase', new THREE.BufferAttribute(ph,1));
+  g.setAttribute('bsize', new THREE.BufferAttribute(bs,1));
+  const U = { uTime:{value:0}, uAudio:{value:0}, uColor:{value:GOLD} };
+  core.add(new THREE.Points(g, new THREE.ShaderMaterial({ uniforms:U, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:`uniform float uTime,uAudio; attribute float phase,bsize; varying float vG;
+      void main(){ vec3 d=normalize(position+0.0001); float sh=sin(uTime*1.6+phase*6.2831)*(0.04+uAudio*0.42);
+        vec3 p=(position+d*sh)*(1.0+uAudio*0.45); vG=0.45+uAudio*1.1+abs(sh)*3.0;
+        vec4 mv=modelViewMatrix*vec4(p,1.0); gl_PointSize=bsize*(1.0+uAudio*1.2)*(90.0/-mv.z); gl_Position=projectionMatrix*mv; }`,
+    fragmentShader:`varying float vG; uniform vec3 uColor; void main(){ float r=length(gl_PointCoord-vec2(0.5)); if(r>0.5) discard;
+      float a=pow(smoothstep(0.5,0.0,r),2.0); gl_FragColor=vec4(uColor*vG,a); }` })));
+  for (let k=0;k<9;k++){ const seg=128, p=new Float32Array(seg*3);
+    for(let i=0;i<seg;i++){ const a=i/seg*6.2831; p[i*3]=Math.cos(a); p[i*3+1]=Math.sin(a); }
+    const lg=new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(p,3));
+    const lp=new THREE.LineLoop(lg, new THREE.LineBasicMaterial({color:0xffb24d,transparent:true,opacity:0.09,blending:THREE.AdditiveBlending,depthWrite:false}));
+    lp.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3); lp.scale.setScalar(0.6+Math.random()*0.45); core.add(lp); }
+  const SC=140, sp=new Float32Array(SC*6);
+  for(let i=0;i<SC;i++){ const a=Math.random()*6.28, p2=Math.acos(2*Math.random()-1);
+    const d=new THREE.Vector3(Math.sin(p2)*Math.cos(a),Math.cos(p2),Math.sin(p2)*Math.sin(a));
+    d.clone().multiplyScalar(0.15).toArray(sp,i*6); d.clone().multiplyScalar(1.6+Math.random()*0.6).toArray(sp,i*6+3); }
+  const sg=new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp,3));
+  const streaks=new THREE.LineSegments(sg, new THREE.LineBasicMaterial({color:0xffc266,transparent:true,opacity:0.14,blending:THREE.AdditiveBlending,depthWrite:false})); core.add(streaks);
+  const gcv=document.createElement('canvas'); gcv.width=gcv.height=128; const gx=gcv.getContext('2d');
+  const rg=gx.createRadialGradient(64,64,0,64,64,64); rg.addColorStop(0,'rgba(255,240,210,1)'); rg.addColorStop(.25,'rgba(255,170,60,.8)'); rg.addColorStop(1,'rgba(255,150,40,0)');
+  gx.fillStyle=rg; gx.fillRect(0,0,128,128);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(gcv),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true})); glow.scale.setScalar(1.6); core.add(glow);
+  addEventListener('resize',()=>{ renderer.setSize(W(),H()); camera.aspect=W()/H(); camera.updateProjectionMatrix(); });
+  let mx=0,my=0; addEventListener('pointermove',e=>{ mx=e.clientX/W()-0.5; my=e.clientY/H()-0.5; });
+  let lvl=0; const cstate=$('#cstate');
+  renderer.setAnimationLoop(ms=>{ const a=lvl; U.uTime.value=ms*0.001; U.uAudio.value=a;
+    core.rotation.y+=0.0013+a*0.004; core.rotation.x=Math.sin(ms*0.0002)*0.14;
+    core.scale.setScalar(1+a*0.18+Math.sin(ms*0.001)*0.02);
+    streaks.material.opacity=0.1+a*0.3; glow.scale.setScalar(1.4+a*1.4);
+    camera.position.x+=(mx*0.7-camera.position.x)*0.04; camera.position.y+=(-my*0.5-camera.position.y)*0.04; camera.lookAt(0,0,0);
+    cstate.textContent=a>0.22?'● ENGAGED':'○ standing by'; cstate.style.color=a>0.22?'#ffd9a0':'#8a6a3a';
+    renderer.render(scene,camera); });
+  // expose a setter the audio loop drives
+  window.__setCoreLevel = v => { lvl += (v - lvl)*0.18; };
+} catch(e){ console.error('core init', e); document.querySelector('.corelabel').textContent='JARVIS'; }
 
-// tagline typing
-function typeTag(i){const t=CONFIG.taglines[i%CONFIG.taglines.length];let n=0;const el=$('#tag');
-  const iv=setInterval(()=>{el.textContent=t.slice(0,n)+"_";n++;if(n>t.length){clearInterval(iv);setTimeout(()=>typeTag(i+1),2800);}},55);}
-typeTag(0);
-
-// canvas helpers
-function fit(c){const r=c.getBoundingClientRect();c.width=r.width*2;c.height=r.height*2;return c.getContext('2d');}
-function acc(a){const v=getComputedStyle(document.documentElement).getPropertyValue('--acc').trim()||'56,189,248';return `rgba(${v},${a})`;}
-function acc2(a){const v=getComputedStyle(document.documentElement).getPropertyValue('--acc2').trim()||'34,211,238';return `rgba(${v},${a})`;}
-
-function graph(id,data,maxv){
-  const c=$('#'+id),ctx=fit(c),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);
-  ctx.strokeStyle=acc(.07);ctx.lineWidth=1;
-  for(let i=0;i<=4;i++){const y=h*i/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
-  if(data.length<2)return;
-  const mx=Math.max(maxv,...data)||1;
-  ctx.beginPath();
-  data.forEach((v,i)=>{const x=w*i/(CAP-1),y=h-(v/mx)*h*.92-h*.04;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
-  ctx.lineTo(w*(data.length-1)/(CAP-1),h);ctx.lineTo(0,h);ctx.closePath();
-  const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,acc(.35));g.addColorStop(1,acc(0));ctx.fillStyle=g;ctx.fill();
-  ctx.beginPath();
-  data.forEach((v,i)=>{const x=w*i/(CAP-1),y=h-(v/mx)*h*.92-h*.04;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
-  ctx.strokeStyle=acc2(.95);ctx.lineWidth=2.5;ctx.stroke();
-}
-function gauge(id,pct){
-  const c=$('#'+id),ctx=fit(c),w=c.width,h=c.height,cx=w/2,cy=h/2,r=w*.40;
-  ctx.clearRect(0,0,w,h);
-  ctx.lineWidth=w*.07;ctx.strokeStyle=acc(.12);
-  ctx.beginPath();ctx.arc(cx,cy,r,0.75*Math.PI,2.25*Math.PI);ctx.stroke();
-  ctx.strokeStyle=pct>85?'rgba(251,113,133,.95)':acc2(.95);
-  ctx.shadowColor=acc(.6);ctx.shadowBlur=12;
-  ctx.beginPath();ctx.arc(cx,cy,r,0.75*Math.PI,(0.75+1.5*pct/100)*Math.PI);ctx.stroke();ctx.shadowBlur=0;
-  ctx.fillStyle='#eaf6ff';ctx.font=`700 ${w*.20}px var(--mono),monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(Math.round(pct)+'%',cx,cy);
-}
-
-// rotating wireframe globe
-const gl=$('#globe');let glx=0;
-function drawGlobe(){const ctx=fit(gl),w=gl.width,h=gl.height,cx=w/2,cy=h/2,R=Math.min(w,h)*.42;
-  ctx.clearRect(0,0,w,h);ctx.strokeStyle=acc(.5);ctx.lineWidth=1;
-  ctx.beginPath();ctx.arc(cx,cy,R,0,7);ctx.stroke();
-  for(let la=-60;la<=60;la+=30){const rr=R*Math.cos(la*Math.PI/180),yy=cy+R*Math.sin(la*Math.PI/180);
-    ctx.strokeStyle=acc(.22);ctx.beginPath();ctx.ellipse(cx,yy,rr,rr*.18,0,0,7);ctx.stroke();}
-  for(let k=0;k<6;k++){const ph=glx+k*Math.PI/6,rx=Math.abs(R*Math.cos(ph));
-    ctx.strokeStyle=acc(.22);ctx.beginPath();ctx.ellipse(cx,cy,rx,R,0,0,7);ctx.stroke();}
-  glx+=0.01;requestAnimationFrame(drawGlobe);}
-requestAnimationFrame(drawGlobe);
-
-function fmtUptime(s){const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);
-  return (d?d+'d ':'')+h+'h '+m+'m';}
-function push(b,v){b.push(v);if(b.length>CAP)b.shift();}
-
-function apply(s){
-  push(buf.cpu,s.cpu);push(buf.ram,s.ram);push(buf.disk,s.disk);push(buf.down,s.net_down);push(buf.up,s.net_up);
-  $('#clk').textContent=s.time; $('#date').textContent=s.date;
-  $('#host').textContent="PERSONAL AI OS // "+s.host;
-  $('#k-host').textContent=s.host; $('#k-cores').textContent=s.cores.length;
-  $('#k-mem').textContent=s.ram_used_gb+' / '+s.ram_total_gb+' GB';
-  $('#k-proc').textContent=s.procs; $('#up').textContent=fmtUptime(s.uptime);
-  $('#k-cpu').textContent=s.cpu+'%'; $('#g-cpu').textContent=s.cpu+'%';
-  $('#g-ram').textContent=s.ram+'%'; $('#g-disk').textContent=s.disk+'%';
-  $('#n-down').textContent=s.net_down; $('#n-up').textContent=s.net_up;
-  if(coreEls.length!==s.cores.length) buildCores(s.cores.length);
-  s.cores.forEach((c,i)=>{if(coreEls[i])coreEls[i].style.height=Math.max(4,c)+'%';});
-  graph('cpuGraph',buf.cpu,100);graph('ramGraph',buf.ram,100);graph('diskGraph',buf.disk,100);
-  graph('netGraph',buf.down,Math.max(100,...buf.down));
-  gauge('gaugeCpu',s.cpu);gauge('gaugeRam',s.ram);gauge('gaugeDisk',s.disk);
-}
-
-function simulate(){
-  const wob=(v,lo,hi,step)=>Math.max(lo,Math.min(hi,v+(Math.random()-0.5)*step));
-  simState.cpu=wob(simState.cpu,4,96,18);simState.ram=wob(simState.ram,40,92,5);
-  simState.disk=wob(simState.disk,46,48,0.5);simState.down=Math.max(0,wob(simState.down,0,900,180));
-  simState.up=Math.max(0,wob(simState.up,0,200,40));
-  const d=new Date();
-  return {host:"DESKTOP",cpu:+simState.cpu.toFixed(1),cores:Array.from({length:12},()=>+(Math.random()*100).toFixed(0)),
-    ram:+simState.ram.toFixed(1),ram_used_gb:+(simState.ram/100*8.3).toFixed(1),ram_total_gb:8.3,disk:+simState.disk.toFixed(1),
-    net_down:+simState.down.toFixed(0),net_up:+simState.up.toFixed(0),procs:280,uptime:9000,
-    time:d.toTimeString().slice(0,8),date:d.toDateString().toUpperCase()};
-}
-
-function startHint(){
-  return (window.zoe && window.zoe.isElectron)
-    ? 'use the tray to restart it, or relaunch the app.'
-    : 'double-click <code>zoe.bat</code>, or run <code>python tools/zoe_server.py</code>.';
-}
-function setBackend(state){
-  const el=$('#live'), b=$('#backendWarn'), bt=$('#backendWarnText');
-  const desktop = !!(window.zoe && window.zoe.isElectron);
-  if(state==='live'){
-    el.className='live'; $('#livetext').textContent = desktop ? 'BACKEND LIVE - DESKTOP' : 'BACKEND LIVE';
-    b.classList.remove('show');
-  } else if(state==='error'){
-    el.className='live err'; $('#livetext').textContent='BACKEND ERROR';
-    b.className='warn-banner err show';
-    bt.innerHTML='<b>Backend error.</b> The telemetry server replied with bad data. Showing a simulated feed. Restart it: '+startHint();
-  } else {
-    el.className='live sim'; $('#livetext').textContent='BACKEND OFFLINE';
-    b.className='warn-banner show';
-    bt.innerHTML='<b>Backend offline.</b> Live system stats are unavailable, so Zoe is showing a simulated feed (the UI still works). Start the backend: '+startHint();
+// ---------- real mic -> audio level (falls back to idle breathing) ----------
+(async () => {
+  let read = null;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    const an = ac.createAnalyser(); an.fftSize = 256; ac.createMediaStreamSource(stream).connect(an);
+    const data = new Uint8Array(an.frequencyBinCount);
+    read = () => { an.getByteFrequencyData(data); let s=0; for(const v of data) s+=v; return Math.min(1.3,(s/data.length)/85); };
+    $('#voicestate').innerHTML = 'Listening…  ·  Wake Word: <b style="color:var(--p2)">"Hey Zoe"</b>';
+  } catch(e){ /* no mic permission -> breathing */ }
+  const wave = $('#wave'); const wx = wave.getContext('2d');
+  function loop(t){
+    let lv = read ? read() : Math.max(0, Math.sin(t*0.0012)*0.12 + 0.05);
+    if (window.__setCoreLevel) window.__setCoreLevel(lv);
+    // waveform
+    const r = wave.getBoundingClientRect(); wave.width=r.width*2; wave.height=r.height*2; wx.setTransform(2,0,0,2,0,0);
+    wx.clearRect(0,0,r.width,r.height); wx.beginPath();
+    for(let x=0;x<=r.width;x+=3){ const y=r.height/2+Math.sin(x*0.15+t*0.006)*(2+lv*r.height*0.5); x?wx.lineTo(x,y):wx.moveTo(x,y); }
+    wx.strokeStyle='#b46bff'; wx.lineWidth=1.5; wx.shadowColor='#9333ea'; wx.shadowBlur=6; wx.stroke();
+    requestAnimationFrame(loop);
   }
+  requestAnimationFrame(loop);
+})();
+
+// ---------- live stats + backend status ----------
+function setWarn(state){ const w=$('#warn'), o=$('#online');
+  if(state==='live'){ w.classList.remove('show'); o.textContent='● ONLINE'; o.style.color='var(--ok)'; }
+  else if(state==='error'){ w.className='warn err show'; w.textContent='Backend error — showing simulated data.'; o.textContent='● ERROR'; o.style.color='var(--bad)'; }
+  else { w.className='warn show'; w.textContent='Backend offline — telemetry unavailable, showing a simulated feed. Start it from the tray.'; o.textContent='● OFFLINE'; o.style.color='#fbbf24'; } }
+function applyStats(s){
+  $('#status').innerHTML =
+    `<div>CPU <b>${s.cpu|0}%</b><div class="bar"><i style="width:${s.cpu}%"></i></div></div>`+
+    `<div>MEMORY <b>${s.ram|0}%</b><div class="bar"><i style="width:${s.ram}%"></i></div></div>`+
+    `<div>GPU <b>${(s.gpu||40)|0}%</b><div class="bar"><i style="width:${s.gpu||40}%"></i></div></div>`+
+    `<div>DISK <b>${s.disk|0}%</b><div class="bar"><i style="width:${s.disk}%"></i></div></div>`;
+  $('#res').innerHTML =
+    `<div class="gz"><div class="ring"></div>CPU<b>${s.cpu|0}%</b></div>`+
+    `<div class="gz"><div class="ring"></div>Memory<b>${s.ram|0}%</b></div>`+
+    `<div class="gz"><div class="ring"></div>Disk<b>${s.disk|0}%</b></div>`+
+    `<div class="gz"><div class="ring"></div>Network<b>${Math.min(99,(s.net_down||0)/20)|0}%</b></div>`;
+  ANA.push(Math.min(1,(s.cpu||0)/100)); if(ANA.length>40) ANA.shift(); drawAna();
 }
-async function poll(){
-  // never throws to the caller: the HUD keeps running even if the backend is down or erroring
-  let s, state='offline';
-  try{
-    const r=await fetch(CONFIG.statsUrl,{cache:'no-store'});
-    try{
-      if(!r.ok) throw 0;
-      s=await r.json();
-      if(typeof s.cpu!=='number') throw 0;
-      state='live';
-    }catch(_){ state='error'; }     // reachable but bad response
-  }catch(_){ state='offline'; }     // unreachable
-  if(state==='live'){ LIVE=true; } else { LIVE=false; s=simulate(); }
-  setBackend(state);
-  apply(s);
+const PROCS = [['Zoe Core',12],['AI Engine',24],['Voice Module',8],['Memory Vault',16],['Command Router',10]];
+$('#procs').innerHTML = PROCS.map(([n,p])=>`<div class="proc"><span><span class="dot">◈</span> ${n}</span><span><span class="r">RUNNING</span> ${p}%</span></div>`).join('');
+async function poll(){ let s, state='offline';
+  try{ const r=await fetch('/stats',{cache:'no-store'}); if(!r.ok) throw 0; s=await r.json(); if(typeof s.cpu!=='number') throw 0; state='live'; }
+  catch(e){ s=sim(); state='offline'; }
+  setWarn(state); applyStats(s);
 }
-poll();setInterval(poll,CONFIG.pollMs);
+poll(); setInterval(poll, 1600);
+
+// ---------- analytics + diagnostics + obsidian mini-graph ----------
+const ANA=[]; const ana=$('#ana'), ax=ana.getContext('2d');
+function drawAna(){ const r=ana.getBoundingClientRect(); ana.width=r.width*2; ana.height=r.height*2; ax.setTransform(2,0,0,2,0,0);
+  ax.clearRect(0,0,r.width,r.height); if(!ANA.length) return; ax.beginPath();
+  ANA.forEach((v,i)=>{ const x=i/(ANA.length-1)*r.width, y=r.height-v*r.height*0.9-3; i?ax.lineTo(x,y):ax.moveTo(x,y); });
+  ax.strokeStyle='#b46bff'; ax.lineWidth=1.5; ax.shadowColor='#9333ea'; ax.shadowBlur=8; ax.stroke();
+  ax.lineTo(r.width,r.height); ax.lineTo(0,r.height); ax.closePath(); ax.fillStyle='rgba(147,51,234,.12)'; ax.fill(); }
+const diag=$('#diag'), dx=diag.getContext('2d');
+function drawDiag(t){ const r=diag.getBoundingClientRect(); diag.width=r.width*2; diag.height=r.height*2; dx.setTransform(2,0,0,2,0,0);
+  dx.clearRect(0,0,r.width,r.height); dx.globalCompositeOperation='lighter';
+  for(const [cx0,rr] of [[r.width*0.35,r.width*0.13],[r.width*0.7,r.width*0.09]]){ dx.save(); dx.translate(cx0,r.height*0.5);
+    for(let k=0;k<3;k++){ dx.save(); dx.rotate(t*0.0008*(k+1)+k); dx.scale(1,0.4);
+      dx.beginPath(); dx.arc(0,0,rr,0,6.28); dx.strokeStyle='rgba(180,107,255,.5)'; dx.lineWidth=1; dx.stroke();
+      dx.fillStyle='#b46bff'; dx.beginPath(); dx.arc(rr,0,1.6,0,7); dx.fill(); dx.restore(); } dx.restore(); }
+  dx.globalCompositeOperation='source-over'; dx.fillStyle='#7ee0b0'; dx.font='8px sans-serif'; dx.fillText('SYSTEM STABLE', r.width*0.5, r.height-3); }
+let NET=[]; (async()=>{ try{ const gph=await (await fetch('/memory/graph',{cache:'no-store'})).json();
+  NET=(gph.nodes||[]).slice(0,60).map(n=>({a:Math.random()*7,r:0.2+Math.random()*0.8,s:(n.size||3)>6?3:1.5,
+    c:n.type==='core'?'#fff':n.type==='note'?'#f472b6':n.type==='bank'?'#a855f7':'#d946ef'})); }catch(e){} })();
+const net=$('#net'), nx=net.getContext('2d');
+function drawNet(t){ const r=net.getBoundingClientRect(); net.width=r.width*2; net.height=r.height*2; nx.setTransform(2,0,0,2,0,0);
+  nx.clearRect(0,0,r.width,r.height); nx.save(); nx.translate(r.width/2,r.height/2); nx.rotate(t*0.0002); nx.globalCompositeOperation='lighter';
+  const R=Math.min(r.width,r.height)*0.42; const pts=NET.map(n=>({x:Math.cos(n.a)*n.r*R,y:Math.sin(n.a)*n.r*R*0.8,s:n.s,c:n.c}));
+  nx.strokeStyle='rgba(45,212,191,.4)'; nx.lineWidth=.5;
+  for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){ const dd=(pts[i].x-pts[j].x)**2+(pts[i].y-pts[j].y)**2; if(dd<700){ nx.beginPath(); nx.moveTo(pts[i].x,pts[i].y); nx.lineTo(pts[j].x,pts[j].y); nx.stroke(); } }
+  for(const p of pts){ nx.fillStyle=p.c; nx.shadowColor=p.c; nx.shadowBlur=6; nx.beginPath(); nx.arc(p.x,p.y,p.s,0,7); nx.fill(); }
+  nx.restore(); }
+$('#netwrap').addEventListener('click',()=>location.href='/3d');
+(function mini(t){ drawDiag(t); drawNet(t); requestAnimationFrame(mini); })(0);
 </script>
 </body>
 </html>
