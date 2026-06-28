@@ -45,6 +45,10 @@ to the right skill, subagent, connector, or automation, and ends with the recomm
 
 What is wired and what still needs Chris's keys or a host is tracked honestly in JARVIS.md.
 
+- Command center UI: `jarvis-ui/index.html`, a HUD dashboard of the live state (skills, agents,
+  connectors, wired vs gated, the next move). Open it in a browser. Customize the CONFIG block at
+  the top of the file: name, taglines, accent color, panels, quick actions, command routing.
+
 ## The memory bank
 
 The model starts fresh each session; the committed files are the memory. `CLAUDE.md` auto-loads the
