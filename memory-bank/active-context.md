@@ -23,10 +23,14 @@ to the default branch and pushed.
 - Still needs Chris (credentialed, left untouched): voice keys (11 Labs + Deepgram) and a 24/7
   host (GitHub Actions / Zapier). Auto-posting stays gated. Those are the next builds.
 - Cross-session autobuild armed: scheduled task `jarvis-autobuild` (daily ~9am) reads
-  `memory-bank/handoff.md` and does one verified backlog item per run while Chris is away until
-  July 5. It only does safe internal work and parks at "waiting on Chris" when the backlog drains
-  or hits a credentialed wall. Runs while the Claude app is open (or next launch), not a cloud
-  daemon. Manage or stop it from the Scheduled sidebar, or say "stop the autobuild".
+  `memory-bank/handoff.md` and does one verified backlog item per run. Runs while the Claude app is
+  open (or next launch), not a cloud daemon. Manage or stop it from the Scheduled sidebar.
+- The whole safe backlog was already done live this session (not left for the daily runs): security
+  audit (clearcoatco-website/SECURITY-NOTES.md), tests for utils + watch_batch (76 green), root
+  README, voice spec + inert CI template, VoltAgents coverage audit. handoff.md is now BACKLOG
+  DRAINED. The autobuild will confirm and park until Chris provides the credentialed items.
+- What is left needs Chris (credentialed): voice keys (11 Labs + Deepgram), a 24/7 host + secrets
+  (or just rename the CI template to turn on tests), auto-post approval, and the Clearcoat site fixes.
 
 ## Current focus (2026-06-27)
 
