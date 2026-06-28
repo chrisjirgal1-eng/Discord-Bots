@@ -190,6 +190,21 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   electron-builder cache (the 2 darwin symlinks are irrelevant to Windows). Unsigned (no cert).
   Caveat: bundled .env contains API keys -> the installer is private, do not share it.
 
+- [x] K7 DONE 2026-06-28. Command bar (Spotlight/Raycast-style palette) + explainable actions,
+  sharing ONE engine with voice. New zoe_router.process(text, source, ...) is the shared pipeline:
+  classify -> _explain (parsed intent + steps) -> execute -> record; returns a rich explainable
+  result. handle() (voice) now delegates to process(), so voice + typed use the same engine (no
+  duplicate logic). New tools/zoe_cli.py: typed text -> process() -> one JSON line (the bridge the
+  bar spawns). Electron: createPalette() (frameless/transparent/always-on-top, secure preload
+  palette-preload.js exposing window.zoeBar), palette.html (dark UI: input, animated step preview,
+  status, result, Reasoning toggle, History panel reading state). Ctrl+Space toggles it; hides on
+  blur/Esc. IPC command:run -> runCommandText() spawns python tools/zoe_cli.py (windowsHide). record_
+  command now stores a summary for the history panel. Verified: zoe_cli emits correct parsed/steps
+  JSON; node --check + palette JS balanced; diagnostics still 100/100; app boots with the palette,
+  control endpoint live, no errors. The Ctrl+Space keypress + live UI is the user's to try. Vanilla
+  JS (not React) on purpose -- matches the existing secure no-build-step renderer; COMMAND_SYSTEM_GUIDE
+  section 15.
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:

@@ -76,13 +76,14 @@ def start_session(context=""):
     save(st)
     return st
 
-def record_command(text, action, handled=None, workspace=None, trace_id=None):
+def record_command(text, action, handled=None, workspace=None, trace_id=None, summary=None):
     """The 'state updated' step of the pipeline. Append to history (FIFO, capped at max_entries)
-    and update workspace/last_active. Keeps the legacy last_commands list populated too."""
+    and update workspace/last_active. Keeps the legacy last_commands list populated too.
+    summary is the human-readable parsed intent, shown in the command-bar history panel."""
     try:
         st = load()
-        entry = {"ts": time.strftime("%H:%M:%S"), "text": text,
-                 "action": action, "handled": handled, "trace_id": trace_id}
+        entry = {"ts": time.strftime("%H:%M:%S"), "text": text, "action": action,
+                 "handled": handled, "trace_id": trace_id, "summary": summary}
         hist = st.setdefault("history", {"last_commands": [], "max_entries": 50})
         cap = int(hist.get("max_entries", 50) or 50)
         hist["last_commands"] = (hist.get("last_commands", []) + [entry])[-cap:]

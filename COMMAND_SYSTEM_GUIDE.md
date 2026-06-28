@@ -213,3 +213,24 @@ the references `example_plugin.py` (echo) and `clock_plugin.py` (time).
 plugin, backend), prints PASS/FAIL per test, and reports a system health score (0-100) plus a final
 validation block. It points the state layer at a temp file (never touches real state) and never
 crashes. Exit 0 when every test passes, else 1.
+
+## 15. Command bar (the Spotlight-style palette)
+
+`Ctrl+Space` opens a centered command bar. Typed requests run through the EXACT SAME engine as
+voice -- there is one pipeline, `zoe_router.process(text, source, ...)`:
+
+```
+voice  : zoe_assistant -> zoe_router.handle() -> process()   (source="voice", speaks the reply)
+command: palette.html  -> command:run (IPC)   -> main.runCommandText() -> python tools/zoe_cli.py
+                       -> zoe_router.process()                (source="ui",   shows the steps)
+```
+
+`process()` returns an explainable result: `{parsed, steps, intent, target, url, handled, status,
+say, trace_id}`. The palette renders it as an Action Preview -- the parsed intent, the step list
+revealed one by one, a live status, then the result. A **Reasoning** toggle shows every decision
+(intent, target, url, handled, trace id); a **History** panel reads `history.last_commands` from
+the state file, each entry expandable to its parsed summary. The palette is a frameless,
+transparent, always-on-top window (`electron/palette.html` + `electron/palette-preload.js`), same
+secure posture as the HUD (contextIsolation on, nodeIntegration off, one allow-listed bridge
+`window.zoeBar`). It hides on blur or Esc. Because both front ends call `process()`, there is no
+duplicate command logic -- adding an action type (section 8) lights it up for voice and the bar at once.

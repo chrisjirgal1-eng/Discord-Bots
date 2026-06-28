@@ -28,7 +28,7 @@ const CONTROL_PORT = 7766;
 // Hidden/background start: launched with --hidden (the login auto-start), the window stays in the
 // tray and Zoe just listens; say "hey zoe" to open it. A manual launch (npm start) shows normally.
 const START_HIDDEN = process.argv.includes('--hidden') || process.env.ZOE_START_HIDDEN === '1';
-let win = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
+let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
 
 // ---- python resolution (the bare `python` on PATH is the Windows Store stub) ----
 function pythonExe() {
@@ -127,6 +127,53 @@ function showWindow() {
   win.setAlwaysOnTop(false);
 }
 
+// ---- command bar (the Spotlight/Raycast-style palette) ----
+function createPalette() {
+  paletteWin = new BrowserWindow({
+    width: 760, height: 520, frame: false, transparent: true, resizable: false, show: false,
+    skipTaskbar: true, alwaysOnTop: true, fullscreenable: false, hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'palette-preload.js'),
+      contextIsolation: true, nodeIntegration: false, sandbox: true,
+    },
+  });
+  paletteWin.loadFile(path.join(__dirname, 'palette.html'));
+  paletteWin.on('blur', () => { if (paletteWin && paletteWin.isVisible()) paletteWin.hide(); });
+  paletteWin.on('close', (e) => { if (!app.isQuitting) { e.preventDefault(); paletteWin.hide(); } });
+}
+function togglePalette() {
+  if (!paletteWin) return;
+  if (paletteWin.isVisible()) return paletteWin.hide();
+  paletteWin.center();
+  paletteWin.show();
+  paletteWin.focus();
+  paletteWin.webContents.send('palette:show');
+}
+// Typed command -> the SAME pipeline voice uses (zoe_router.process via the CLI bridge).
+// python.exe (capturable stdout) with windowsHide so no console appears.
+function runCommandText(text) {
+  return new Promise((resolve) => {
+    let out = '';
+    let p;
+    try {
+      p = spawn(pythonExe(), [path.join(ROOT, 'tools', 'zoe_cli.py'), String(text)],
+        { cwd: ROOT, windowsHide: true,
+          env: { ...process.env, ZOE_CONTROL: `http://127.0.0.1:${CONTROL_PORT}` } });
+    } catch (e) { return resolve({ handled: false, parsed: 'Error', steps: [], error: String(e), status: 'failed' }); }
+    p.stdout.on('data', d => out += d);
+    p.on('error', e => resolve({ handled: false, parsed: 'Error', steps: [], error: String(e), status: 'failed' }));
+    p.on('close', () => {
+      try {
+        const line = out.trim().split(/\r?\n/).pop();
+        resolve(JSON.parse(line));
+      } catch (e) {
+        resolve({ handled: false, parsed: 'Error', steps: [], error: 'Could not read result', status: 'failed' });
+      }
+    });
+  });
+}
+
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
   if (voiceProc) return;
@@ -185,6 +232,13 @@ function registerIpc() {
   ipcMain.handle('voice:start', () => { startVoice(); return { ok: true }; });
   ipcMain.handle('voice:stop', () => { stopVoice(); return { ok: true }; });
   ipcMain.handle('state:get', () => readState());
+  // command bar -> shared pipeline (same engine as voice)
+  ipcMain.handle('command:run', async (_e, text) => runCommandText(text));
+  ipcMain.handle('command:history', () => {
+    const s = readState();
+    return (s.history && s.history.last_commands) || s.last_commands || [];
+  });
+  ipcMain.handle('palette:hide', () => { if (paletteWin) paletteWin.hide(); return { ok: true }; });
 }
 
 // ---- global shortcuts: push-to-talk + show/hide ----
@@ -197,6 +251,8 @@ function registerShortcuts() {
   globalShortcut.register('CommandOrControl+Shift+Z', () => {
     if (win && win.isVisible()) win.hide(); else showWindow();
   });
+  // command bar: Spotlight-style open/close
+  globalShortcut.register('CommandOrControl+Space', togglePalette);
 }
 
 // ---- lifecycle ----
@@ -207,6 +263,7 @@ else {
     app.setAppUserModelId('com.chris.zoe');   // so Windows attributes notifications to "Zoe"
     startTelemetry();
     setTimeout(createWindow, 1100);   // give the telemetry server a moment
+    createPalette();                  // command bar, hidden until Ctrl+Space
     buildTray();
     if (START_HIDDEN) {
       // launched in the background: tell the user Zoe is alive and how to summon her

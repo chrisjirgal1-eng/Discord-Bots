@@ -121,18 +121,60 @@ def execute(action, command, ctrl=None):
         handled = True
     return a, handled
 
-def handle(text, groq_key, ctrl=None, history=None):
-    """Classify, execute, and record. Returns (spoken_reply, action_type). State update is the
-    final pipeline step and is best-effort: it never blocks the command."""
-    action = classify(text, groq_key, history)
-    a, handled = execute(action, text, ctrl)
+def _explain(action):
+    """Turn an action dict into a human-readable parsed intent + ordered steps (for the command
+    bar's explain view). Pure, no side effects."""
+    a = action.get("action", "chat")
+    target = action.get("target", "")
+    url = action.get("url", "")
+    if a == "launch":
+        return f"Launch the app '{target}'", [f"Resolve '{target}' to an app", f"Launch {target}"]
+    if a == "close":
+        return f"Close '{target}'", [f"Find the {target} process", f"Close {target}"]
+    if a == "folder":
+        return f"Open the folder '{target}'", [f"Locate {target}", "Open it in Explorer"]
+    if a == "web":
+        return f"Open the browser to {url}", ["Open the default browser", f"Navigate to {url}"]
+    if a == "workspace":
+        return (f"Start the '{target}' workspace",
+                [f"Load workspace '{target}'", "Launch its apps and sites in order"])
+    return "Answer in conversation", ["Understand the request", "Compose a reply"]
+
+def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=False):
+    """THE shared command pipeline. Voice and the command bar both call this -- one engine, no
+    duplicate logic. Classify -> explain -> execute -> record. Returns a rich, explainable result
+    ({parsed, steps, intent, handled, status, say, trace_id, ...}). Never raises."""
+    groq_key = groq_key or os.environ.get("GROQ_API_KEY")
+    tid = uuid.uuid4().hex
+    try:
+        action = classify(text, groq_key, history)
+        parsed, steps = _explain(action)
+        if simulate:
+            a, handled = action.get("action", "chat"), True
+        else:
+            a, handled = execute(action, text, ctrl)
+        say = action.get("say", "On it, sir.")
+    except Exception as e:
+        action, parsed, steps = {}, "Could not parse that", ["Parse the request"]
+        a, handled, say = "chat", False, "Sorry sir, something went wrong."
     if zoe_state:
         try:
-            zoe_state.record_command(text, a, handled,
+            zoe_state.record_command(text, a, handled, trace_id=tid, summary=parsed,
                                      workspace=action.get("target") if a == "workspace" else None)
         except Exception:
             pass
-    return action.get("say", "On it, sir."), a
+    return {
+        "schema_version": COMMAND_SCHEMA_VERSION, "trace_id": tid, "source": source,
+        "text": text, "intent": a, "parsed": parsed, "steps": steps,
+        "target": action.get("target", ""), "url": action.get("url", ""),
+        "handled": bool(handled), "say": say,
+        "status": "completed" if handled else "failed",
+    }
+
+def handle(text, groq_key, ctrl=None, history=None):
+    """Voice entry point. Delegates to process() (the shared engine) and returns (say, action)."""
+    r = process(text, "voice", groq_key, ctrl, history)
+    return r["say"], r["intent"]
 
 
 # ----------------------------------------------------------------------------------------------
