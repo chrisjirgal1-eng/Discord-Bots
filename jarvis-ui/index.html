@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JARVIS // Command Center</title>
+<style>
+/* ============================================================================
+   JARVIS Command Center  —  Chris's personal AI OS, the HUD.
+   Self-contained. Open this file in any browser. Customize the CONFIG block in
+   the <script> at the bottom (name, tagline, accent color, the panels).
+   When rendered inside Claude chat, the command bar fires real "jarvis, ..."
+   prompts. As a standalone file, it copies the command to your clipboard.
+   ============================================================================ */
+:root{
+  --bg:#03060a; --bg2:#060b12; --line:rgba(56,189,248,.16);
+  --cyan:#38bdf8; --ice:#22d3ee; --glow:rgba(56,189,248,.55);
+  --text:#dbeafe; --muted:#5b7287; --ok:#34d399; --warn:#fbbf24; --hot:#fb7185;
+  --mono:ui-monospace,"SFMono-Regular","Cascadia Code","Consolas",monospace;
+  --sans:"Segoe UI",Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(56,189,248,.10), transparent 60%),
+    var(--bg);
+  color:var(--text); font-family:var(--sans);
+  overflow-x:hidden; min-height:100vh;
+}
+/* faint moving grid */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.35;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:46px 46px; mask-image:radial-gradient(ellipse at center,#000 30%,transparent 85%);
+  animation:drift 22s linear infinite;
+}
+@keyframes drift{to{background-position:46px 46px}}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:22px 20px 96px}
+
+/* ── header ── */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  border-bottom:1px solid var(--line);padding-bottom:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--ice);
+  box-shadow:0 0 12px var(--glow),0 0 26px var(--glow);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.4}}
+.brand h1{font-family:var(--mono);font-size:1.15rem;font-weight:700;letter-spacing:5px}
+.brand h1 b{color:var(--cyan)}
+.brand .sub{font-family:var(--mono);font-size:.62rem;letter-spacing:3px;color:var(--muted);margin-top:2px}
+.hud-right{display:flex;align-items:center;gap:18px;font-family:var(--mono)}
+#clock{font-size:1rem;letter-spacing:2px;color:var(--ice)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-size:.58rem;letter-spacing:1.5px;padding:4px 9px;border:1px solid var(--line);
+  border-radius:30px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.pill.warn i{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+
+/* ── layout ── */
+.grid{display:grid;grid-template-columns:330px 1fr;gap:18px;margin-top:20px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:18px}
+
+/* ── reactor ── */
+.reactor-card{border:1px solid var(--line);border-radius:16px;padding:26px 20px;text-align:center;
+  background:linear-gradient(180deg,rgba(56,189,248,.04),transparent)}
+.reactor{position:relative;width:190px;height:190px;margin:6px auto 14px}
+.ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(56,189,248,.25)}
+.ring.r2{inset:18px;border-style:dashed;border-color:rgba(34,211,238,.35);animation:spin 14s linear infinite}
+.ring.r3{inset:36px;border-color:rgba(56,189,248,.5);animation:spin 9s linear infinite reverse}
+.ring.r4{inset:58px;border-width:2px;border-color:rgba(34,211,238,.65)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.core{position:absolute;inset:74px;border-radius:50%;
+  background:radial-gradient(circle,#bdf0ff, var(--ice) 45%, #0a3a52 100%);
+  box-shadow:0 0 26px var(--glow),0 0 60px var(--glow),inset 0 0 18px rgba(255,255,255,.5);
+  animation:breathe 3.2s ease-in-out infinite}
+@keyframes breathe{50%{box-shadow:0 0 36px var(--glow),0 0 90px var(--glow),inset 0 0 22px #fff}}
+.tick{position:absolute;inset:0}
+.tick span{position:absolute;top:2px;left:50%;width:2px;height:9px;background:rgba(56,189,248,.4);
+  transform-origin:50% 93px}
+.reactor-card .name{font-family:var(--mono);letter-spacing:7px;font-size:1.3rem;color:#eaf6ff}
+.tagline{font-family:var(--mono);font-size:.74rem;color:var(--ice);letter-spacing:1px;
+  min-height:1.1em;margin-top:6px}
+.tagline .cur{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* quick actions */
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+.qa button{font-family:var(--mono);font-size:.66rem;letter-spacing:1px;color:var(--text);
+  background:rgba(56,189,248,.06);border:1px solid var(--line);border-radius:9px;padding:9px 6px;
+  cursor:pointer;transition:.15s}
+.qa button:hover{border-color:var(--cyan);background:rgba(56,189,248,.14);box-shadow:0 0 14px rgba(56,189,248,.25)}
+
+/* ── panels ── */
+.panel{border:1px solid var(--line);border-radius:16px;padding:18px;position:relative;overflow:hidden}
+.panel::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5;
+  animation:sweep 5s ease-in-out infinite}
+@keyframes sweep{0%,100%{transform:translateY(0);opacity:.15}50%{opacity:.6}}
+.panel h2{font-family:var(--mono);font-size:.72rem;letter-spacing:3px;color:var(--muted);
+  text-transform:uppercase;margin-bottom:14px;display:flex;justify-content:space-between}
+.panel h2 span{color:var(--ice)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-family:var(--mono);font-size:.66rem;letter-spacing:.5px;padding:5px 10px;border-radius:7px;
+  border:1px solid var(--line);color:var(--text);cursor:pointer;transition:.15s;background:rgba(255,255,255,.02)}
+.chip:hover{border-color:var(--cyan);color:#fff;box-shadow:0 0 12px rgba(56,189,248,.3)}
+.cats{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.cat{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.66rem;
+  padding:6px 10px;border:1px solid var(--line);border-radius:7px;color:var(--muted)}
+.cat b{color:var(--cyan)}
+.conn{display:flex;flex-wrap:wrap;gap:6px}
+.conn span{font-family:var(--mono);font-size:.6rem;letter-spacing:.5px;color:var(--muted);
+  border:1px solid var(--line);border-radius:30px;padding:3px 9px}
+
+/* status rows */
+.status li{list-style:none;display:flex;align-items:center;gap:10px;font-family:var(--mono);
+  font-size:.72rem;padding:7px 0;border-bottom:1px dashed rgba(56,189,248,.1)}
+.status li:last-child{border-bottom:0}
+.status .led{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.led.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.led.warn{background:var(--warn);box-shadow:0 0 10px var(--warn);animation:pulse 1.8s infinite}
+.status .label{flex:1;color:var(--text)}
+.status .val{color:var(--muted);letter-spacing:1px}
+.status .val.gate{color:var(--warn)}
+
+/* next move */
+.next{border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.05)}
+.next h2 span{color:var(--warn)}
+.next .move{font-size:.95rem;line-height:1.5;color:#fff;font-weight:600;margin-bottom:6px}
+.next .why{font-family:var(--mono);font-size:.68rem;color:var(--muted);line-height:1.6}
+.next button{margin-top:12px;font-family:var(--mono);font-size:.68rem;letter-spacing:1px;
+  background:var(--warn);color:#1a1205;border:0;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:700}
+.next button:hover{box-shadow:0 0 18px rgba(251,191,36,.5)}
+
+/* command bar */
+.cmd{position:fixed;left:0;right:0;bottom:0;z-index:5;
+  background:linear-gradient(180deg,transparent,var(--bg) 40%);padding:18px 20px 16px}
+.cmd-inner{max-width:1120px;margin:0 auto;display:flex;gap:10px;align-items:center;
+  border:1px solid var(--line);border-radius:13px;padding:6px 6px 6px 16px;
+  background:rgba(6,11,18,.9);box-shadow:0 0 30px rgba(56,189,248,.12)}
+.cmd .prompt{font-family:var(--mono);color:var(--ice);letter-spacing:2px;font-size:.8rem}
+.cmd input{flex:1;background:transparent;border:0;outline:0;color:var(--text);
+  font-family:var(--mono);font-size:.9rem;letter-spacing:.5px}
+.cmd input::placeholder{color:var(--muted)}
+.cmd .route{font-family:var(--mono);font-size:.62rem;color:var(--muted);letter-spacing:1px;
+  white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+.cmd .route b{color:var(--cyan)}
+.cmd .go{font-family:var(--mono);font-size:.72rem;letter-spacing:2px;color:#04121a;font-weight:700;
+  background:var(--cyan);border:0;border-radius:9px;padding:10px 18px;cursor:pointer}
+.cmd .go:hover{box-shadow:0 0 18px var(--glow)}
+
+/* boot overlay */
+#boot{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;
+  font-family:var(--mono);transition:opacity .8s}
+#boot .b1{letter-spacing:8px;color:var(--cyan);font-size:1.1rem}
+#boot .b2{letter-spacing:3px;color:var(--muted);font-size:.7rem;min-height:1em}
+#boot.off{opacity:0;pointer-events:none}
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:40;
+  font-family:var(--mono);font-size:.7rem;letter-spacing:1px;color:#04121a;background:var(--cyan);
+  padding:8px 16px;border-radius:30px;opacity:0;transition:.25s;box-shadow:0 0 20px var(--glow)}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<h2 class="sr-only">JARVIS command center: a status dashboard for Chris's personal AI OS, showing skills, agents, connectors, what is wired versus waiting on credentials, the recommended next move, and a command bar.</h2>
+
+<div id="boot"><div class="b1">JARVIS</div><div class="b2" id="bootline">initializing core</div></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <h1>J<b>A</b>RVIS</h1>
+        <div class="sub" id="owner">PERSONAL AI OS // CHRIS</div>
+      </div>
+    </div>
+    <div class="hud-right">
+      <div class="pills">
+        <div class="pill"><i></i>CORE ONLINE</div>
+        <div class="pill"><i></i>MEMORY SYNCED</div>
+        <div class="pill warn"><i></i>VOICE STANDBY</div>
+      </div>
+      <div id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: reactor + quick actions -->
+    <div class="col">
+      <div class="reactor-card">
+        <div class="reactor">
+          <div class="ring r1"></div><div class="ring r2"></div>
+          <div class="ring r3"></div><div class="ring r4"></div>
+          <div class="tick" id="tick"></div>
+          <div class="core"></div>
+        </div>
+        <div class="name">JARVIS</div>
+        <div class="tagline" id="tag"></div>
+        <div class="qa" id="qa"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: panels -->
+    <div class="col">
+      <div class="panel next">
+        <h2>Recommended next move <span>PRIORITY</span></h2>
+        <div class="move" id="nextMove">Wire voice: add 11 Labs + Deepgram keys to .env</div>
+        <div class="why" id="nextWhy">It is the one piece that turns the router into the "wide awake, sir" assistant. Everything else is already standing. Follow-on: the voice loop reuses every skill through claude -p, so no rebuild.</div>
+        <button onclick="fire('jarvis, build the voice loop from memory-bank/jarvis-voice-spec.md')">EXECUTE WHEN KEYS ARE IN</button>
+      </div>
+
+      <div class="panel">
+        <h2>Skills <span id="skillCount"></span></h2>
+        <div class="chips" id="skills"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Specialist agents <span id="agentCount"></span></h2>
+        <div class="cats" id="cats"></div>
+      </div>
+
+      <div class="panel">
+        <h2>System status <span>LIVE</span></h2>
+        <ul class="status" id="status"></ul>
+      </div>
+
+      <div class="panel">
+        <h2>Connectors <span>MCP</span></h2>
+        <div class="conn" id="conn"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cmd">
+  <div class="cmd-inner">
+    <span class="prompt">jarvis,</span>
+    <input id="cmd" autocomplete="off" placeholder="ask for anything: a content draft, a status, a review..." />
+    <span class="route" id="route"></span>
+    <button class="go" onclick="run()">RUN</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================ CONFIG (customize me) ======================= */
+const CONFIG = {
+  owner: "CHRIS",
+  taglines: ["Wide awake, sir.", "All systems are go.", "Standing by.", "What shall we build?"],
+  skills: [
+    ["jarvis","the front door, routes anything"],
+    ["content-pipeline","scout to script to caption"],
+    ["caption","3 social captions"],
+    ["clearcoat-post","detailing posts"],
+    ["coach-email","D1 outreach drafts"],
+    ["zen-announce","Zenthra guild posts"],
+    ["digest-transcripts","learn from videos"],
+    ["memory-update","save the session"],
+    ["handoff","resume mid-task"],
+  ],
+  agentCats: [
+    ["core-dev",12],["language",31],["infra",17],["qa-sec",18],["data-ai",14],
+    ["dev-exp",16],["domains",15],["business",17],["meta",12],["research",12],
+  ],
+  connectors: ["GitHub","Supabase","Vercel","Gmail","Drive","Calendar","Notion","Slack","Stripe","Zapier"],
+  status: [
+    ["ok","Persistent memory + graph","400 nodes"],
+    ["ok","Test suite","76 green"],
+    ["ok","JARVIS router + 9 skills","wired"],
+    ["ok","154 specialist agents","loaded"],
+    ["ok","Content pipeline","draft only"],
+    ["warn","Voice (11 Labs + Deepgram)","needs keys"],
+    ["warn","24/7 automation","needs a host"],
+    ["warn","Auto-posting","needs approval"],
+  ],
+  // command bar routing: first keyword that matches wins
+  routes: [
+    [["caption","hook"],"caption"],
+    [["content","pipeline","post","reel","video idea"],"content-pipeline"],
+    [["announce","guild","zenthra","raid","giveaway"],"zen-announce"],
+    [["clearcoat","detail","booking"],"clearcoat-post"],
+    [["coach","recruit","track"],"coach-email"],
+    [["digest","transcript"],"digest-transcripts"],
+    [["memory","update","save"],"memory-update"],
+    [["handoff","resume","step away"],"handoff"],
+    [["how does","architecture","connect","depends"],"graphify query"],
+    [["security","review","backend","refactor","debug","deploy"],"a VoltAgent specialist"],
+    [["voice","speak","talk"],"voice loop (needs keys)"],
+  ],
+  quickActions: [
+    ["▸ Status","jarvis, give me a full status"],
+    ["▸ Content","jarvis, run the content pipeline for Zenthra"],
+    ["▸ Update memory","jarvis, update memory bank"],
+    ["▸ Next move","jarvis, what is the single best next move"],
+  ],
+};
+/* ========================================================================= */
+
+// reactor ticks
+const tick=document.getElementById('tick');
+for(let i=0;i<48;i++){const s=document.createElement('span');s.style.transform=`rotate(${i*7.5}deg)`;tick.appendChild(s);}
+
+// owner + skills + agents + connectors + status
+document.getElementById('owner').textContent="PERSONAL AI OS // "+CONFIG.owner;
+const sk=document.getElementById('skills');
+CONFIG.skills.forEach(([n,d])=>{const c=document.createElement('div');c.className='chip';c.textContent=n;
+  c.title=d;c.onclick=()=>setCmd("use the "+n+" skill");sk.appendChild(c);});
+document.getElementById('skillCount').textContent=CONFIG.skills.length+" READY";
+const cats=document.getElementById('cats');let agentTotal=0;
+CONFIG.agentCats.forEach(([n,c])=>{agentTotal+=c;const d=document.createElement('div');d.className='cat';
+  d.innerHTML=`<span>${n}</span><b>${c}</b>`;cats.appendChild(d);});
+document.getElementById('agentCount').textContent=agentTotal+" SPECIALISTS";
+const conn=document.getElementById('conn');
+CONFIG.connectors.forEach(c=>{const s=document.createElement('span');s.textContent=c;conn.appendChild(s);});
+const st=document.getElementById('status');
+CONFIG.status.forEach(([k,l,v])=>{const li=document.createElement('li');
+  li.innerHTML=`<span class="led ${k}"></span><span class="label">${l}</span><span class="val ${k==='warn'?'gate':''}">${v}</span>`;
+  st.appendChild(li);});
+const qa=document.getElementById('qa');
+CONFIG.quickActions.forEach(([label,cmd])=>{const b=document.createElement('button');b.textContent=label;
+  b.onclick=()=>fire(cmd);qa.appendChild(b);});
+
+// clock
+function clk(){const d=new Date();document.getElementById('clock').textContent=d.toTimeString().slice(0,8);}
+clk();setInterval(clk,1000);
+
+// typing tagline loop
+let ti=0;
+function typeTag(){
+  const t=CONFIG.taglines[ti%CONFIG.taglines.length];let i=0;const el=document.getElementById('tag');
+  const iv=setInterval(()=>{el.innerHTML=t.slice(0,i)+'<span class="cur">_</span>';i++;
+    if(i>t.length){clearInterval(iv);setTimeout(()=>{ti++;typeTag();},2600);}},55);
+}
+
+// command routing preview
+const input=document.getElementById('cmd');
+function routeOf(text){
+  const t=text.toLowerCase();
+  for(const [keys,target] of CONFIG.routes){if(keys.some(k=>t.includes(k)))return target;}
+  return text.trim()? "jarvis routes it" : "";
+}
+input.addEventListener('input',()=>{const r=routeOf(input.value);
+  document.getElementById('route').innerHTML=r?`&rarr; <b>${r}</b>`:"";});
+input.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+function setCmd(v){input.value=v;input.dispatchEvent(new Event('input'));input.focus();}
+
+// fire a command: into chat if available, else copy
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);}
+function fire(text){
+  if(typeof sendPrompt==='function'){sendPrompt(text);toast("sent to JARVIS");}
+  else if(navigator.clipboard){navigator.clipboard.writeText(text);toast("copied: "+text.slice(0,40)+"...");}
+  else{toast(text);}
+}
+function run(){const v=input.value.trim();if(!v)return;fire("jarvis, "+v);input.value="";document.getElementById('route').innerHTML="";}
+
+// boot sequence
+const bootLines=["initializing core","loading memory bank","linking 154 agents","mounting connectors","JARVIS online"];
+let bi=0;const bl=document.getElementById('bootline');
+const bv=setInterval(()=>{bl.textContent=bootLines[bi];bi++;
+  if(bi>=bootLines.length){clearInterval(bv);setTimeout(()=>{document.getElementById('boot').classList.add('off');typeTag();},650);}},420);
+</script>
+</body>
+</html>
