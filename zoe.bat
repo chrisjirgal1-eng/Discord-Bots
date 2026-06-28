@@ -1,6 +1,6 @@
 @echo off
-REM ZOE launcher: starts the live telemetry server and opens the HUD in your browser.
-REM Double-click this file. Close the "ZOE server" window to stop it.
-start "ZOE server" python "%~dp0tools\zoe_server.py"
-timeout /t 2 /nobreak >nul
-start "" http://localhost:7717
+REM ZOE: start the full voice assistant.
+REM It opens her live HUD, then listens for "Hey Zoe". Say e.g. "Hey Zoe, show me the news"
+REM and she pulls it up in your browser and replies out loud. Close this window to stop her.
+REM (For the HUD only, with no voice, run: python tools\zoe_server.py)
+python "%~dp0tools\zoe_assistant.py"

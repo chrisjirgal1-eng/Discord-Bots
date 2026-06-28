@@ -48,9 +48,12 @@ What is wired and what still needs Chris's keys or a host is tracked honestly in
 - Command center UI: `zoe-ui/index.html`, a live Iron Man-style telemetry HUD (arc reactor, gauges,
   graphs of real CPU, RAM, disk, and network from `tools/zoe_server.py` via psutil). Double-click
   `zoe.bat` to start the server and open it at localhost:7717. Standalone it shows a simulated feed.
-- Voice: `tools/jarvis_voice.py` is the two-way loop (mic to Deepgram to Groq to ElevenLabs); the
-  spoken assistant is Zoe. `tools/jarvis_speak.py` just speaks text. The older card-style dashboard
-  is `jarvis-ui/index.html`. Both HUDs have a theme switcher and a CONFIG block at the top.
+- Zoe the assistant: `tools/zoe_assistant.py` (run `zoe.bat`) is wake-word driven. Say "Hey Zoe"
+  then a request and she opens it in your browser (news, a YouTube search, a Google search, a site)
+  and confirms out loud. Pipeline: mic voice-activity to Deepgram to Groq intent to browser plus
+  ElevenLabs speech. `tools/jarvis_voice.py` is a simpler push-to-talk chat loop; `tools/jarvis_speak.py`
+  just speaks text. The older card-style dashboard is `jarvis-ui/index.html`. Both HUDs have a theme
+  switcher and a CONFIG block at the top. Tune `RMS_THRESHOLD` in zoe_assistant.py if the mic is too hot or too quiet.
 
 ## The memory bank
 

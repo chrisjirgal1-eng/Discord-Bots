@@ -88,6 +88,10 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
 - [x] B8 DONE 2026-06-28. Renamed the assistant to ZOE and built a live Rainmeter/Iron-Man HUD:
   zoe-ui/index.html (arc reactor, gauges, live graphs, wireframe globe) fed by tools/zoe_server.py
   (real CPU/RAM/disk/network via psutil at localhost:7717). zoe.bat launches it. Voice persona is Zoe.
+- [x] B9 DONE 2026-06-28. Zoe now ACTS, not just talks: tools/zoe_assistant.py is a wake-word
+  assistant ("Hey Zoe ...") that boots the HUD, hears via Deepgram, routes intent via Groq, and OPENS
+  what you ask in the browser (news, youtube, search, sites) while speaking a confirmation. zoe.bat
+  runs it. Intent router verified on sample commands; mic/wake VAD needs a live test (RMS_THRESHOLD tunable).
 
 ## Next step
 
