@@ -106,7 +106,15 @@ function refreshTrayMenu() {
     { label: 'Quit Zoe', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
 }
-function showWindow() { if (win) { win.show(); win.focus(); } }
+function showWindow() {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  // brief always-on-top bump so the window reliably comes to the foreground on Windows
+  win.setAlwaysOnTop(true);
+  win.focus();
+  win.setAlwaysOnTop(false);
+}
 
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
@@ -138,6 +146,10 @@ function startControlServer() {
           else if (data.launch) result = { handled: true, label: launcher.launchOne(data.launch, wsm.appMap()) };
           else if (data.close) result = { handled: true, ...launcher.closeApp(data.close) };
           else if (data.url) result = { handled: true, ...launcher.openUrl(data.url) };
+        } else if (req.url === '/wake' || req.url === '/show') {
+          // the voice assistant heard "hey zoe" -> bring the window to the front
+          showWindow();
+          result = { handled: true, shown: true };
         }
       } catch (e) { result = { handled: false, error: String(e) }; }
       res.writeHead(200, { 'Content-Type': 'application/json' });

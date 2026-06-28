@@ -82,6 +82,9 @@ spoken Groq reply) and the `web` action (Groq picks the URL).
 1. `zoe_assistant.py` records an utterance (energy voice-activity detection, `RMS_THRESHOLD`).
 2. It transcribes with Deepgram.
 3. It checks the transcript for a wake word ("zoe", "hey zoe"). If absent, it ignores the line.
+   On a hit it also POSTs to the Electron control route `/wake`, which brings the Zoe window to
+   the front (the "hey zoe pops it up" behavior). This is best-effort and only applies under the
+   desktop app; standalone, there is no window to summon.
 4. It strips the wake word and passes the rest to `zoe_router.handle(command, ...)`.
 5. `zoe_router.classify()` asks Groq for a strict JSON action `{action, target, url, say}`.
 6. `zoe_router.execute()` dispatches that action (section 1 flow). The `say` line is spoken.

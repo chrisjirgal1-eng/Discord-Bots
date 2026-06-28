@@ -145,6 +145,13 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   voice loop untouched. Note: route() is the structured path; the Electron IPC/control endpoints
   remain the execution layer the router calls (UI->router full rewire is a later, larger step).
 
+- [x] K2 DONE 2026-06-28. Wake-word window summon ("hey zoe pops it up"). zoe_assistant.summon_ui()
+  POSTs to a new Electron control route /wake (alias /show) the instant a wake word is heard;
+  main.js showWindow() now restores + always-on-top-bumps + focuses so the window reliably comes to
+  the foreground on Windows. Best-effort: standalone (no Electron) it is a noop. Verified live:
+  POST /wake and /show both return {handled:true,shown:true}, app boots clean. Still needs Chris to
+  confirm the mic actually triggers the wake on his hardware (no microphone in the build environment).
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:

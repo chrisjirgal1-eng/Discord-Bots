@@ -67,6 +67,18 @@ def strip_wake(text):
             return text.strip()[len(w):].strip(" ,.!?")
     return ""
 
+def summon_ui(ctrl):
+    """Wake word heard -> ask the Electron app to bring Zoe's window to the front. Best-effort:
+    does nothing when running standalone (no Electron control endpoint), never blocks listening."""
+    if not ctrl:
+        return
+    try:
+        req = urllib.request.Request(ctrl.rstrip("/") + "/wake", data=b"{}",
+                                     headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=2)
+    except Exception:
+        pass
+
 def boot_hud():
     """Make sure the telemetry HUD is up, then open it (Zoe's visual presence)."""
     try:
@@ -123,6 +135,7 @@ def main():
             if not any(w in text.lower() for w in WAKE_WORDS):
                 continue  # not addressed to Zoe
             print("  heard:  ", text)
+            summon_ui(ctrl)   # "hey zoe" -> pop the window to the front
             command = strip_wake(text)
             if not command:
                 speak("Yes, sir?")
