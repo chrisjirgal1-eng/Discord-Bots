@@ -77,6 +77,8 @@ class H(http.server.BaseHTTPRequestHandler):
             self._json(zoe_memory.read(q) if zoe_memory else {"error": "memory unavailable"})
         elif self.path.startswith("/session/resume"):
             self._json(zoe_memory.resume() if zoe_memory else {"error": "memory unavailable"})
+        elif self.path.startswith("/memory/graph"):
+            self._json(zoe_memory.graph() if zoe_memory else {"nodes": [], "edges": []})
         elif self.path.startswith("/3d") or self.path.startswith("/os3d"):
             self._html(HUD3D, b"zoe-ui/os3d.html not found")
         else:

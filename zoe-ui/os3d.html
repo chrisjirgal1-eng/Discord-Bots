@@ -5,227 +5,190 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ZOE // Command Center</title>
 <style>
-  :root{
-    --acc:#a855f7; --acc2:#22d3ee; --txt:#ece8ff; --dim:#9b8fd0;
-    --ok:#46e6a4; --bad:#ff6b81;
-    --glass:rgba(24,18,48,.42); --line:rgba(168,85,247,.30);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;overflow:hidden;background:#05030c;color:var(--txt);
+  :root{ --acc:#f472b6; --acc2:#22d3ee; --pur:#a855f7; --txt:#f0e9ff; --dim:#9b8fc0;
+    --ok:#46e6a4; --bad:#ff6b81; --glass:rgba(22,17,34,.5); --line:rgba(168,85,247,.28); }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;overflow:hidden;background:#0a0810;color:var(--txt);
     font-family:"Segoe UI",system-ui,sans-serif}
-  #webgl,#css3d{position:fixed;inset:0}
-  #css3d{pointer-events:none}              /* panels turn pointer-events back on */
-  #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
-    background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(2,1,8,.85) 100%)}
-  #topbar{position:fixed;top:0;left:0;right:0;z-index:3;display:flex;justify-content:space-between;
-    align-items:center;padding:14px 22px;pointer-events:none;
-    font-size:12px;letter-spacing:3px;color:var(--dim)}
-  #topbar b{color:var(--acc);text-shadow:0 0 14px var(--acc)}
-  /* glass panel */
-  .panel{width:330px;background:var(--glass);border:1px solid var(--line);border-radius:16px;
-    padding:16px 18px;backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px);
-    box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset,
-      0 0 40px rgba(168,85,247,.10);pointer-events:auto;color:var(--txt)}
-  .panel h2{margin:0 0 12px;font-size:11px;letter-spacing:3px;color:var(--acc2);font-weight:600;
-    display:flex;justify-content:space-between;text-transform:uppercase}
-  .panel h2 .led{width:7px;height:7px;border-radius:50%;background:var(--acc2);
-    box-shadow:0 0 10px var(--acc2);align-self:center}
-  .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:var(--dim)}
+  #c{position:fixed;inset:0;display:block}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(125% 95% at 50% 45%,transparent 52%,rgba(5,3,10,.9) 100%)}
+  .hud{position:fixed;z-index:2}
+  #title{top:18px;left:22px;letter-spacing:4px;font-size:13px;color:var(--dim)}
+  #title b{color:var(--acc);text-shadow:0 0 14px var(--acc)}
+  #title span{color:#7fe3d6}
+  .panel{background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
+    backdrop-filter:blur(15px) saturate(150%);-webkit-backdrop-filter:blur(15px);width:300px;
+    box-shadow:0 22px 55px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.04) inset,0 0 36px rgba(168,85,247,.10)}
+  .panel h2{font-size:10px;letter-spacing:3px;color:var(--acc2);margin-bottom:10px;font-weight:600;
+    display:flex;justify-content:space-between}
+  #sys{top:60px;right:22px}
+  .row{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--dim)}
   .row b{color:var(--txt);font-variant-numeric:tabular-nums}
-  .bar{height:5px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:3px}
-  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));
-    box-shadow:0 0 10px var(--acc)}
-  .cores{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
-  .cores span{height:22px;border-radius:3px;background:rgba(168,85,247,.16);position:relative;overflow:hidden}
-  .cores span i{position:absolute;bottom:0;left:0;right:0;background:var(--acc);box-shadow:0 0 8px var(--acc)}
-  .mem-item{font-size:12.5px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
-  .mem-item b{color:var(--txt)}
-  #cmd{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:11px;
-    padding:12px 14px;color:var(--txt);font-size:15px;outline:none}
+  .bar{height:4px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:2px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));box-shadow:0 0 8px var(--acc)}
+  #node{top:60px;left:22px;display:none}
+  #node.show{display:block}
+  #node .lbl{font-size:16px;color:#fff;margin-bottom:4px;word-break:break-word}
+  #node .ty{font-size:10px;letter-spacing:2px;color:var(--acc2);text-transform:uppercase}
+  #node .body{font-size:12px;color:var(--dim);margin-top:8px;max-height:160px;overflow:auto;white-space:pre-wrap;line-height:1.5}
+  #cons{bottom:22px;left:22px;width:430px}
+  #cmd{width:100%;background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:11px;
+    padding:11px 14px;color:var(--txt);font-size:15px;outline:none}
   #cmd::placeholder{color:var(--dim)}
-  #out{margin-top:12px;font-size:13px;min-height:20px}
-  #out .parsed{color:var(--acc2);font-size:11px;letter-spacing:1px;text-transform:uppercase}
-  #out .step{color:var(--dim);padding:3px 0;opacity:0;transform:translateX(-5px);transition:.25s}
-  #out .step.on{opacity:1;transform:none}
-  #out .step::before{content:"▸ ";color:var(--acc)}
-  #out .res{margin-top:8px;padding:8px 11px;border-radius:9px;background:rgba(70,230,164,.10);
-    border:1px solid rgba(70,230,164,.3)}
-  #out .res.bad{background:rgba(255,107,129,.10);border-color:rgba(255,107,129,.3)}
-  #fallback{position:fixed;inset:0;z-index:9;display:none;place-items:center;text-align:center;
-    background:#05030c;color:var(--dim);padding:40px}
-  #fallback.show{display:grid}
-  a{color:var(--acc2)}
+  #out{margin-top:10px;font-size:13px}
+  #out .parsed{color:var(--acc2);font-size:10px;letter-spacing:1px;text-transform:uppercase}
+  #out .step{color:var(--dim);padding:2px 0;opacity:0;transform:translateX(-5px);transition:.25s}
+  #out .step.on{opacity:1;transform:none} #out .step::before{content:"▸ ";color:var(--acc)}
+  #out .res{margin-top:7px;padding:7px 11px;border-radius:9px;background:rgba(70,230,164,.10);border:1px solid rgba(70,230,164,.3)}
+  #out .res.bad{background:rgba(255,107,129,.1);border-color:rgba(255,107,129,.3)}
+  #meta{bottom:24px;right:22px;font-size:10px;letter-spacing:1px;color:#5f5a70}
+  #fallback{position:fixed;inset:0;z-index:5;display:none;place-items:center;text-align:center;background:#0a0810;color:var(--dim);padding:40px}
+  #fallback.show{display:grid} a{color:var(--acc2)}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<div id="webgl"></div>
-<div id="css3d"></div>
-<div id="vignette"></div>
-<div id="topbar"><span><b>ZOE</b> &nbsp; COMMAND CENTER</span><span id="clock"></span></div>
-<div id="fallback">
-  <div>
-    <h2>3D engine unavailable</h2>
-    <p>This view needs WebGL and the Three.js library (loaded from a CDN).<br>
-    If you are offline, the flat HUD still works at <a href="/">localhost:7717</a>.</p>
-  </div>
-</div>
+<h2 class="sr-only">Zoe command center: a 3D knowledge graph of memory with a command console and live system stats.</h2>
+<canvas id="c"></canvas>
+<div id="vig"></div>
+<div class="hud" id="title"><b>ZOE</b> &nbsp;//&nbsp; <span>MEMORY GRAPH</span></div>
+<div class="hud panel" id="sys"><h2>ACTIVE SYSTEM<span>●</span></h2><div id="sysbody">connecting…</div></div>
+<div class="hud panel" id="node"><div class="ty" id="nty"></div><div class="lbl" id="nlbl"></div><div class="body" id="nbody"></div></div>
+<div class="hud panel" id="cons"><h2>COMMAND CONSOLE<span>●</span></h2>
+  <input id="cmd" autocomplete="off" placeholder="Ask Zoe…  open youtube · start coding · what did I say last session">
+  <div id="out"></div></div>
+<div class="hud" id="meta"></div>
+<div id="fallback"><div><h2>3D engine unavailable</h2>
+  <p>Needs WebGL + the Three.js CDN. If offline, the flat HUD works at <a href="/">localhost:7717</a>.</p></div></div>
 
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-}}
-</script>
 <script type="module">
-let THREE, CSS3DRenderer, CSS3DObject;
-try {
-  THREE = await import('three');
-  ({ CSS3DRenderer, CSS3DObject } = await import('three/addons/renderers/CSS3DRenderer.js'));
-  boot();
-} catch (e) {
-  document.getElementById('fallback').classList.add('show');
-  console.error('3D init failed:', e);
-}
+let THREE;
+try { THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js'); boot(); }
+catch (e) { document.getElementById('fallback').classList.add('show'); console.error(e); }
 
-function boot() {
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x05030c, 0.00055);
-  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 6000);
-  camera.position.set(0, 0, 1250);
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+async function boot() {
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  document.getElementById('webgl').appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0a0810, 0.0016);
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 1, 5000);
+  camera.position.set(0, 0, 460);
+  const world = new THREE.Group(); scene.add(world);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[m]));
 
-  const cssRenderer = new CSS3DRenderer();
-  cssRenderer.setSize(innerWidth, innerHeight);
-  document.getElementById('css3d').appendChild(cssRenderer.domElement);
+  // ---- ambient depth field (atmosphere, not data) ----
+  const AN = 1500, ap = new Float32Array(AN * 3);
+  for (let i = 0; i < AN; i++) { const r = 240 + Math.random() * 900, t = Math.random()*6.28, ph = Math.acos(2*Math.random()-1);
+    ap[i*3]=r*Math.sin(ph)*Math.cos(t); ap[i*3+1]=r*Math.sin(ph)*Math.sin(t); ap[i*3+2]=r*Math.cos(ph); }
+  const ag = new THREE.BufferGeometry(); ag.setAttribute('position', new THREE.BufferAttribute(ap, 3));
+  world.add(new THREE.Points(ag, new THREE.PointsMaterial({ color: 0x6a5a9a, size: 1.4, transparent: true,
+    opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending })));
 
-  // ---- lighting (soft, purple/cyan) ----
-  scene.add(new THREE.AmbientLight(0x3a2d66, 0.7));
-  const p1 = new THREE.PointLight(0xa855f7, 2.4, 4000); p1.position.set(-400, 300, 600); scene.add(p1);
-  const p2 = new THREE.PointLight(0x22d3ee, 1.6, 4000); p2.position.set(500, -200, 500); scene.add(p2);
-  const rim = new THREE.DirectionalLight(0x8b5cf6, 0.6); rim.position.set(0, 400, -600); scene.add(rim);
+  // ---- fetch the real memory graph ----
+  let g = { nodes: [], edges: [] };
+  try { g = await (await fetch('/memory/graph', { cache: 'no-store' })).json(); } catch (e) {}
+  if (!g.nodes || !g.nodes.length) g = { nodes: [{ id: 'ZOE', label: 'ZOE', type: 'core', size: 16 }], edges: [] };
 
-  // ---- central orb (PBR) + glow + rings ----
-  const orb = new THREE.Group();
-  const core = new THREE.Mesh(
-    new THREE.IcosahedronGeometry(165, 3),
-    new THREE.MeshStandardMaterial({ color: 0x140d2e, emissive: 0x7c3aed, emissiveIntensity: 0.55,
-      metalness: 0.65, roughness: 0.25, flatShading: true }));
-  orb.add(core);
-  const wire = new THREE.Mesh(new THREE.IcosahedronGeometry(170, 2),
-    new THREE.MeshBasicMaterial({ color: 0xb98bff, wireframe: true, transparent: true, opacity: 0.18 }));
-  orb.add(wire);
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 32),
-    new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.32,
-      blending: THREE.AdditiveBlending }));
-  orb.add(glow);
-  const rings = [];
-  for (let i = 0; i < 3; i++) {
-    const r = new THREE.Mesh(new THREE.TorusGeometry(250 + i * 55, 1.6, 12, 120),
-      new THREE.MeshBasicMaterial({ color: i % 2 ? 0x22d3ee : 0xa855f7, transparent: true, opacity: 0.5 }));
-    r.rotation.x = Math.PI / 2 + i * 0.5; r.rotation.y = i * 0.6; orb.add(r); rings.push(r);
-  }
-  scene.add(orb);
+  const TYPE_COL = { core: 0xffffff, note: 0xf472b6, session: 0x67e8f9, bank: 0xa855f7, command: 0xd946ef };
+  const TYPES = ['note', 'session', 'bank', 'command'];
+  const centers = { core: new THREE.Vector3() };
+  TYPES.forEach((t, i) => { const y = 1 - (i / Math.max(TYPES.length-1,1)) * 1.4 - 0.1, rad = Math.sqrt(Math.max(1-y*y,0.05)), th = i * 2.399963;
+    centers[t] = new THREE.Vector3(Math.cos(th)*rad, y*0.8, Math.sin(th)*rad).multiplyScalar(120); });
 
-  // ---- depth particle field ----
-  const N = 1400, pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const r = 700 + Math.random() * 2200, t = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
-    pos[i*3] = r*Math.sin(ph)*Math.cos(t); pos[i*3+1] = r*Math.sin(ph)*Math.sin(t); pos[i*3+2] = r*Math.cos(ph);
-  }
-  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const stars = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x9b7cff, size: 2.2,
-    transparent: true, opacity: 0.7, depthWrite: false }));
-  scene.add(stars);
+  const idx = {}, meta = g.nodes;
+  const np = new Float32Array(meta.length * 3), nc = new Float32Array(meta.length * 3), ns = new Float32Array(meta.length);
+  const col = new THREE.Color();
+  meta.forEach((n, i) => {
+    idx[n.id] = i;
+    const ctr = centers[n.type] || centers.core;
+    const jit = n.type === 'core' ? 0 : 34 + Math.random() * 22;
+    const p = ctr.clone().add(new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(jit));
+    np[i*3]=p.x; np[i*3+1]=p.y; np[i*3+2]=p.z; n._p = p;
+    col.setHex(TYPE_COL[n.type] || 0xf0abfc); nc[i*3]=col.r; nc[i*3+1]=col.g; nc[i*3+2]=col.b;
+    ns[i] = (n.size || 3) * 1.7 + 4;
+  });
+  const ng = new THREE.BufferGeometry();
+  ng.setAttribute('position', new THREE.BufferAttribute(np, 3));
+  ng.setAttribute('color', new THREE.BufferAttribute(nc, 3));
+  ng.setAttribute('size', new THREE.BufferAttribute(ns, 1));
+  const nodes = new THREE.Points(ng, new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `attribute float size; attribute vec3 color; varying vec3 vC;
+      void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.0);
+        gl_PointSize=size*(360.0/-mv.z); gl_Position=projectionMatrix*mv; }`,
+    fragmentShader: `varying vec3 vC; void main(){ float r=length(gl_PointCoord-vec2(0.5)); if(r>0.5) discard;
+      float g=pow(smoothstep(0.5,0.0,r),2.3); gl_FragColor=vec4(vC*(0.5+g*1.25), g); }` }));
+  world.add(nodes);
 
-  // ---- CSS3D glass panels ----
-  const cssScene = new THREE.Scene();
-  function panel(html, x, y, z, ry) {
-    const el = document.createElement('div'); el.className = 'panel'; el.innerHTML = html;
-    const obj = new CSS3DObject(el); obj.position.set(x, y, z);
-    obj.rotation.y = ry || 0; obj.scale.setScalar(0.62); cssScene.add(obj); return el;
-  }
-  const memEl = panel('<h2>MEMORY TIMELINE<span class="led"></span></h2><div id="mem">loading…</div>',
-    -560, 70, 120, 0.5);
-  const procEl = panel('<h2>ACTIVE SYSTEM<span class="led"></span></h2><div id="proc">loading…</div>',
-    560, 70, 120, -0.5);
-  panel('<h2>COMMAND CONSOLE<span class="led"></span></h2>' +
-    '<input id="cmd" autocomplete="off" placeholder="Ask Zoe…  open youtube · start coding · recall">' +
-    '<div id="out"></div>', 0, -300, 360, 0);
+  // ---- edges ----
+  const ep = [], teal = new THREE.Color(0x2dd4bf);
+  (g.edges || []).forEach(e => { const a = meta[idx[e.source]], b = meta[idx[e.target]];
+    if (a && b) ep.push(a._p.x, a._p.y, a._p.z, b._p.x, b._p.y, b._p.z); });
+  const eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ep), 3));
+  world.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({ color: teal, transparent: true,
+    opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false })));
+  document.getElementById('meta').textContent = meta.length + ' memory nodes · ' + (ep.length/6 | 0) + ' links';
 
-  // ---- parallax camera ----
-  const mouse = { x: 0, y: 0 };
-  addEventListener('mousemove', e => { mouse.x = (e.clientX / innerWidth - 0.5); mouse.y = (e.clientY / innerHeight - 0.5); });
-  addEventListener('resize', () => {
-    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight); cssRenderer.setSize(innerWidth, innerHeight);
+  // ---- picking ----
+  const ray = new THREE.Raycaster(); ray.params.Points.threshold = 9;
+  const ndc = new THREE.Vector2();
+  canvas.addEventListener('click', async e => {
+    ndc.x = (e.clientX/innerWidth)*2-1; ndc.y = -(e.clientY/innerHeight)*2+1;
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(nodes)[0];
+    if (!hit) { document.getElementById('node').classList.remove('show'); return; }
+    const n = meta[hit.index];
+    document.getElementById('nty').textContent = n.type;
+    document.getElementById('nlbl').textContent = n.label || n.id;
+    document.getElementById('node').classList.add('show');
+    document.getElementById('nbody').textContent = 'loading…';
+    try { const m = await (await fetch('/memory/read?q=' + encodeURIComponent(n.label || n.id))).json();
+      document.getElementById('nbody').textContent = (m.content || (m.matches ? m.matches.map(x=>x.snippet).join('\n') : '') || 'no note body').slice(0, 800);
+    } catch (_) { document.getElementById('nbody').textContent = '(memory unavailable)'; }
   });
 
-  const clk = document.getElementById('clock');
-  function animate() {
-    requestAnimationFrame(animate);
-    const t = performance.now() * 0.001;
-    core.rotation.y += 0.0016; core.rotation.x += 0.0008; wire.rotation.y -= 0.001;
-    glow.scale.setScalar(1 + Math.sin(t * 1.5) * 0.05);
-    rings.forEach((r, i) => { r.rotation.z += 0.002 + i * 0.001; });
-    stars.rotation.y += 0.0003;
-    camera.position.x += (mouse.x * 260 - camera.position.x) * 0.045;
-    camera.position.y += (-mouse.y * 180 - camera.position.y) * 0.045;
+  // ---- interaction ----
+  let rx = 0.25, ry = 0, drag = false, px = 0, py = 0, vx = 0, vy = 0, mx = 0, my = 0;
+  canvas.addEventListener('pointerdown', e => { drag = true; px = e.clientX; py = e.clientY; });
+  addEventListener('pointerup', () => drag = false);
+  addEventListener('pointermove', e => { mx = e.clientX/innerWidth-0.5; my = e.clientY/innerHeight-0.5;
+    if (!drag) return; vy = (e.clientX-px)*0.005; vx = (e.clientY-py)*0.005; ry += vy; rx += vx; px = e.clientX; py = e.clientY; });
+  addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+  renderer.setAnimationLoop(() => {
+    if (!drag) { ry += 0.0011; vx *= 0.92; vy *= 0.92; rx += vx*0.2; }
+    world.rotation.y = ry; world.rotation.x = rx;
+    camera.position.x += (mx*120 - camera.position.x)*0.05;
+    camera.position.y += (-my*80 - camera.position.y)*0.05;
     camera.lookAt(0, 0, 0);
-    renderer.render(scene, camera); cssRenderer.render(cssScene, camera);
-    if (clk) clk.textContent = new Date().toLocaleTimeString();
-  }
-  animate();
+    renderer.render(scene, camera);
+  });
 
-  // ---- live data ----
-  const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
-  async function pollStats() {
-    try {
-      const s = await (await fetch('/stats', { cache: 'no-store' })).json();
-      const cores = (s.cores || []).map(c => `<span><i style="height:${c}%"></i></span>`).join('');
-      document.getElementById('proc').innerHTML =
-        `<div class="row"><span>CPU</span><b>${s.cpu}%</b></div><div class="bar"><i style="width:${s.cpu}%"></i></div>` +
-        `<div class="row"><span>MEMORY</span><b>${s.ram}%</b></div><div class="bar"><i style="width:${s.ram}%"></i></div>` +
-        `<div class="row"><span>DISK</span><b>${s.disk}%</b></div><div class="bar"><i style="width:${s.disk}%"></i></div>` +
-        `<div class="cores">${cores}</div>` +
-        `<div class="row" style="margin-top:8px"><span>PROCESSES</span><b>${s.procs}</b></div>` +
-        `<div class="row"><span>NET</span><b>↓${s.net_down} ↑${s.net_up} KB/s</b></div>`;
-    } catch (e) {}
-  }
-  async function loadMemory() {
-    try {
-      const m = await (await fetch('/session/resume', { cache: 'no-store' })).json();
-      document.getElementById('mem').innerHTML =
-        `<div class="mem-item"><b>${m.command_count || 0}</b> commands last session</div>` +
-        `<div class="mem-item">last: <b>${esc(m.last_command) || '-'}</b></div>` +
-        `<div class="mem-item">workspace: <b>${esc(m.last_workspace) || '-'}</b></div>` +
-        `<div class="mem-item">note: ${esc(m.last_session_note) || '-'}</div>` +
-        `<div class="mem-item" style="border:0">Obsidian vault linked</div>`;
-    } catch (e) {}
-  }
-  pollStats(); setInterval(pollStats, 1500); loadMemory();
+  // ---- live stats + console (same pipeline) ----
+  async function poll() { try { const s = await (await fetch('/stats', { cache:'no-store' })).json();
+    const cores = (s.cores||[]).map(c=>`<span style="display:inline-block;width:7px;height:${4+c/6}px;background:#a855f7;margin:0 1px;border-radius:1px;vertical-align:bottom"></span>`).join('');
+    document.getElementById('sysbody').innerHTML =
+      `<div class="row"><span>CPU</span><b>${s.cpu}%</b></div><div class="bar"><i style="width:${s.cpu}%"></i></div>`+
+      `<div class="row"><span>MEMORY</span><b>${s.ram}%</b></div><div class="bar"><i style="width:${s.ram}%"></i></div>`+
+      `<div class="row"><span>DISK</span><b>${s.disk}%</b></div>`+
+      `<div style="margin-top:8px">${cores}</div>`+
+      `<div class="row" style="margin-top:6px"><span>PROC</span><b>${s.procs}</b></div>`+
+      `<div class="row"><span>NET</span><b>↓${s.net_down} ↑${s.net_up}</b></div>`;
+  } catch (e) {} }
+  poll(); setInterval(poll, 1600);
 
-  // ---- command console -> same pipeline ----
   const cmd = document.getElementById('cmd'), out = document.getElementById('out');
   cmd.addEventListener('keydown', async e => {
     if (e.key !== 'Enter' || !cmd.value.trim()) return;
-    const text = cmd.value.trim(); cmd.value = '';
-    out.innerHTML = '<div class="parsed">thinking…</div>';
-    let r; try { r = await (await fetch('/command', { method: 'POST',
-      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })).json(); }
-    catch (err) { r = { handled: false, parsed: 'Error', steps: [], status: 'failed' }; }
-    const steps = (r.steps || []).map((s, i) => `<div class="step" data-i="${i}">${esc(s)}</div>`).join('');
-    out.innerHTML = `<div class="parsed">${esc(r.parsed || '')}</div>${steps}`;
-    [...out.querySelectorAll('.step')].forEach((n, i) => setTimeout(() => n.classList.add('on'), 110 * (i + 1)));
-    setTimeout(() => {
-      out.insertAdjacentHTML('beforeend',
-        `<div class="res ${r.handled ? '' : 'bad'}">${r.handled ? '✓ ' : '✕ '}${esc(r.say || r.error || '')}</div>`);
-      loadMemory();
-    }, 110 * ((r.steps || []).length + 1) + 120);
+    const text = cmd.value.trim(); cmd.value = ''; out.innerHTML = '<div class="parsed">thinking…</div>';
+    let r; try { r = await (await fetch('/command', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) })).json(); }
+    catch (err) { r = { handled:false, parsed:'Error', steps:[], status:'failed' }; }
+    out.innerHTML = `<div class="parsed">${esc(r.parsed||'')}</div>` + (r.steps||[]).map((s,i)=>`<div class="step">${esc(s)}</div>`).join('');
+    [...out.querySelectorAll('.step')].forEach((n,i)=>setTimeout(()=>n.classList.add('on'),110*(i+1)));
+    setTimeout(()=>{ out.insertAdjacentHTML('beforeend', `<div class="res ${r.handled?'':'bad'}">${r.handled?'✓ ':'✕ '}${esc(r.say||r.error||'')}</div>`); }, 110*((r.steps||[]).length+1)+120);
   });
 }
 </script>

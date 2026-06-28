@@ -137,6 +137,48 @@ def log_command(text, action, handled=True, summary=None):
             + (f"  ({summary})" if summary else "") + "\n")
     _append(os.path.join(VAULT, "log", "commands.md"), line)
 
+def graph():
+    """Build a node/edge graph of memory for the 3D view: the ZOE core, vault notes + sessions
+    (linked by [[wikilinks]]), the memory-bank files, and recent commands. No positions -- the
+    front end lays it out. Best-effort."""
+    nodes, edges = {}, []
+    def add(nid, label, typ, size=2):
+        nodes.setdefault(nid, {"id": nid, "label": label, "type": typ, "size": size})
+        return nodes[nid]
+    try:
+        add("ZOE", "ZOE", "core", 16)
+        for folder, typ in (("notes", "note"), ("sessions", "session")):
+            for p in glob.glob(os.path.join(VAULT, folder, "*.md")):
+                name = os.path.basename(p)[:-3]
+                nid = folder + "/" + name
+                txt = _read(p)
+                links = re.findall(r"\[\[([^\]|#]+)", txt)
+                add(nid, name, typ, 3 + min(len(links), 10))
+                edges.append(("ZOE", nid))
+                for l in links:
+                    edges.append((nid, l.strip().split("/")[-1]))   # match by leaf name later
+        for p in glob.glob(os.path.join(ROOT, "memory-bank", "*.md")):
+            nid = "bank/" + os.path.basename(p)[:-3]
+            add(nid, os.path.basename(p)[:-3], "bank", 5)
+            edges.append(("ZOE", nid))
+        cmds = (_load_state().get("history", {}) or {}).get("last_commands", [])
+        for i, cmd in enumerate(cmds[-50:]):
+            nid = "cmd/" + str(i)
+            add(nid, (cmd.get("text") or "")[:28], "command", 2)
+            edges.append(("ZOE", nid))
+    except Exception:
+        pass
+    # resolve edge targets by exact id or by leaf name; drop dangling
+    leaf = {}
+    for nid in nodes:
+        leaf.setdefault(nid.split("/")[-1], nid)
+    out = []
+    for a, b in edges:
+        tb = b if b in nodes else leaf.get(b)
+        if a in nodes and tb and tb != a:
+            out.append({"source": a, "target": tb})
+    return {"nodes": list(nodes.values()), "edges": out}
+
 def _load_state():
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
