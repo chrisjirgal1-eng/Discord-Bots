@@ -25,8 +25,16 @@ auto-starts at login via `tools/zoe_autostart.vbs`. First-time setup: `npm insta
 - Security: contextIsolation on, nodeIntegration off, sandboxed renderer, one allow-listed preload
   bridge (`electron/preload.js`). The voice process triggers native actions through a localhost
   control endpoint, never by touching the renderer.
-- Packaging: `npm run dist` (electron-builder; NSIS for Windows, mac/linux targets configured).
-  Auto-update (electron-updater) is wired; point `build.publish.url` at a real feed to enable.
+- Packaging: `npm run dist` builds a real Windows installer, `dist/Zoe Setup <ver>.exe` (NSIS,
+  per-user, unsigned). `npm run pack` makes an unpacked `dist/win-unpacked/Zoe.exe` you can run
+  directly. The build uses `asar: false` so the bundled Python (`tools/`) and HUD (`zoe-ui/`) stay
+  on disk where the interpreter can read them; background services spawn via `pythonw.exe` with
+  `windowsHide`, so the installed app shows no console window. The installer bundles your `.env`
+  (API keys) so it runs out of the box -- treat the installer as private, do not share it.
+  Prerequisite: the user's Python (`%LOCALAPPDATA%\Python\pythoncore-3.14-64`) with
+  `pip install -r tools/requirements.txt`. Auto-update (electron-updater) is wired; point
+  `build.publish.url` at a real feed to enable. Build note: electron-builder's signing toolchain
+  needs Windows Developer Mode (or one elevated run) to extract; it is otherwise a clean unsigned build.
 - Command system: all voice and command routing is centralized in `tools/zoe_router.py`. The real
   architecture, every supported command, the backend status states, and how to add commands safely
   are documented in [COMMAND_SYSTEM_GUIDE.md](COMMAND_SYSTEM_GUIDE.md). Note: `zoe_server.py` is the

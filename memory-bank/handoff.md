@@ -177,6 +177,19 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   mic (got 469 here from a real ambient sample), env override honored, compiles. The full
   speak-into-mic -> wake -> window-pop loop still needs Chris to run on his hardware (no mic in CI).
 
+- [x] K6 DONE 2026-06-28. Packaged Zoe into a real desktop app (no terminal). package.json build
+  fixed: asar:false (so bundled tools/ + zoe-ui/ stay on disk for Python; ROOT=__dirname/.. works
+  packaged), nsis per-user (oneClick:false, perMachine:false, desktop+startmenu shortcuts), .env
+  bundled so it runs out of the box. main.js: background services spawn via pythonwExe() (windowless)
+  with windowsHide:true so no console flashes; login auto-start passes --hidden (tray toggle + IPC +
+  startup line). launcher.js taskkill gets windowsHide. Built successfully: dist/Zoe Setup 0.1.0.exe
+  (78.5 MB installer) + dist/win-unpacked/Zoe.exe (180 MB). Smoke-tested the PACKAGED exe: telemetry
+  7717/stats served live data and control 7766/wake returned handled -- proves pythonw + packaged
+  paths work. Build gotcha: electron-builder's winCodeSign extraction fails on macOS .dylib symlinks
+  without Windows Developer Mode; worked around by pre-extracting winCodeSign-2.6.0 into the
+  electron-builder cache (the 2 darwin symlinks are irrelevant to Windows). Unsigned (no cert).
+  Caveat: bundled .env contains API keys -> the installer is private, do not share it.
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:

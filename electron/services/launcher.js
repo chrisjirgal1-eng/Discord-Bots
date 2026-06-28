@@ -62,7 +62,7 @@ function closeApp(name) {
   if (!name) return { ok: false, error: 'no app' };
   let img = String(name).split(/[\\/]/).pop();
   if (!/\.exe$/i.test(img)) img += '.exe';
-  if (process.platform === 'win32') exec(`taskkill /im "${img}" /f`, () => {});
+  if (process.platform === 'win32') exec(`taskkill /im "${img}" /f`, { windowsHide: true }, () => {});
   else exec(`pkill -f "${name}"`, () => {});
   return { ok: true, closed: img };
 }

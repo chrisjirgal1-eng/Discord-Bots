@@ -37,6 +37,14 @@ function pythonExe() {
   if (local && fs.existsSync(local)) return local;
   return 'python';
 }
+// pythonw.exe is the windowless interpreter: background services use it (with windowsHide) so a
+// packaged Zoe never flashes a console window.
+function pythonwExe() {
+  const local = process.env.LOCALAPPDATA &&
+    path.join(process.env.LOCALAPPDATA, 'Python', 'pythoncore-3.14-64', 'pythonw.exe');
+  if (local && fs.existsSync(local)) return local;
+  return 'pythonw';
+}
 
 // ---- tray / window icon ----
 function icon() {
@@ -47,8 +55,8 @@ function icon() {
 // ---- start the Python telemetry server so the HUD has live data ----
 function startTelemetry() {
   try {
-    telemetryProc = spawn(pythonExe(), [path.join(ROOT, 'tools', 'zoe_server.py')],
-      { cwd: ROOT, stdio: 'ignore' });
+    telemetryProc = spawn(pythonwExe(), [path.join(ROOT, 'tools', 'zoe_server.py')],
+      { cwd: ROOT, stdio: 'ignore', windowsHide: true });
   } catch (e) { console.error('telemetry start failed', e); }
 }
 
@@ -104,7 +112,7 @@ function refreshTrayMenu() {
     { type: 'separator' },
     { label: 'Launch on startup', type: 'checkbox',
       checked: app.getLoginItemSettings().openAtLogin,
-      click: (mi) => app.setLoginItemSettings({ openAtLogin: mi.checked }) },
+      click: (mi) => app.setLoginItemSettings({ openAtLogin: mi.checked, args: ['--hidden'] }) },
     { type: 'separator' },
     { label: 'Quit Zoe', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
@@ -122,8 +130,9 @@ function showWindow() {
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
   if (voiceProc) return;
-  voiceProc = spawn(pythonExe(), [path.join(ROOT, 'tools', 'zoe_assistant.py')],
-    { cwd: ROOT, stdio: 'ignore', env: { ...process.env, ZOE_CONTROL: `http://127.0.0.1:${CONTROL_PORT}` } });
+  voiceProc = spawn(pythonwExe(), [path.join(ROOT, 'tools', 'zoe_assistant.py')],
+    { cwd: ROOT, stdio: 'ignore', windowsHide: true,
+      env: { ...process.env, ZOE_CONTROL: `http://127.0.0.1:${CONTROL_PORT}` } });
   voiceProc.on('exit', () => { voiceProc = null; sendVoiceState('off'); });
   sendVoiceState('listening');
 }
@@ -170,7 +179,7 @@ function registerIpc() {
   ipcMain.handle('open:folder', (_e, p) => launcher.openFolder(p));
   ipcMain.handle('open:url', (_e, u) => launcher.openUrl(u));
   ipcMain.handle('notify', (_e, { title, body }) => { new Notification({ title: title || 'Zoe', body: body || '' }).show(); return { ok: true }; });
-  ipcMain.handle('startup:set', (_e, on) => { app.setLoginItemSettings({ openAtLogin: on }); return { ok: true }; });
+  ipcMain.handle('startup:set', (_e, on) => { app.setLoginItemSettings({ openAtLogin: on, args: ['--hidden'] }); return { ok: true }; });
   ipcMain.handle('startup:get', () => app.getLoginItemSettings().openAtLogin);
   ipcMain.handle('window:hide', () => { if (win) win.hide(); return { ok: true }; });
   ipcMain.handle('voice:start', () => { startVoice(); return { ok: true }; });
@@ -213,7 +222,8 @@ else {
     if (restored.last_commands && restored.last_commands.length)
       console.log('Zoe: restored session,', restored.last_commands.length, 'prior command(s)');
     setTimeout(startVoice, 2600);   // always-listening for "Hey Zoe" once the app is up
-    app.setLoginItemSettings({ openAtLogin: app.getLoginItemSettings().openAtLogin }); // keep current
+    // keep the user's auto-start choice, but ensure login launches stay hidden in the tray
+    app.setLoginItemSettings({ openAtLogin: app.getLoginItemSettings().openAtLogin, args: ['--hidden'] });
   });
   app.on('window-all-closed', (e) => { /* stay alive in tray */ });
   app.on('will-quit', () => {
