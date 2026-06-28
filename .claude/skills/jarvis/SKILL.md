@@ -35,6 +35,7 @@ move is chess (DZY7s0LK2vj).
 | "digest these videos", learn from saved reels | `digest-transcripts` skill + `tools/watch_batch.py` |
 | "update memory", end of finished work | `memory-update` skill |
 | "hand off", stepping away mid-task | `handoff` skill |
+| "say ...", talk back or speak out loud | run `python tools/jarvis_speak.py "<text>"` (ElevenLabs voice from .env) |
 | "how does X connect to Y", architecture of this repo or business | graphify query (`graphify query "..."`) |
 | a specialist job (security review, backend, data, infra) | the matching VoltAgent subagent, on the right model tier (model-routing.md) |
 | anything touching GitHub, Supabase, Vercel, Gmail, Drive, Calendar, Notion, Slack, Stripe, Zapier | the live MCP connector for that service |

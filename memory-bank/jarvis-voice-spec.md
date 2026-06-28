@@ -23,9 +23,9 @@ brain; it only carries sound in and out.
 In the gitignored `.env` (never commit these):
 
 ```
-ELEVENLABS_API_KEY=...                 # from elevenlabs.io, account settings (the one thing still needed)
-ELEVENLABS_VOICE_ID=L1QogKoobNwLy4IaMsyA   # already chosen by Chris and preset in .env
-DEEPGRAM_API_KEY=...                   # from deepgram.com console (only needed for listening)
+ELEVENLABS_API_KEY=...                 # set: talk-back is live via tools/jarvis_speak.py
+ELEVENLABS_VOICE_ID=pFZP5JQG7iQjIQuC4Bku   # Lily (free tier, active). Upgrade pick: L1QogKoobNwLy4IaMsyA
+DEEPGRAM_API_KEY=...                   # still needed for listening (the full two-way loop)
 ```
 
 ## Dependencies

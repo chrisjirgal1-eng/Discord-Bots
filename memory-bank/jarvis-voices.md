@@ -4,12 +4,17 @@ Shortlist for a warm, feminine, JARVIS-style voice that talks back. All are Elev
 Preview them by name in the ElevenLabs voice library (elevenlabs.io > Voices), pick one, then the
 chosen Voice ID goes in `.env` as `ELEVENLABS_VOICE_ID` and JARVIS speaks in it.
 
-## SELECTED (2026-06-28)
+## LIVE (2026-06-28)
 
-Chris picked Voice ID `L1QogKoobNwLy4IaMsyA` (an ElevenLabs voice-library voice). It is set in
-`.env` and `.env.example` as `ELEVENLABS_VOICE_ID`. The name resolves once an ElevenLabs API key
-is added (the API returns it). To bring the voice online: add `ELEVENLABS_API_KEY` to `.env`, then
-build the loop per `jarvis-voice-spec.md`.
+JARVIS talks back. `tools/jarvis_speak.py` turns text into speech and plays it. The active voice
+is **Lily** (`pFZP5JQG7iQjIQuC4Bku`, Velvety Actress, British), set as `ELEVENLABS_VOICE_ID` in `.env`.
+Verified end to end: `python tools/jarvis_speak.py "Wide awake, sir."` plays through the speakers.
+
+Why Lily and not the original pick: Chris's first choice `L1QogKoobNwLy4IaMsyA` is a library voice
+that needs ElevenLabs **Creator tier**. The account is on the **free** plan (every key tested came
+back tier=free), so free-tier voices only for now. Lily is the best free feminine option. The
+upgrade pick is kept as a comment in `.env`; it auto-activates if `ELEVENLABS_VOICE_ID` is switched
+to it after upgrading. jarvis_speak.py is voice-agnostic, so no code change is needed to swap.
 
 IDs below are the long-standing default Voice IDs, given as a convenience. Confirm the exact ID in
 your own ElevenLabs account before wiring, since the library can change. Names are stable.

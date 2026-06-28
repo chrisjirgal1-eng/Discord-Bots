@@ -79,7 +79,9 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   script) into discrete sub-skills the orchestrator calls, matching the UI roster and DZ_xzicxQPx.
 - [ ] B4 (medium). Status generator: a script that reads the repo (skill count, test count, graph
   nodes) and writes the UI CONFIG status block, so the HUD is always accurate. Run it, verify.
-- [ ] B5 (hard, gated). Voice: needs Chris's 11 Labs + Deepgram keys. Spec ready in jarvis-voice-spec.md.
+- [~] B5 PARTLY DONE 2026-06-28. Talk-back is LIVE: tools/jarvis_speak.py speaks text via ElevenLabs
+  in Lily's voice (free tier), verified through the speakers. Remaining: a Deepgram key for listening
+  (full two-way loop), and an ElevenLabs Creator upgrade if Chris wants his original voice pick.
 - [ ] B6 (hard, gated). 24/7: rename the CI template to enable; nightly jobs need secrets + a host.
 - [ ] B7 (hard, gated). Live connector data in the HUD (real bookings, guild activity): needs creds.
 

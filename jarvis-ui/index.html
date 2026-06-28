@@ -185,7 +185,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
     <div class="hr">
       <div class="pills">
         <div class="pill"><i></i>CORE</div><div class="pill"><i></i>MEMORY</div>
-        <div class="pill"><i></i>AGENTS</div><div class="pill w"><i></i>VOICE</div>
+        <div class="pill"><i></i>AGENTS</div><div class="pill"><i></i>VOICE</div>
       </div>
       <div class="themes" id="themes" title="theme"></div>
       <div id="clk">--:--:--</div>
@@ -202,7 +202,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
         <div class="rname">JARVIS</div>
         <div class="rtag" id="tag"></div>
         <div class="voice">
-          <div class="wave" id="wave"></div><div class="vstate" id="vstate">VOICE: SELECTED ◂ KEY PENDING</div>
+          <div class="wave" id="wave"></div><div class="vstate" id="vstate" style="color:var(--ok)">VOICE: ONLINE ◂ LILY</div>
         </div>
         <div class="qa" id="qa"></div>
       </div>
@@ -224,9 +224,9 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
     <div class="col">
       <div class="card next">
         <h2>Next move <span>PRIORITY</span></h2>
-        <div class="m" id="nm">Voice picked. Add your ElevenLabs API key to bring her online.</div>
-        <div class="w" id="nw">The voice is chosen and preset in .env. One key away from "wide awake, sir." The loop reuses every skill through claude -p, so no rebuild.</div>
-        <button onclick="fire('jarvis, build the voice loop from memory-bank/jarvis-voice-spec.md')">EXECUTE WHEN KEYS ARE IN</button>
+        <div class="m" id="nm">She talks back (Lily). Add a Deepgram key so she can hear you too.</div>
+        <div class="w" id="nw">Voice is live on the free tier via tools/jarvis_speak.py. A Deepgram key adds listening for the full two-way loop. Upgrade ElevenLabs later for the original voice pick.</div>
+        <button onclick="fire('jarvis, say wide awake sir in your voice')">▸ MAKE HER SPEAK</button>
       </div>
       <div class="card"><h2>System status <span>LIVE</span></h2><ul class="stat" id="status"></ul></div>
       <div class="card"><h2>Connectors <span>MCP</span></h2><div class="conn" id="conn"></div></div>
@@ -269,7 +269,7 @@ const CONFIG = {
   status:[
     ["ok","Memory + knowledge graph","400 nodes"],["ok","Test suite","76 green"],
     ["ok","JARVIS router + 9 skills","wired"],["ok","154 specialist agents","loaded"],
-    ["ok","Content pipeline","draft only"],["warn","Voice selected","needs API key"],
+    ["ok","Content pipeline","draft only"],["ok","Voice (Lily), talks back","live"],
     ["warn","24/7 automation","needs a host"],["warn","Auto-posting","needs approval"],
   ],
   connectors:["GitHub","Supabase","Vercel","Gmail","Drive","Calendar","Notion","Slack","Stripe","Zapier"],

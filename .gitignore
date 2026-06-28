@@ -14,6 +14,10 @@ venv/
 tests/__pycache__/
 .coverage
 
+# Voice audio artifacts (TTS test clips)
+*.mp3
+*.wav
+
 # Env and secrets
 .env
 .env.local
