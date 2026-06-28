@@ -62,8 +62,12 @@
   .slash:hover{color:#fff;border-color:var(--p2)}
   #vbtn{font-size:11px;color:var(--ok);border:1px solid rgba(52,224,160,.4);border-radius:7px;padding:5px 11px;cursor:pointer}
   #exe{font-size:11px;color:#04121a;background:var(--p2);border-radius:7px;padding:5px 14px;cursor:pointer;letter-spacing:1px}
-  #cmdout{position:absolute;bottom:54px;left:18px;font-size:12px}
-  #cmdout .ok{color:var(--ok)} #cmdout .bad{color:var(--bad)}
+  #cmdout{position:absolute;bottom:52px;left:18px;font-size:12px;max-width:560px}
+  #cmdout .ok{color:var(--ok)} #cmdout .bad{color:var(--bad)} #cmdout .mut{color:var(--dm)}
+  #cmdout .tstep{font-size:11px;color:var(--dm);opacity:0;transform:translateX(-5px);transition:.22s;padding:1px 0;letter-spacing:.3px}
+  #cmdout .tstep.show{opacity:1;transform:none} #cmdout .tstep.fail{color:var(--bad)}
+  #cmdout .tstep .ck{color:var(--ok)} #cmdout .tstep.fail .ck{color:var(--bad)} #cmdout .tstep .ms{color:var(--p3);font-size:9px;margin-left:5px}
+  #cmdout .tsay{margin-top:4px;font-size:12.5px} #cmdout .tsay.ok{color:var(--ok)} #cmdout .tsay.bad{color:var(--bad)}
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -236,12 +240,15 @@ setInterval(()=>{ [...agrid.children].forEach(c=>c.classList.toggle('on',Math.ra
 
 // ---------- command bar ----------
 const cmd=$('#cmd'), cmdout=$('#cmdout');
+const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 async function run(text){ if(!text) return; cmdout.innerHTML='<span class="mut">thinking…</span>';
   let r; try{ r=await (await fetch('/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})})).json(); }
-  catch(e){ r={handled:false,say:'connection error'}; }
-  const msg=(r.say||r.parsed||'').replace(/[<>&]/g,'');
-  cmdout.innerHTML='<span class="'+(r.handled?'ok':'bad')+'">'+(r.handled?'✓ ':'✕ ')+msg+'</span>';
-  setTimeout(()=>cmdout.textContent='',6000); }
+  catch(e){ r={handled:false,say:'connection error',trace:[]}; }
+  const tr=r.trace&&r.trace.length?r.trace:(r.steps||[]).map(s=>({label:s,status:r.handled?'done':'fail',ms:0}));
+  cmdout.innerHTML=tr.map(s=>`<div class="tstep ${s.status==='fail'?'fail':''}"><span class="ck">${s.status==='fail'?'✗':'✓'}</span> ${esc(s.label)}${s.ms?`<span class="ms">${s.ms}ms</span>`:''}</div>`).join('')
+    +`<div class="tsay ${r.handled?'ok':'bad'}">${esc(r.say||r.parsed||'')}</div>`;
+  [...cmdout.querySelectorAll('.tstep')].forEach((n,i)=>setTimeout(()=>n.classList.add('show'),90*(i+1)));
+  setTimeout(()=>{ cmdout.textContent=''; },9000); }
 cmd.addEventListener('keydown',e=>{ if(e.key==='Enter'&&cmd.value.trim()){ run(cmd.value.trim()); cmd.value=''; } });
 $('#exe').addEventListener('click',()=>{ if(cmd.value.trim()){ run(cmd.value.trim()); cmd.value=''; } });
 document.querySelectorAll('.slash').forEach(s=>s.addEventListener('click',()=>{ cmd.value=s.dataset.c+' '; cmd.focus(); }));

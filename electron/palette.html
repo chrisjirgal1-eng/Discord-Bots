@@ -34,6 +34,7 @@
   .step.done .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
   .step.fail .dot{background:var(--bad);box-shadow:0 0 8px var(--bad)}
   .step .lbl{font-size:14px;color:var(--txt)}
+  .step .ms{color:var(--acc);font-size:10px;margin-left:6px}
   .status{margin-top:12px;font-size:13px;color:var(--acc2);display:flex;align-items:center;gap:8px}
   .status .spin{width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--acc);
     border-radius:50%;animation:sp .7s linear infinite}
@@ -100,23 +101,26 @@
   }
 
   function render(r){
-    const steps = (r.steps || []).map((s,i) =>
-      '<div class="step" data-i="'+i+'"><span class="dot"></span><span class="lbl">'+esc(s)+'</span></div>').join('');
+    const tr = (r.trace && r.trace.length) ? r.trace
+             : (r.steps || []).map(s => ({ label: s, status: r.handled ? 'done' : 'fail', ms: 0 }));
+    const steps = tr.map((s,i) =>
+      '<div class="step" data-i="'+i+'"><span class="dot"></span><span class="lbl">'+esc(s.label)
+      + (s.ms ? ' <span class="ms">'+s.ms+'ms</span>' : '')+'</span></div>').join('');
     body.innerHTML =
       '<div class="parsed">Understood as<b>'+esc(r.parsed||'-')+'</b></div>'
       + '<div id="steps">'+steps+'</div>'
       + '<div class="status" id="st"><span class="spin"></span> Executing…</div>'
       + renderReason(r);
-    // reveal steps one by one for a live feel, then settle the final status
+    // reveal steps one by one for a live feel, each settling to its real status
     const nodes = [...body.querySelectorAll('.step')];
     nodes.forEach((n,i) => setTimeout(() => {
-      n.classList.add('show');
-      n.classList.add(r.handled ? 'done' : (i === nodes.length-1 ? 'fail' : 'done'));
+      n.classList.add('show'); n.classList.add(tr[i].status === 'fail' ? 'fail' : 'done');
     }, 90*(i+1)));
     setTimeout(() => {
       const ok = r.handled;
       $('#st').outerHTML =
-        '<div class="result '+(ok?'':'bad')+'">'+(ok?'✓ Completed':'✕ '+esc(r.error||'Could not complete'))+'</div>'
+        '<div class="result '+(ok?'':'bad')+'">'+(ok?'✓ Completed':'✕ '+esc(r.error||'Could not complete'))
+        + (r.timing_ms ? ' · '+r.timing_ms+'ms' : '')+'</div>'
         + (r.say ? '<div class="say">“'+esc(r.say)+'”</div>' : '');
       syncReason();
     }, 90*(nodes.length+1)+120);

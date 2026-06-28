@@ -174,6 +174,31 @@ def master():
         "Nothing is registered by hand; the evolution engine documents the project from the code itself.\n"
         % NOW)
 
+def session_export(summary):
+    """Phase 4: capture this Claude Code session (summary + commits + files touched) into the
+    vault and SESSION_HISTORY, so a future session rebuilds context. Best-effort."""
+    commits = sh(["git", "log", "-20", "--pretty=- %h %s", "--date=short"])
+    raw = sh(["git", "log", "-15", "--name-only", "--pretty=format:"])
+    files = sorted(set(f for f in raw.splitlines() if f.strip()))[:50]
+    flist = "\n".join("- `%s`" % f for f in files) or "- (none)"
+    note = ("# Dev session %s\n\n## Summary\n%s\n\n## Recent commits\n%s\n\n## Files touched\n%s\n"
+            % (NOW, summary, commits or "- (none)", flist))
+    path = os.path.join(PM, "SESSION_HISTORY.md")
+    if not os.path.exists(path):
+        write("SESSION_HISTORY.md", "# Session History\n\nAppend-only log of Claude Code sessions.\n")
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("\n## %s\n%s\n\n%s\n" % (NOW, summary, commits or ""))
+    except Exception:
+        pass
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import zoe_memory
+        zoe_memory.write("dev session " + time.strftime("%Y-%m-%d %H%M"), note,
+                         folder="sessions", tags=["dev", "session"])
+    except Exception:
+        pass
+
 def main():
     files = {
         "MASTER_MEMORY.md": master(),
@@ -196,18 +221,10 @@ def main():
     }
     ok = sum(1 for n, b in files.items() if write(n, b))
 
-    # session history (append-only)
+    # session history (Phase 4: full session export to the vault + SESSION_HISTORY)
     if "--session" in sys.argv:
         i = sys.argv.index("--session")
-        summary = " ".join(sys.argv[i + 1:]).strip() or "(no summary)"
-        path = os.path.join(PM, "SESSION_HISTORY.md")
-        if not os.path.exists(path):
-            write("SESSION_HISTORY.md", "# Session History\n\nAppend-only log of Claude Code sessions.\n")
-        try:
-            with open(path, "a", encoding="utf-8") as f:
-                f.write("\n## %s\n%s\n" % (NOW, summary))
-        except Exception:
-            pass
+        session_export(" ".join(sys.argv[i + 1:]).strip() or "(no summary)")
     elif not os.path.exists(os.path.join(PM, "SESSION_HISTORY.md")):
         write("SESSION_HISTORY.md", "# Session History\n\nAppend-only log of Claude Code sessions.\n")
 

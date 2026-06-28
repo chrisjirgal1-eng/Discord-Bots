@@ -176,20 +176,39 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
     groq_key = groq_key or os.environ.get("GROQ_API_KEY")
     tid = uuid.uuid4().hex
     memory = None
+    trace = []                                            # live, timed, per-step execution log
+    t0 = time.perf_counter()
+    def step(label, status, since=None):
+        trace.append({"label": label, "status": status,
+                      "ms": round((time.perf_counter() - since) * 1000) if since else 0})
     try:
+        ts = time.perf_counter()
         action = classify(text, groq_key, history)
         a = action.get("action", "chat")
+        step("Understanding the request", "done", ts)
         parsed, steps = _explain(action)
+        step("Parsed intent: " + parsed, "done")
         if a == "memory" and zoe_memory:
+            ts = time.perf_counter()
             handled, say, memory = _recall(text, action)   # recall, no side effects
+            for s in steps: step(s, "done" if handled else "fail")
+            step("Recalled from long-term memory", "done" if handled else "fail", ts)
         elif simulate:
             handled, say = True, action.get("say", "On it, sir.")
+            for s in steps: step(s, "done")
+            step("Simulated - no side effects", "done")
         else:
+            ts = time.perf_counter()
             a, handled = execute(action, text, ctrl)
+            for s in steps: step(s, "done" if handled else "fail")
+            step("Executing the action", "done" if handled else "fail", ts)
             say = action.get("say", "On it, sir.")
+        step("Completed" if handled else "Could not complete (recovered safely)",
+             "done" if handled else "fail", t0)
     except Exception as e:
         action, parsed, steps = {}, "Could not parse that", ["Parse the request"]
         a, handled, say = "chat", False, "Sorry sir, something went wrong."
+        step("Error - " + str(e)[:50], "fail", t0)
     if zoe_state:
         try:
             zoe_state.record_command(text, a, handled, trace_id=tid, summary=parsed,
@@ -205,6 +224,7 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
         "target": action.get("target", ""), "url": action.get("url", ""),
         "handled": bool(handled), "say": say,
         "status": "completed" if handled else "failed",
+        "trace": trace, "timing_ms": round((time.perf_counter() - t0) * 1000),
     }
     if memory is not None:
         out["memory"] = memory
