@@ -5,7 +5,7 @@ Open this `vault/` folder directly in Obsidian and it just works (frontmatter + 
 
 It is read and written by:
 - **Zoe** (the assistant) via `tools/zoe_memory.py` and the HTTP API on the telemetry server.
-- **Claude Code** — these are plain files, so Claude reads and edits the same notes.
+- **Claude Code** - these are plain files, so Claude reads and edits the same notes.
 
 ## Structure
 | Folder | What | Committed? |
@@ -25,5 +25,5 @@ CLI: `python tools/zoe_memory.py [read|write|sync|resume|log] <arg>`
 
 ## How it fits the rest of memory
 This vault is the **durable, queryable** layer. It complements:
-- `memory/zoe_state.json` — fast runtime state (last commands, workspace, mode); `sync()` snapshots it here.
-- `memory-bank/*.md` — the project/identity memory bank Claude maintains.
+- `memory/zoe_state.json` - fast runtime state (last commands, workspace, mode); `sync()` snapshots it here.
+- `memory-bank/*.md` - the project/identity memory bank Claude maintains.
