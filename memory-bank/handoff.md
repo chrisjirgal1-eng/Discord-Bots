@@ -92,6 +92,10 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   assistant ("Hey Zoe ...") that boots the HUD, hears via Deepgram, routes intent via Groq, and OPENS
   what you ask in the browser (news, youtube, search, sites) while speaking a confirmation. zoe.bat
   runs it. Intent router verified on sample commands; mic/wake VAD needs a live test (RMS_THRESHOLD tunable).
+- [x] B10 DONE 2026-06-28. Zoe auto-starts at login, hidden, no command: tools/zoe_autostart.vbs
+  (runs the assistant via the pythoncore pythonw with no console) plus a Startup-folder shortcut
+  Zoe.lnk. zoe_stop.bat stops her. Note: bare python/pythonw on PATH is the WindowsApps stub without
+  the packages, so the launcher must use the full LOCALAPPDATA pythoncore path (it does).
 
 ## Next step
 

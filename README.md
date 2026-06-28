@@ -54,6 +54,9 @@ What is wired and what still needs Chris's keys or a host is tracked honestly in
   ElevenLabs speech. `tools/jarvis_voice.py` is a simpler push-to-talk chat loop; `tools/jarvis_speak.py`
   just speaks text. The older card-style dashboard is `jarvis-ui/index.html`. Both HUDs have a theme
   switcher and a CONFIG block at the top. Tune `RMS_THRESHOLD` in zoe_assistant.py if the mic is too hot or too quiet.
+- Auto-start: Zoe runs at every Windows login, hidden, no command needed. A shortcut to
+  `tools/zoe_autostart.vbs` lives in the Startup folder (it launches her with no console window).
+  Stop her with `zoe_stop.bat`; remove auto-start by deleting `Zoe.lnk` from `shell:startup`.
 
 ## The memory bank
 
