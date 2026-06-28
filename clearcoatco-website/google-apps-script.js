@@ -93,8 +93,18 @@ function getData() {
 
 // ── Submit a review ───────────────────────────────────────────────────────────
 
+function sanitize(str, maxLen) {
+  return String(str || '').replace(/<[^>]*>/g, '').trim().slice(0, maxLen || 500);
+}
+
 function submitReview(p) {
   if (!p.name || !p.text || !p.stars) throw new Error('Missing fields');
+
+  const name    = sanitize(p.name, 100);
+  const service = sanitize(p.service, 100);
+  const text    = sanitize(p.text, 2000);
+  const stars   = Math.max(1, Math.min(5, Math.round(Number(p.stars) || 0)));
+  if (!name || !text || !stars) throw new Error('Invalid fields');
 
   const ss     = SpreadsheetApp.openById(SHEET_ID);
   const sheet  = ss.getSheetByName('Reviews');
@@ -103,7 +113,7 @@ function submitReview(p) {
     sheet.appendRow(['Date', 'Name', 'Service', 'Stars', 'Review', 'Approved']);
   }
 
-  sheet.appendRow([new Date(), p.name, p.service || '', Number(p.stars), p.text, true]);
+  sheet.appendRow([new Date(), name, service, stars, text, true]);
   return { success: true };
 }
 
@@ -112,6 +122,11 @@ function submitReview(p) {
 function logJob(p) {
   if (!p.service || !p.amount) throw new Error('Missing service or amount');
 
+  const service = sanitize(p.service, 100);
+  const amount  = Math.max(0, Number(p.amount) || 0);
+  const notes   = sanitize(p.notes, 500);
+  if (!service) throw new Error('Invalid service');
+
   const ss    = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName('Jobs');
 
@@ -119,6 +134,6 @@ function logJob(p) {
     sheet.appendRow(['Date', 'Service', 'Amount', 'Notes']);
   }
 
-  sheet.appendRow([new Date(), p.service, Number(p.amount), p.notes || '']);
+  sheet.appendRow([new Date(), service, amount, notes]);
   return { success: true };
 }

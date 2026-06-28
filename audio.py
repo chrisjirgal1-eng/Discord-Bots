@@ -6,7 +6,7 @@ YTDL_OPTIONS = {
     'restrictfilenames': True,
     'noplaylist': False,
     'playlistend': 50,
-    'nocheckcertificate': True,
+    'nocheckcertificate': False,
     'ignoreerrors': True,
     'quiet': True,
     'no_warnings': True,

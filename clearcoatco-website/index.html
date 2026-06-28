@@ -787,7 +787,15 @@
 <div id="admin-panel">
   <div class="admin-box">
     <h2><span>Log</span> Completed Job <button class="admin-close" onclick="closeAdmin()">✕</button></h2>
-    <form id="jobForm">
+    <div id="admin-login">
+      <div class="form-group">
+        <label>Admin Password</label>
+        <input type="password" id="adminPass" placeholder="Enter password" />
+      </div>
+      <button class="form-submit" onclick="checkAdminPass()">Unlock</button>
+      <div id="admin-login-error" style="color:#f87171;font-size:0.85rem;margin-top:0.75rem;display:none;">Incorrect password.</div>
+    </div>
+    <form id="jobForm" style="display:none;">
       <div class="form-group">
         <label>Service Completed</label>
         <select id="jService" required>
@@ -829,7 +837,7 @@
 
 <!-- ── SCRIPTS ── -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.net.min.js"></script>
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
 
@@ -923,11 +931,26 @@ function toggleNav() { document.getElementById('navLinks').classList.toggle('ope
 function closeNav()  { document.getElementById('navLinks').classList.remove('open'); }
 
 // ── Admin panel (#admin in URL) ───────────────────────────────────────────────
+// Set your admin password here (or move to a server-side check for production)
+const ADMIN_PASS = 'clearcoat2026';
+
 function openAdmin()  { document.getElementById('admin-panel').classList.add('open'); }
 function closeAdmin() {
   document.getElementById('admin-panel').classList.remove('open');
-  document.getElementById('jobForm').style.display = '';
+  document.getElementById('admin-login').style.display = '';
+  document.getElementById('jobForm').style.display = 'none';
   document.getElementById('job-success').style.display = 'none';
+  document.getElementById('admin-login-error').style.display = 'none';
+  document.getElementById('adminPass').value = '';
+}
+function checkAdminPass() {
+  const input = document.getElementById('adminPass').value;
+  if (input === ADMIN_PASS) {
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('jobForm').style.display = '';
+  } else {
+    document.getElementById('admin-login-error').style.display = 'block';
+  }
 }
 if (location.hash === '#admin') openAdmin();
 window.addEventListener('hashchange', () => {
@@ -998,6 +1021,12 @@ reviewForm.addEventListener('submit', async function(e) {
 });
 
 // ── Render a review card ──────────────────────────────────────────────────────
+function escapeHTML(str) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(str));
+  return d.innerHTML;
+}
+
 function renderReviewCard(r, container) {
   const s   = Math.round(r.stars || 5);
   const str = '★'.repeat(s) + '☆'.repeat(5 - s);
@@ -1007,12 +1036,12 @@ function renderReviewCard(r, container) {
   div.setAttribute('data-aos', 'fade-up');
   div.innerHTML = `
     <div class="stars" style="color:#f59e0b">${str}</div>
-    <p class="review-text">"${r.text}"</p>
+    <p class="review-text">"${escapeHTML(r.text || '')}"</p>
     <div class="reviewer">
-      <div class="reviewer-avatar">${ini}</div>
+      <div class="reviewer-avatar">${escapeHTML(ini)}</div>
       <div>
-        <div class="reviewer-name">${r.name}</div>
-        <div class="reviewer-date">${r.service}${r.date ? ' · ' + r.date : ''}</div>
+        <div class="reviewer-name">${escapeHTML(r.name || '')}</div>
+        <div class="reviewer-date">${escapeHTML(r.service || '')}${r.date ? ' · ' + escapeHTML(r.date) : ''}</div>
       </div>
     </div>`;
   (container || document.getElementById('userReviews')).appendChild(div);
