@@ -70,8 +70,9 @@ Chris wants JARVIS to look and work like the high-production video demos. UI rev
 (jarvis-ui/index.html, neural bg + agent team + activity + voice waveform, ui-designer critique
 applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verified only.
 
-- [ ] B1 (easy). UI theme presets: add a few accent themes to the CONFIG (Zenthra purple, Clearcoat
-  ice, Stark gold) and a small theme switcher. Pure CSS variables. Verify it renders.
+- [x] B1 DONE 2026-06-27. Theme switcher in the header: Arc cyan, Zenthra purple, Clearcoat ice,
+  Stark gold. Refactored the accent to a single --acc/--acc2 RGB variable so every element including
+  the neural-net canvas recolors live. Verified: 0 hardcoded accents left, balanced braces, clean scan.
 - [ ] B2 (easy). Local launcher: a `jarvis.bat` / `jarvis.ps1` that opens jarvis-ui/index.html in the
   default browser. Convenience only.
 - [ ] B3 (medium). Make the agent team real: split the content-pipeline stages (scout, hook, topic,
@@ -84,5 +85,6 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
 
 ## Next step
 
-B1 (UI theme presets). Branch: claude/vibrant-cray-tui7og. When B1 to B4 are done, only the gated
-items (B5 to B7) remain; park and wait on Chris for keys, a host, and approvals.
+B2 (local launcher: jarvis.bat / jarvis.ps1 to open the UI). Branch: claude/vibrant-cray-tui7og.
+When B2 to B4 are done, only the gated items (B5 to B7) remain; park and wait on Chris for keys,
+a host, and approvals.
