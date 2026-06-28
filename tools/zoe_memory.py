@@ -250,6 +250,16 @@ def sync_knowledge():
     _build_index()
     return n
 
+def list_notes():
+    """Folder -> [note names] map of the whole vault, for the in-app Obsidian browser. Best-effort."""
+    _ensure()
+    out = {}
+    for fo in VAULT_FOLDERS + ["log"]:
+        files = sorted(os.path.basename(p)[:-3] for p in glob.glob(os.path.join(VAULT, fo, "*.md")))
+        if files:
+            out[fo] = files
+    return out
+
 if __name__ == "__main__":
     op = sys.argv[1] if len(sys.argv) > 1 else "resume"
     arg = " ".join(sys.argv[2:])

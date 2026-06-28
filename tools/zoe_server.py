@@ -21,6 +21,8 @@ except Exception:
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HUD = os.path.join(ROOT, "zoe-ui", "index.html")
 HUD3D = os.path.join(ROOT, "zoe-ui", "os3d.html")
+HUDVAULT = os.path.join(ROOT, "zoe-ui", "vault.html")
+HUDSHELL = os.path.join(ROOT, "zoe-ui", "shell.html")
 PORT = 7717
 
 _n = psutil.net_io_counters()
@@ -79,8 +81,14 @@ class H(http.server.BaseHTTPRequestHandler):
             self._json(zoe_memory.resume() if zoe_memory else {"error": "memory unavailable"})
         elif self.path.startswith("/memory/graph"):
             self._json(zoe_memory.graph() if zoe_memory else {"nodes": [], "edges": []})
+        elif self.path.startswith("/memory/list"):
+            self._json(zoe_memory.list_notes() if zoe_memory else {})
         elif self.path.startswith("/3d") or self.path.startswith("/os3d"):
             self._html(HUD3D, b"zoe-ui/os3d.html not found")
+        elif self.path.startswith("/vault"):
+            self._html(HUDVAULT, b"zoe-ui/vault.html not found")
+        elif self.path.startswith("/shell"):
+            self._html(HUDSHELL, b"zoe-ui/shell.html not found")
         else:
             self._html(HUD, b"zoe-ui/index.html not found")
 

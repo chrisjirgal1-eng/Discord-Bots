@@ -98,13 +98,14 @@ function createWindow() {
     },
   });
 
-  const tryLive = () => win.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}`);
+  // load the dual-workspace shell (Zoey + Obsidian + Graph). Fallbacks: /shell -> / -> local deck.
+  const tryLive = () => win.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}/shell`);
   tryLive();
-  // if the telemetry server is not up yet, retry, then fall back to the local file
   win.webContents.on('did-fail-load', () => {
     setTimeout(() => {
-      win.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}`).catch(() =>
-        win.loadFile(path.join(ROOT, 'zoe-ui', 'index.html')));
+      win.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}/shell`)
+        .catch(() => win.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}/`)
+        .catch(() => win.loadFile(path.join(ROOT, 'zoe-ui', 'index.html'))));
     }, 900);
   });
 
@@ -129,6 +130,11 @@ function refreshTrayMenu() {
     { label: paletteHotkey ? `Command bar  (${paletteHotkey.replace('CommandOrControl', 'Ctrl')})`
                            : 'Command bar', click: togglePalette },
     { label: '3D Command Center', click: openCommandCenter },
+    { label: 'Workspace', submenu: [
+      { label: 'Zoey Assistant  (Ctrl+1)', click: () => switchWorkspace('zoey') },
+      { label: 'Obsidian Vault  (Ctrl+2)', click: () => switchWorkspace('vault') },
+      { label: 'Memory Graph  (Ctrl+3)', click: () => switchWorkspace('graph') },
+    ]},
     { label: 'Hide to tray', click: () => win && win.hide() },
     { type: 'separator' },
     { label: 'Workspaces', submenu: wsItems.length ? wsItems : [{ label: '(none yet)', enabled: false }] },
@@ -187,6 +193,12 @@ function openCommandCenter() {
   });
   cc.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}/3d`);
   cc.on('closed', () => { cc = null; });
+}
+// switch the in-window workspace (Zoey / Obsidian vault / memory graph) in the shell
+function switchWorkspace(w) {
+  showWindow();
+  if (win && !win.isDestroyed())
+    win.webContents.executeJavaScript("window.show && window.show('" + w + "')").catch(() => {});
 }
 
 // Typed command -> the SAME pipeline voice uses (zoe_router.process via the CLI bridge).

@@ -253,7 +253,7 @@ cmd.addEventListener('keydown',e=>{ if(e.key==='Enter'&&cmd.value.trim()){ run(c
 $('#exe').addEventListener('click',()=>{ if(cmd.value.trim()){ run(cmd.value.trim()); cmd.value=''; } });
 document.querySelectorAll('.slash').forEach(s=>s.addEventListener('click',()=>{ cmd.value=s.dataset.c+' '; cmd.focus(); }));
 $('#vbtn').addEventListener('click',()=>{ try{ fetch('http://127.0.0.1:7766/wake',{method:'POST',body:'{}'}); }catch(e){} });
-$('#netpan').addEventListener('click',()=>location.href='/3d');
+$('#netpan').addEventListener('click',()=>{ if(window.parent!==window) parent.postMessage({zoeSwitch:'graph'},'*'); else location.href='/3d'; });
 </script>
 </body>
 </html>

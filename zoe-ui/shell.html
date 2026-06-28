@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZOE</title>
+<style>
+  :root{ --p:#9333ea; --p2:#b46bff; --bg:#08050f; --ln:rgba(147,51,234,.22); --tx:#e9dcff; --dm:#8b7bb0; --gold:#ffb24d; }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,sans-serif}
+  body{display:grid;grid-template-columns:60px 1fr;height:100vh}
+  #bar{background:rgba(14,8,24,.92);border-right:1px solid var(--ln);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px}
+  #bar .logo{color:var(--p2);font-weight:800;letter-spacing:1px;font-size:15px;margin-bottom:14px;text-shadow:0 0 12px var(--p)}
+  .ws{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;cursor:pointer;color:var(--dm);
+    border:1px solid transparent;position:relative;transition:.15s}
+  .ws:hover{color:var(--tx);background:rgba(147,51,234,.1)}
+  .ws.on{color:#fff;background:rgba(147,51,234,.2);border-color:var(--p2);box-shadow:0 0 16px rgba(147,51,234,.3)}
+  .ws .ic{font-size:18px;font-weight:700} .ws .lb{font-size:7px;letter-spacing:1px;margin-top:1px}
+  .ws.on::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--p2);box-shadow:0 0 8px var(--p2)}
+  #bar .sp{flex:1}
+  .ws.gold.on{border-color:var(--gold);box-shadow:0 0 16px rgba(255,178,77,.3)} .ws.gold.on .ic{color:var(--gold)}
+  #stage{position:relative}
+  iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg);display:none}
+  iframe.on{display:block}
+  #hint{position:absolute;bottom:10px;left:14px;font-size:9px;letter-spacing:1px;color:#5f5a70;pointer-events:none;z-index:5}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="logo">Z</div>
+  <div class="ws gold on" data-w="zoey" title="Zoey (Ctrl+1)"><div class="ic">◉</div><div class="lb">ZOEY</div></div>
+  <div class="ws" data-w="vault" title="Obsidian (Ctrl+2)"><div class="ic">◆</div><div class="lb">VAULT</div></div>
+  <div class="ws" data-w="graph" title="Memory graph (Ctrl+3)"><div class="ic">⬡</div><div class="lb">GRAPH</div></div>
+  <div class="sp"></div>
+</div>
+<div id="stage">
+  <iframe id="f-zoey" class="on" src="/" title="Zoey Assistant" allow="microphone; autoplay"></iframe>
+  <iframe id="f-vault" data-src="/vault" title="Obsidian Vault"></iframe>
+  <iframe id="f-graph" data-src="/3d" title="Memory Graph" allow="microphone"></iframe>
+  <div id="hint">Ctrl+1 Zoey · Ctrl+2 Obsidian · Ctrl+3 Graph · Ctrl+Tab switch</div>
+</div>
+<script>
+  const order = ['zoey','vault','graph'];
+  let cur = 'zoey';
+  function show(w){
+    if(!order.includes(w)) return;
+    cur = w;
+    document.querySelectorAll('.ws').forEach(b=>b.classList.toggle('on', b.dataset.w===w));
+    order.forEach(k=>{
+      const f = document.getElementById('f-'+k);
+      if(k===w && f.dataset.src && !f.src){ f.src = f.dataset.src; }   // lazy-load on first open
+      f.classList.toggle('on', k===w);
+    });
+  }
+  document.querySelectorAll('.ws').forEach(b=>b.addEventListener('click',()=>show(b.dataset.w)));
+  function cycle(dir){ show(order[(order.indexOf(cur)+dir+order.length)%order.length]); }
+  addEventListener('keydown', e=>{
+    if(e.ctrlKey && e.key==='1'){ e.preventDefault(); show('zoey'); }
+    else if(e.ctrlKey && e.key==='2'){ e.preventDefault(); show('vault'); }
+    else if(e.ctrlKey && e.key==='3'){ e.preventDefault(); show('graph'); }
+    else if(e.ctrlKey && e.key==='Tab'){ e.preventDefault(); cycle(e.shiftKey?-1:1); }
+  });
+  // let the embedded pages request a workspace switch (e.g. clicking the NETWORK panel)
+  addEventListener('message', e=>{ if(e.data && e.data.zoeSwitch) show(e.data.zoeSwitch); });
+</script>
+</body>
+</html>
