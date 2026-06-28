@@ -10,6 +10,10 @@ __pycache__/
 .venv/
 venv/
 
+# Tests
+tests/__pycache__/
+.coverage
+
 # Env and secrets
 .env
 .env.local
