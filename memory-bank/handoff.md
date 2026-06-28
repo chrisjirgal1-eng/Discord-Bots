@@ -161,6 +161,13 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   /wake -> window pops. Verified: hidden boot leaves control endpoint live + /wake returns
   {handled:true,shown:true}, no errors. Real-mic trigger still needs Chris to confirm on his hardware.
 
+- [x] K4 DONE 2026-06-28. Zoe's voice was too quiet. jarvis_speak.play() now maximizes loudness in
+  the ffmpeg step: speechnorm pushes speech to the ceiling + alimiter prevents clipping, with a
+  ZOE_VOICE_GAIN env knob (default +4 dB; raise for louder, negative to back off). Falls back to a
+  plain convert if the build lacks the filters, so playback never breaks. Measured on a real clip:
+  mean -21.4 -> -11.8 dB (+9.6 dB, ~2x perceived), peak -5 -> 0 dB (maxed). Note: this maxes the
+  SIGNAL; if Chris still cannot hear it, the Windows system/speaker volume is the remaining factor.
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
