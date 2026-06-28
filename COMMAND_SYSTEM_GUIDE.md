@@ -45,9 +45,13 @@ endpoint (for voice) and IPC (for the UI).
     plus `sounddevice`, `numpy`. Reads `ZOE_CONTROL` (set by Electron) to reach the control endpoint.
 
 - **Desktop app (everything together)**
-  - Start: `npm start` (or `zoe.bat`). Auto-starts at login via `tools/zoe_autostart.vbs`.
+  - Start: `npm start` (or `zoe.bat`) shows the window. Launch with `--hidden` (or env
+    `ZOE_START_HIDDEN=1`) to start in the tray, listening, with no window until summoned.
   - It spawns the telemetry server, opens the HUD, starts the control endpoint on 7766, and
     starts the voice assistant.
+  - Auto-start hidden at login: `powershell -File tools/zoe_install_autostart.ps1` creates a
+    Startup shortcut that runs `tools/zoe_autostart.vbs` (Electron `--hidden`). Saying "hey zoe"
+    then opens the window. Undo with `... -Remove` or the tray's "Launch on startup" toggle.
 
 ## 3. Backend status in the UI (running / disconnected / error)
 

@@ -25,6 +25,9 @@ function readState() {
 
 const TELEMETRY_PORT = 7717;
 const CONTROL_PORT = 7766;
+// Hidden/background start: launched with --hidden (the login auto-start), the window stays in the
+// tray and Zoe just listens; say "hey zoe" to open it. A manual launch (npm start) shows normally.
+const START_HIDDEN = process.argv.includes('--hidden') || process.env.ZOE_START_HIDDEN === '1';
 let win = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
 
 // ---- python resolution (the bare `python` on PATH is the Windows Store stub) ----
@@ -73,7 +76,7 @@ function createWindow() {
     }, 900);
   });
 
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => { if (!START_HIDDEN) win.show(); });
   // minimize to tray instead of quitting
   win.on('close', (e) => {
     if (!app.isQuitting) { e.preventDefault(); win.hide(); }
@@ -192,9 +195,17 @@ if (!app.requestSingleInstanceLock()) { app.quit(); }
 else {
   app.on('second-instance', showWindow);
   app.whenReady().then(() => {
+    app.setAppUserModelId('com.chris.zoe');   // so Windows attributes notifications to "Zoe"
     startTelemetry();
     setTimeout(createWindow, 1100);   // give the telemetry server a moment
     buildTray();
+    if (START_HIDDEN) {
+      // launched in the background: tell the user Zoe is alive and how to summon her
+      setTimeout(() => {
+        try { new Notification({ title: 'Zoe is listening',
+          body: 'Say "hey zoe" to open me.' }).show(); } catch (e) {}
+      }, 1800);
+    }
     registerIpc();
     registerShortcuts();
     startControlServer();

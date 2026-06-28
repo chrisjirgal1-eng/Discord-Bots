@@ -152,6 +152,15 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   POST /wake and /show both return {handled:true,shown:true}, app boots clean. Still needs Chris to
   confirm the mic actually triggers the wake on his hardware (no microphone in the build environment).
 
+- [x] K3 DONE 2026-06-28. "Open Zoe by voice" = auto-start hidden + always listening (Chris chose
+  this). main.js: --hidden / ZOE_START_HIDDEN starts the window in the tray (ready-to-show skips
+  show()), shows a "Zoe is listening, say hey zoe" notification, sets AppUserModelId so Windows
+  attributes it to Zoe. zoe_autostart.vbs now passes --hidden. New tools/zoe_install_autostart.ps1
+  creates/removes the Startup-folder shortcut (Zoe.lnk -> wscript zoe_autostart.vbs). ENABLED it for
+  Chris (shortcut verified in Startup). Flow: login -> Zoe boots hidden, listens -> "hey zoe" hits
+  /wake -> window pops. Verified: hidden boot leaves control endpoint live + /wake returns
+  {handled:true,shown:true}, no errors. Real-mic trigger still needs Chris to confirm on his hardware.
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
