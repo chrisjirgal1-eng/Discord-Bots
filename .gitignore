@@ -34,6 +34,15 @@ vault/sessions/
 vault/log/
 .obsidian/
 
+# External skill packs: installed locally, documented in .claude/skills/EXTERNAL-SKILLS.md,
+# not vendored into git (large third-party content with their own repos/licenses)
+.claude/skills/three-best-practices/
+.claude/skills/r3f-best-practices/
+.claude/skills/ui-ux-pro-max/
+.claude/skills/design/
+.claude/skills/design-system/
+.claude/skills/ui-styling/
+
 # Env and secrets
 .env
 .env.local
