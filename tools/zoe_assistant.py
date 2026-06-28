@@ -13,6 +13,7 @@ import os, sys, io, json, time, wave, queue, subprocess, urllib.request, webbrow
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jarvis_speak import load_env, tts, play
 import zoe_router   # the single command router (classify + dispatch)
+import zoe_state    # persistent continuity (memory/zoe_state.json), best-effort
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR = 16000
@@ -92,6 +93,16 @@ def main():
         try: play(tts(s, el, voice))
         except Exception as e: print("  (speak error:", e, ")")
 
+    # persistent continuity: detect mode and restore the prior session (best-effort)
+    try:
+        urllib.request.urlopen("http://localhost:7717/stats", timeout=0.8)
+        zoe_state.set_mode("online")
+    except Exception:
+        zoe_state.set_mode("offline")
+    prior = zoe_state.start_session(context="voice session").get("last_commands", [])
+    if prior:
+        print(f"  restored session: {len(prior)} prior command(s), last = {prior[-1].get('text','')!r}")
+
     # Only open the HUD here when running standalone. Under Electron the app owns the window.
     if not ctrl:
         boot_hud()
@@ -133,6 +144,7 @@ def main():
             history = history[-8:]
             speak(say)
     except KeyboardInterrupt:
+        zoe_state.save(zoe_state.load())   # preserve continuity on shutdown
         print("\n  Zoe offline. Goodbye, sir.\n")
 
 if __name__ == "__main__":

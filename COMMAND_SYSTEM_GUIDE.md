@@ -129,3 +129,21 @@ between), then folders, files, and websites. Add a new workspace by creating a n
   launches, the app name is unresolved, add it to `electron/config/apps.json`.
 - Native actions ignored from voice: confirm Electron is running (the control endpoint on 7766
   must answer); `curl -X POST http://127.0.0.1:7766/action -d '{}'` returns `{"handled":false}`.
+
+## 10. Persistent continuity (memory/zoe_state.json)
+
+ZOE survives restarts. `memory/zoe_state.json` holds the session context, the last commands, the
+last workspace, preferences, and the system mode. `tools/zoe_state.py` is the SINGLE writer
+(load / save / record_command / set_mode), so the Python and Electron processes never race;
+Electron only reads it.
+
+- On startup: `zoe_assistant.py` calls `zoe_state.start_session()` (restores prior state, or safe
+  defaults if the file is missing or corrupt) and sets the mode online/offline by pinging the
+  telemetry server. The Electron app reads the same file for restore.
+- On every command: `zoe_router.handle()` calls `zoe_state.record_command(text, action, handled,
+  workspace)` as the final "state updated" step of the pipeline.
+- On shutdown: the assistant rewrites the file (last_seen).
+
+It is fully best-effort: every state call swallows its own errors, so a missing, locked, or corrupt
+file never blocks a command, and ZOE falls back to safe defaults. The renderer can read the state
+read-only via `window.zoe.getState()`. The file is generated at runtime and gitignored.

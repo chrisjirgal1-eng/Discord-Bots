@@ -24,6 +24,10 @@ dist/
 out/
 package-lock.json
 
+# Zoe runtime session state (generated; not committed)
+memory/zoe_state.json
+memory/*.tmp
+
 # Env and secrets
 .env
 .env.local

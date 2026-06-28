@@ -115,6 +115,13 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   architecture (zoe_server.py is the telemetry server, not the command engine), every command, and how
   to add commands safely. Verified: router classify incl close; control endpoint close/launch handled
   live (a leftover Electron instance can shadow a new one via the single-instance lock, kill all first).
+- [x] B13 DONE 2026-06-28. Persistent continuity via memory/zoe_state.json (ADDITIVE; existing logic
+  unchanged). New tools/zoe_state.py is the single writer (load/save/record_command/set_mode, atomic,
+  best-effort with safe defaults). Hooked in: zoe_router.handle() records each command (the state-update
+  step) with the handled flag; zoe_assistant restores on startup, sets mode online/offline, saves on
+  shutdown; Electron reads it for restore and exposes window.zoe.getState(). Stores session context,
+  last commands, workspace state, preferences, system mode. memory/zoe_state.json is gitignored. State
+  I/O never blocks the pipeline. Verified: load defaults, record persists, handle() writes, Electron boots.
 
 ## Next step
 

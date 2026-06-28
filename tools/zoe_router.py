@@ -18,7 +18,12 @@ workspaceManager.js), reached over the localhost control endpoint (env ZOE_CONTR
 http://127.0.0.1:7766). When Electron is not running, folder and launch fall back to Python
 (os.startfile / start); workspace and close need the desktop app.
 """
-import os, json, subprocess, webbrowser, urllib.request
+import os, sys, json, subprocess, webbrowser, urllib.request
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import zoe_state          # persistent continuity; optional, never blocks routing
+except Exception:
+    zoe_state = None
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 DEFAULT_CONTROL = "http://127.0.0.1:7766"
@@ -70,31 +75,50 @@ def classify(text, groq_key, history=None):
         return {"action": "chat", "say": "Sorry sir, I didn't catch that."}
 
 def execute(action, command, ctrl=None):
-    """Dispatch an action dict. The only place actions actually run. Returns the action type."""
+    """Dispatch an action dict. The only place actions run. Returns (action_type, handled)."""
     ctrl = ctrl or os.environ.get("ZOE_CONTROL") or DEFAULT_CONTROL
     a = action.get("action", "chat")
     target = action.get("target", "")
     url = action.get("url", "")
+    handled = False
     if a == "workspace":
-        _post(ctrl, "/voice", {"phrase": target or command})
+        r = _post(ctrl, "/voice", {"phrase": target or command})
+        handled = bool(r and r.get("handled"))
     elif a == "launch":
-        if not _post(ctrl, "/action", {"launch": target}) and target:
-            try: subprocess.Popen(["cmd", "/c", "start", "", target])
+        r = _post(ctrl, "/action", {"launch": target})
+        if r and r.get("handled"):
+            handled = True
+        elif target:
+            try: subprocess.Popen(["cmd", "/c", "start", "", target]); handled = True
             except Exception: pass
     elif a == "close":
-        _post(ctrl, "/action", {"close": target})
+        r = _post(ctrl, "/action", {"close": target})
+        handled = bool(r and r.get("handled"))
     elif a == "folder":
-        if not _post(ctrl, "/action", {"folder": target}):
+        r = _post(ctrl, "/action", {"folder": target})
+        if r and r.get("handled"):
+            handled = True
+        else:
             p = os.path.expandvars(target)
             if p and os.path.exists(p):
-                try: os.startfile(p)
+                try: os.startfile(p); handled = True
                 except Exception: pass
-    elif a == "web" and isinstance(url, str) and url.startswith(("http://", "https://")):
-        webbrowser.open(url)
-    return a
+    elif a == "web":
+        if isinstance(url, str) and url.startswith(("http://", "https://")):
+            webbrowser.open(url); handled = True
+    elif a == "chat":
+        handled = True
+    return a, handled
 
 def handle(text, groq_key, ctrl=None, history=None):
-    """Classify then execute a phrase. Returns (spoken_reply, action_type)."""
+    """Classify, execute, and record. Returns (spoken_reply, action_type). State update is the
+    final pipeline step and is best-effort: it never blocks the command."""
     action = classify(text, groq_key, history)
-    a = execute(action, text, ctrl)
+    a, handled = execute(action, text, ctrl)
+    if zoe_state:
+        try:
+            zoe_state.record_command(text, a, handled,
+                                     workspace=action.get("target") if a == "workspace" else None)
+        except Exception:
+            pass
     return action.get("say", "On it, sir."), a

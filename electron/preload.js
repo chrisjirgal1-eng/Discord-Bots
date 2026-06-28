@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('zoe', {
   getLaunchOnStartup: () => ipcRenderer.invoke('startup:get'),
   minimizeToTray: () => ipcRenderer.invoke('window:hide'),
 
+  // persistent state (read-only from the renderer)
+  getState: () => ipcRenderer.invoke('state:get'),
+
   // voice engine (the python assistant) control + status
   startVoice: () => ipcRenderer.invoke('voice:start'),
   stopVoice: () => ipcRenderer.invoke('voice:stop'),

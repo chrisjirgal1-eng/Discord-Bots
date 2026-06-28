@@ -15,6 +15,14 @@ const WorkspaceManager = require('./services/workspaceManager');
 const launcher = require('./services/launcher');
 const wsm = new WorkspaceManager(path.join(ROOT, 'workspaces'), path.join(__dirname, 'config'));
 
+// Persistent continuity: Python (zoe_state.py) is the single writer; Electron only reads it
+// for restore/display so the two processes never race on the file.
+const STATE_FILE = path.join(ROOT, 'memory', 'zoe_state.json');
+function readState() {
+  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); }
+  catch { return { system_mode: 'online', last_commands: [], workspace_state: { last: null }, preferences: {} }; }
+}
+
 const TELEMETRY_PORT = 7717;
 const CONTROL_PORT = 7766;
 let win = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
@@ -152,6 +160,7 @@ function registerIpc() {
   ipcMain.handle('window:hide', () => { if (win) win.hide(); return { ok: true }; });
   ipcMain.handle('voice:start', () => { startVoice(); return { ok: true }; });
   ipcMain.handle('voice:stop', () => { stopVoice(); return { ok: true }; });
+  ipcMain.handle('state:get', () => readState());
 }
 
 // ---- global shortcuts: push-to-talk + show/hide ----
@@ -177,6 +186,9 @@ else {
     registerIpc();
     registerShortcuts();
     startControlServer();
+    const restored = readState();
+    if (restored.last_commands && restored.last_commands.length)
+      console.log('Zoe: restored session,', restored.last_commands.length, 'prior command(s)');
     setTimeout(startVoice, 2600);   // always-listening for "Hey Zoe" once the app is up
     app.setLoginItemSettings({ openAtLogin: app.getLoginItemSettings().openAtLogin }); // keep current
   });
