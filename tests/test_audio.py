@@ -35,9 +35,10 @@ class TestTrack:
         t = Track({"title": "", "url": "http://stream.url"})
         assert t.title == "Unknown"
 
-    def test_missing_url_defaults_to_empty(self):
-        t = Track({"title": "No URL"})
-        assert t.stream_url == ""
+    def test_missing_url_raises(self):
+        # A track with no stream URL cannot be played, so Track rejects it.
+        with pytest.raises(ValueError):
+            Track({"title": "No URL"})
 
     def test_webpage_url_falls_back_to_stream_url(self):
         t = Track({"title": "Fallback", "url": "http://stream.url"})
