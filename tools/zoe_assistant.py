@@ -20,6 +20,32 @@ SR = 16000
 RMS_THRESHOLD = 600        # mic sensitivity; lower = picks up quieter speech. Tune if needed.
 WAKE_WORDS = ("zoe", "zoey", "zo", "hey zoe", "ok zoe")
 
+def calibrate_threshold():
+    """Pick the wake (mic) threshold so Zoe hears your voice but not silence. ZOE_MIC_THRESHOLD
+    wins if set; otherwise sample ~1.2s of room noise and set the bar just above it. Bounded
+    [250, 1500], best-effort (falls back to 600 if there is no mic)."""
+    env = os.environ.get("ZOE_MIC_THRESHOLD")
+    if env:
+        try: return max(50, int(env))
+        except ValueError: pass
+    try:
+        import sounddevice as sd, numpy as np
+        q = queue.Queue()
+        with sd.InputStream(samplerate=SR, channels=1, dtype="int16",
+                            blocksize=int(SR * 0.05), callback=lambda i, n, t, s: q.put(i.copy())):
+            vals, start = [], time.time()
+            while time.time() - start < 1.2:
+                try: b = q.get(timeout=0.5)
+                except queue.Empty: continue
+                vals.append(float(np.sqrt(np.mean(b.astype(np.float32) ** 2))))
+        if vals:
+            vals.sort()
+            ambient = vals[len(vals) // 2]            # median room noise
+            return int(min(max(ambient * 2.5, 250), 1500))
+    except Exception:
+        pass
+    return 600
+
 def listen_utterance(max_wait=None):
     """Record one spoken utterance using simple energy voice-activity detection."""
     import sounddevice as sd, numpy as np
@@ -118,6 +144,10 @@ def main():
     # Only open the HUD here when running standalone. Under Electron the app owns the window.
     if not ctrl:
         boot_hud()
+    # auto-calibrate the mic to the room so Zoe hears your voice without you tuning anything
+    global RMS_THRESHOLD
+    RMS_THRESHOLD = calibrate_threshold()
+    print(f"  mic wake threshold: {RMS_THRESHOLD}  (set ZOE_MIC_THRESHOLD in .env to override)")
     print("\n  ZOE is listening. Say 'Hey Zoe' then your request. Ctrl+C to quit.\n")
     speak("Zoe online, sir. Say hey Zoe whenever you need me.")
     history = []

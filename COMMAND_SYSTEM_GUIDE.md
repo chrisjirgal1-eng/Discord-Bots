@@ -130,8 +130,11 @@ between), then folders, files, and websites. Add a new workspace by creating a n
 ## 9. Debugging
 
 - HUD blank or "BACKEND OFFLINE": start `python tools/zoe_server.py` and check `http://localhost:7717/stats`.
-- Voice not reacting: run `python tools/zoe_assistant.py` in a console; if it never prints "heard",
-  lower `RMS_THRESHOLD`. If it mishears, raise it.
+- Voice not reacting (Zoe cannot hear you): run `python tools/zoe_mic_test.py` (or double-click
+  `zoe_mic_test.bat`) to see your live mic level against the wake line, and `--wake` to say
+  "hey zoe" and confirm the full trigger. Zoe auto-calibrates the threshold to the room at startup;
+  to pin it, set `ZOE_MIC_THRESHOLD` in `.env` to the value the meter suggests (lower = more
+  sensitive). If she mishears the words rather than missing them, that is Deepgram, not the level.
 - A command does nothing: check the printed `intent:` line. If the action is right but nothing
   launches, the app name is unresolved, add it to `electron/config/apps.json`.
 - Native actions ignored from voice: confirm Electron is running (the control endpoint on 7766

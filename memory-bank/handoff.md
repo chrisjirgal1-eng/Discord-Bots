@@ -168,6 +168,15 @@ is additive; the 76-test suite still passes and every legacy state field is pres
   mean -21.4 -> -11.8 dB (+9.6 dB, ~2x perceived), peak -5 -> 0 dB (maxed). Note: this maxes the
   SIGNAL; if Chris still cannot hear it, the Windows system/speaker volume is the remaining factor.
 
+- [x] K5 DONE 2026-06-28. Make Zoe actually hear you (hands-free wake). zoe_assistant now
+  auto-calibrates the mic threshold at startup: calibrate_threshold() samples ~1.2s of room noise
+  and sets the wake bar to ambient x2.5, bounded [250,1500], overridable by ZOE_MIC_THRESHOLD in
+  .env (replaces the blind hardcoded 600). New tools/zoe_mic_test.py (+ zoe_mic_test.bat): a live
+  RMS meter showing your voice vs the wake line with a suggested threshold, and --wake to record
+  "hey zoe" -> Deepgram -> confirm the trigger. Verified: calibrate returns a safe int even with no
+  mic (got 469 here from a real ambient sample), env override honored, compiles. The full
+  speak-into-mic -> wake -> window-pop loop still needs Chris to run on his hardware (no mic in CI).
+
 ## Next step
 
 B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
