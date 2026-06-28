@@ -56,6 +56,17 @@ function openFolder(p) {
 
 function openUrl(u) { shell.openExternal(u); return { ok: true }; }
 
+// Close an app by process image name (e.g. "Discord" -> Discord.exe). Safe: only kills by
+// image name, never an arbitrary command.
+function closeApp(name) {
+  if (!name) return { ok: false, error: 'no app' };
+  let img = String(name).split(/[\\/]/).pop();
+  if (!/\.exe$/i.test(img)) img += '.exe';
+  if (process.platform === 'win32') exec(`taskkill /im "${img}" /f`, () => {});
+  else exec(`pkill -f "${name}"`, () => {});
+  return { ok: true, closed: img };
+}
+
 // Run a raw command (cmd / powershell / terminal). Kept explicit so the AI cannot
 // invoke it by accident: only items with an explicit { cmd } or { ps1 } key reach here.
 function runCommand(command, kind) {
@@ -89,4 +100,4 @@ function launchOne(item, appMap) {
   return 'skip';
 }
 
-module.exports = { launchOne, launchApp, launchPath, openFolder, openUrl, runCommand };
+module.exports = { launchOne, launchApp, launchPath, openFolder, openUrl, runCommand, closeApp };

@@ -107,6 +107,14 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   Startup VBS now launches Electron. electron-builder + electron-updater configured (publish URL is a
   placeholder). Booted cleanly in a smoke test (control server responded, no errors). Run npm install
   first. Live verify: window render, mic wake, and actual app launching need Chris to run it.
+- [x] B12 DONE 2026-06-28. Integration check + stabilization (not a rebuild). Centralized ALL command
+  routing into tools/zoe_router.py (one place: classify via Groq + execute); zoe_assistant.py now only
+  does audio and calls the router. Added the close-app action (launcher.closeApp via taskkill, wired
+  through the control endpoint). HUD shows backend status (LIVE / OFFLINE / ERROR) with a warning banner
+  and start instructions, and never freezes. Wrote COMMAND_SYSTEM_GUIDE.md documenting the REAL
+  architecture (zoe_server.py is the telemetry server, not the command engine), every command, and how
+  to add commands safely. Verified: router classify incl close; control endpoint close/launch handled
+  live (a leftover Electron instance can shadow a new one via the single-instance lock, kill all first).
 
 ## Next step
 

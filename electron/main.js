@@ -128,6 +128,7 @@ function startControlServer() {
           if (data.workspace) result = { handled: true, ...(await wsm.runByPhrase(data.workspace)) };
           else if (data.folder) result = { handled: true, ...launcher.openFolder(data.folder) };
           else if (data.launch) result = { handled: true, label: launcher.launchOne(data.launch, wsm.appMap()) };
+          else if (data.close) result = { handled: true, ...launcher.closeApp(data.close) };
           else if (data.url) result = { handled: true, ...launcher.openUrl(data.url) };
         }
       } catch (e) { result = { handled: false, error: String(e) }; }

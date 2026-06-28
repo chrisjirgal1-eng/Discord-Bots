@@ -1,59 +1,23 @@
 #!/usr/bin/env python3
-"""Zoe: a wake-word voice assistant that pulls things up on screen.
+"""Zoe: a wake-word voice assistant. The ears, mouth, and wake word.
 
-Say "Hey Zoe" then a request. She opens what you ask for in your browser (the news,
-a YouTube search, a Google search, a site) and confirms out loud. Her live HUD opens
-when she starts. No push-to-talk: she is always listening for her name.
+Say "Hey Zoe" then a request. This script only does audio: capture (voice-activity),
+transcribe (Deepgram), pass the command to zoe_router (the ONE place command meaning and
+dispatch live), then speak the reply (ElevenLabs). It does not decide what commands mean;
+zoe_router does. See COMMAND_SYSTEM_GUIDE.md.
 
-Pipeline: mic (voice-activity) -> Deepgram (hear) -> wake word -> Groq (decide what to
-open) -> browser opens it + ElevenLabs (Lily) speaks.
-
-  python tools/zoe_assistant.py     (or run zoe.bat, which also starts the HUD)
+  python tools/zoe_assistant.py     (or the Electron app starts it for you)
 """
 import os, sys, io, json, time, wave, queue, subprocess, urllib.request, webbrowser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jarvis_speak import load_env, tts, play
+import zoe_router   # the single command router (classify + dispatch)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR = 16000
 RMS_THRESHOLD = 600        # mic sensitivity; lower = picks up quieter speech. Tune if needed.
 WAKE_WORDS = ("zoe", "zoey", "zo", "hey zoe", "ok zoe")
-GROQ_MODEL = "llama-3.3-70b-versatile"
-
-INTENT_SYS = (
-    "You are Zoe's command router on Chris's Windows PC. Reply with ONLY a JSON object: "
-    '{"action": "workspace|launch|folder|web|chat", "target": "", "url": "", "say": ""}. '
-    "- workspace: he wants to start a named workspace or mode (coding, school, gaming, editing). "
-    "target = the workspace name or his exact phrase. "
-    "- launch: open a desktop app. target = the app name, e.g. Discord, Spotify, VS Code, Notepad. "
-    "- folder: open a folder. target = a Windows path; map Downloads, Documents, Desktop, Videos, "
-    "Pictures, Music to %USERPROFILE%\\\\<name>. "
-    "- web: see, show, pull up, search, watch, or look something up. url = the best https URL "
-    "(news -> https://news.google.com ; youtube -> https://www.youtube.com/results?search_query=QUERY ; "
-    "otherwise https://www.google.com/search?q=QUERY, URL-encoded). "
-    "- chat: plain conversation. "
-    "Always set say to one short spoken sentence, address him as sir or Chris."
-)
-
-def post_control(base, route, payload):
-    try:
-        req = urllib.request.Request(base.rstrip('/') + route,
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=6) as r:
-            return json.load(r)
-    except Exception:
-        return None
-
-def groq(messages, key, max_tokens=200):
-    body = json.dumps({"model": GROQ_MODEL, "messages": messages,
-                       "max_tokens": max_tokens, "temperature": 0.5}).encode()
-    req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
-                 "User-Agent": "curl/8.19.0"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)["choices"][0]["message"]["content"].strip()
 
 def listen_utterance(max_wait=None):
     """Record one spoken utterance using simple energy voice-activity detection."""
@@ -118,6 +82,7 @@ def main():
     dg = os.environ.get("DEEPGRAM_API_KEY")
     el = os.environ.get("ELEVENLABS_API_KEY")
     voice = os.environ.get("ELEVENLABS_VOICE_ID")
+    ctrl = os.environ.get("ZOE_CONTROL")   # set by the Electron app; None when standalone
     miss = [n for n, v in [("GROQ_API_KEY", groq_key), ("DEEPGRAM_API_KEY", dg),
                            ("ELEVENLABS_API_KEY", el), ("ELEVENLABS_VOICE_ID", voice)] if not v]
     if miss:
@@ -127,7 +92,9 @@ def main():
         try: play(tts(s, el, voice))
         except Exception as e: print("  (speak error:", e, ")")
 
-    boot_hud()
+    # Only open the HUD here when running standalone. Under Electron the app owns the window.
+    if not ctrl:
+        boot_hud()
     print("\n  ZOE is listening. Say 'Hey Zoe' then your request. Ctrl+C to quit.\n")
     speak("Zoe online, sir. Say hey Zoe whenever you need me.")
     history = []
@@ -142,8 +109,7 @@ def main():
                 print("  stt error:", e); continue
             if not text:
                 continue
-            low = text.lower()
-            if not any(w in low for w in WAKE_WORDS):
+            if not any(w in text.lower() for w in WAKE_WORDS):
                 continue  # not addressed to Zoe
             print("  heard:  ", text)
             command = strip_wake(text)
@@ -158,35 +124,13 @@ def main():
                 continue
             print("  command:", command)
             try:
-                raw = groq([{"role": "system", "content": INTENT_SYS}] + history[-4:]
-                           + [{"role": "user", "content": command}], groq_key)
-                intent = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
+                say, act = zoe_router.handle(command, groq_key, ctrl, history)
             except Exception as e:
-                print("  intent error:", e); speak("Sorry sir, I didn't catch that."); continue
-            action = intent.get("action", "chat")
-            target = intent.get("target", "")
-            url = intent.get("url", "")
-            say = intent.get("say", "On it, sir.")
-            ctrl = os.environ.get("ZOE_CONTROL")   # set by the Electron app
-            print(f"  intent: {action} {target or url}")
-            if action == "workspace":
-                post_control(ctrl, "/voice", {"phrase": target or command}) if ctrl else None
-            elif action == "launch":
-                if not (ctrl and post_control(ctrl, "/action", {"launch": target})) and target:
-                    try: subprocess.Popen(["cmd", "/c", "start", "", target])
-                    except Exception: pass
-            elif action == "folder":
-                if not (ctrl and post_control(ctrl, "/action", {"folder": target})):
-                    p = os.path.expandvars(target)
-                    if p and os.path.exists(p):
-                        try: os.startfile(p)
-                        except Exception: pass
-            elif action == "web" and isinstance(url, str) and url.startswith(("http://", "https://")):
-                webbrowser.open(url)
+                print("  router error:", e); speak("Sorry sir, something went wrong."); continue
+            print(f"  intent: {act} | ZOE: {say}\n")
             history += [{"role": "user", "content": command},
                         {"role": "assistant", "content": say}]
             history = history[-8:]
-            print("  ZOE:    ", say, "\n")
             speak(say)
     except KeyboardInterrupt:
         print("\n  Zoe offline. Goodbye, sir.\n")

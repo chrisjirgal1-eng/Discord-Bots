@@ -27,6 +27,10 @@ auto-starts at login via `tools/zoe_autostart.vbs`. First-time setup: `npm insta
   control endpoint, never by touching the renderer.
 - Packaging: `npm run dist` (electron-builder; NSIS for Windows, mac/linux targets configured).
   Auto-update (electron-updater) is wired; point `build.publish.url` at a real feed to enable.
+- Command system: all voice and command routing is centralized in `tools/zoe_router.py`. The real
+  architecture, every supported command, the backend status states, and how to add commands safely
+  are documented in [COMMAND_SYSTEM_GUIDE.md](COMMAND_SYSTEM_GUIDE.md). Note: `zoe_server.py` is the
+  telemetry server, not the command engine.
 
 ## The Discord music bot
 

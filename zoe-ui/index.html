@@ -41,6 +41,16 @@ canvas{display:block}
 .live{display:flex;align-items:center;gap:7px;font-size:.6rem;letter-spacing:2px;color:var(--ok)}
 .live i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 9px var(--ok);animation:pl 1.4s infinite}
 .live.sim{color:var(--warn)} .live.sim i{background:var(--warn);box-shadow:0 0 9px var(--warn)}
+.live.err{color:var(--hot)} .live.err i{background:var(--hot);box-shadow:0 0 9px var(--hot)}
+.warn-banner{position:fixed;top:0;left:0;right:0;z-index:50;display:none;align-items:center;gap:12px;
+  padding:9px 18px;background:rgba(251,191,36,.14);border-bottom:1px solid rgba(251,191,36,.5);
+  color:#fde68a;font-size:.66rem;letter-spacing:.5px;backdrop-filter:blur(6px)}
+.warn-banner.show{display:flex}
+.warn-banner.err{background:rgba(251,113,133,.14);border-bottom-color:rgba(251,113,133,.5);color:#fecdd3}
+.warn-banner b{color:#fff}
+.warn-banner code{background:rgba(255,255,255,.1);padding:2px 7px;border-radius:5px;color:#fff}
+.warn-banner .x{margin-left:auto;cursor:pointer;opacity:.7;font-size:.9rem}
+.warn-banner .x:hover{opacity:1}
 .clock{display:flex;flex-direction:column;align-items:flex-end}
 .clock .t{font-size:1.7rem;letter-spacing:3px;color:rgb(var(--acc));line-height:1;text-shadow:0 0 16px rgba(var(--acc),.5)}
 .clock .d{font-size:.6rem;letter-spacing:3px;color:var(--muted);margin-top:3px}
@@ -104,6 +114,11 @@ canvas{display:block}
 <body>
 <h2 class="sr">ZOE command center: a live system telemetry HUD showing an arc reactor, real CPU, RAM, disk and network from the host machine, gauges, a wireframe globe, and assistant status.</h2>
 <div class="grid-bg"></div>
+
+<div class="warn-banner" id="backendWarn">
+  <span id="backendWarnText"></span>
+  <span class="x" onclick="this.parentElement.classList.remove('show')">&times;</span>
+</div>
 
 <div class="hud">
   <!-- header -->
@@ -275,13 +290,41 @@ function simulate(){
     time:d.toTimeString().slice(0,8),date:d.toDateString().toUpperCase()};
 }
 
+function startHint(){
+  return (window.zoe && window.zoe.isElectron)
+    ? 'use the tray to restart it, or relaunch the app.'
+    : 'double-click <code>zoe.bat</code>, or run <code>python tools/zoe_server.py</code>.';
+}
+function setBackend(state){
+  const el=$('#live'), b=$('#backendWarn'), bt=$('#backendWarnText');
+  const desktop = !!(window.zoe && window.zoe.isElectron);
+  if(state==='live'){
+    el.className='live'; $('#livetext').textContent = desktop ? 'BACKEND LIVE - DESKTOP' : 'BACKEND LIVE';
+    b.classList.remove('show');
+  } else if(state==='error'){
+    el.className='live err'; $('#livetext').textContent='BACKEND ERROR';
+    b.className='warn-banner err show';
+    bt.innerHTML='<b>Backend error.</b> The telemetry server replied with bad data. Showing a simulated feed. Restart it: '+startHint();
+  } else {
+    el.className='live sim'; $('#livetext').textContent='BACKEND OFFLINE';
+    b.className='warn-banner show';
+    bt.innerHTML='<b>Backend offline.</b> Live system stats are unavailable, so Zoe is showing a simulated feed (the UI still works). Start the backend: '+startHint();
+  }
+}
 async function poll(){
-  let s;
-  try{const r=await fetch(CONFIG.statsUrl,{cache:'no-store'});if(!r.ok)throw 0;s=await r.json();LIVE=true;}
-  catch(e){s=simulate();LIVE=false;}
-  const el=$('#live');
-  if(LIVE){el.className='live';$('#livetext').textContent='LIVE TELEMETRY';}
-  else{el.className='live sim';$('#livetext').textContent='SIMULATED (run zoe_server.py for live)';}
+  // never throws to the caller: the HUD keeps running even if the backend is down or erroring
+  let s, state='offline';
+  try{
+    const r=await fetch(CONFIG.statsUrl,{cache:'no-store'});
+    try{
+      if(!r.ok) throw 0;
+      s=await r.json();
+      if(typeof s.cpu!=='number') throw 0;
+      state='live';
+    }catch(_){ state='error'; }     // reachable but bad response
+  }catch(_){ state='offline'; }     // unreachable
+  if(state==='live'){ LIVE=true; } else { LIVE=false; s=simulate(); }
+  setBackend(state);
   apply(s);
 }
 poll();setInterval(poll,CONFIG.pollMs);
