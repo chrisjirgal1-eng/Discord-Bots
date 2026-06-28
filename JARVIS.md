@@ -48,7 +48,7 @@ Honest about the gap, so nothing is wired blind:
 
 1. **Voice.** Needs an 11 Labs key (TTS, a chosen voice ID) and a Deepgram key (STT). Once
    provided, the loop is: mic to Deepgram to JARVIS router to 11 Labs to speaker. Keys go in
-   the gitignored `.env`, never the repo.
+   the gitignored `.env`, never the repo. Full runbook: `memory-bank/jarvis-voice-spec.md`.
 2. **24/7 loops.** A web session cannot fire a schedule after it ends. The nightly and
    watcher jobs run on GitHub Actions (free) or Zapier. Each writes a heartbeat so a missed
    run is visible. See `memory-bank/autonomous-potential.md`.

@@ -1,0 +1,35 @@
+# JARVIS CI (template, currently OFF)
+#
+# This file ends in .disabled on purpose, so GitHub Actions ignores it and it cannot fire on
+# its own. It was written by the autonomous build run but left inert, because a workflow that
+# runs unattended on Chris's repo should be turned on by Chris, who watches the first run.
+#
+# To turn it on:
+#   1. Rename this file to `jarvis-ci.yml` (drop the .disabled).
+#   2. Commit and push.
+#   3. Watch the first run under the repo's Actions tab. It should go green (76 tests).
+#
+# It needs no secrets. It installs only the test-relevant deps (not tensorflow) and runs pytest.
+
+name: JARVIS CI
+
+on:
+  push:
+    branches: [claude/vibrant-cray-tui7og]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "discord.py" python-dotenv yt-dlp pytest pytest-asyncio
+      - name: Run tests
+        run: python -m pytest -q

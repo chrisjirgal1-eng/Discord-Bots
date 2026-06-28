@@ -46,10 +46,11 @@ map honest about wired vs gated. Everything committed and pushed.
 3. [x] DONE 2026-06-27. Added root README.md (the bot, JARVIS, the memory bank, tooling, the
    Clearcoat site, a layout map). Verified every referenced path exists and the 76-test claim is
    accurate (Type-A self-check). The banned-word scan caught em dashes in the first draft; all fixed.
-4. [ ] Write ready-to-run specs so the credentialed pieces are one step for Chris: a voice runbook
-   (11 Labs + Deepgram wiring) and an INERT GitHub Actions template committed as a documented
-   non-running file (e.g. `.github/workflows/jarvis-nightly.yml.disabled`) so it cannot auto-fire.
-   These are docs/templates only. Do not enable anything that needs secrets.
+4. [x] DONE 2026-06-27. Wrote memory-bank/jarvis-voice-spec.md (the voice loop: mic to Deepgram to
+   `claude -p "jarvis, ..."` to 11 Labs to speaker, the keys, deps, activation steps) and an inert
+   CI template `.github/workflows/jarvis-ci.yml.disabled` (runs the 76 tests; the .disabled suffix
+   keeps GitHub from firing it; rename to enable). YAML validated. Cross-linked the voice spec in
+   JARVIS.md. No secrets, nothing auto-fires.
 5. [ ] Quick audit of the 154 VoltAgents: confirm the 10 bundles loaded, note coverage in tools.md.
 6. [ ] When 1-5 are done or all remaining are BLOCKED: write "BACKLOG DRAINED, waiting on Chris"
    below, list exactly what Chris must provide (voice keys, host secrets, auto-post approval), stop.
@@ -62,4 +63,4 @@ map honest about wired vs gated. Everything committed and pushed.
 
 ## Next step
 
-Item 4 (voice runbook + inert CI template, docs only). Branch: claude/vibrant-cray-tui7og.
+Item 5 (audit the 154 VoltAgents, note coverage in tools.md). Branch: claude/vibrant-cray-tui7og.
