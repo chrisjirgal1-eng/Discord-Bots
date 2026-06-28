@@ -43,8 +43,9 @@ map honest about wired vs gated. Everything committed and pushed.
    and tests/test_watch_batch.py (vid_id parsing). Suite now 76 green. A fresh reviewer claimed the
    async tests were vacuous (missing the asyncio marker); verified empirically with a planted failing
    assertion, which DID fail, proving asyncio_mode=auto runs them. Reviewer was wrong; tests are real.
-3. [ ] Add a clean root README.md that makes the repo legible (what it is, the bot, JARVIS, how
-   the memory bank works). Confirm every skill/file it references exists. Commit.
+3. [x] DONE 2026-06-27. Added root README.md (the bot, JARVIS, the memory bank, tooling, the
+   Clearcoat site, a layout map). Verified every referenced path exists and the 76-test claim is
+   accurate (Type-A self-check). The banned-word scan caught em dashes in the first draft; all fixed.
 4. [ ] Write ready-to-run specs so the credentialed pieces are one step for Chris: a voice runbook
    (11 Labs + Deepgram wiring) and an INERT GitHub Actions template committed as a documented
    non-running file (e.g. `.github/workflows/jarvis-nightly.yml.disabled`) so it cannot auto-fire.
@@ -61,4 +62,4 @@ map honest about wired vs gated. Everything committed and pushed.
 
 ## Next step
 
-Item 3 (add a clean root README.md). Branch: claude/vibrant-cray-tui7og.
+Item 4 (voice runbook + inert CI template, docs only). Branch: claude/vibrant-cray-tui7og.
