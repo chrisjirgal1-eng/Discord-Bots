@@ -28,6 +28,12 @@ package-lock.json
 memory/zoe_state.json
 memory/*.tmp
 
+# Obsidian memory vault: keep curated notes + README, ignore runtime churn
+vault/index.md
+vault/sessions/
+vault/log/
+.obsidian/
+
 # Env and secrets
 .env
 .env.local

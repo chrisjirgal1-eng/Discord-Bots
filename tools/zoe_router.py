@@ -25,6 +25,10 @@ try:
 except Exception:
     zoe_state = None
 try:
+    import zoe_memory         # Obsidian long-term memory; optional, best-effort
+except Exception:
+    zoe_memory = None
+try:
     import zoe_versions
     COMMAND_SCHEMA_VERSION = zoe_versions.SYSTEM["command_schema_version"]
     PLUGIN_API_VERSION = zoe_versions.SYSTEM["plugin_api_version"]
@@ -41,7 +45,9 @@ DEFAULT_CONTROL = "http://127.0.0.1:7766"
 
 INTENT_SYS = (
     "You are Zoe's command router on Chris's Windows PC. Reply with ONLY a JSON object: "
-    '{"action": "workspace|launch|close|folder|web|chat", "target": "", "url": "", "say": ""}. '
+    '{"action": "workspace|launch|close|folder|web|memory|chat", "target": "", "url": "", "say": ""}. '
+    "- memory: recall, show memory, what did I say/do last session, what did we work on. "
+    "target = the thing to recall, or empty for the last session. "
     "- workspace: start a named workspace or mode (coding, school, gaming, editing). "
     "target = the workspace name or his exact phrase. "
     "- launch: open a desktop app. target = the app name (Discord, Spotify, VS Code, Notepad). "
@@ -138,7 +144,30 @@ def _explain(action):
     if a == "workspace":
         return (f"Start the '{target}' workspace",
                 [f"Load workspace '{target}'", "Launch its apps and sites in order"])
+    if a == "memory":
+        return "Recall from long-term memory", ["Search the Obsidian vault", "Return what was found"]
     return "Answer in conversation", ["Understand the request", "Compose a reply"]
+
+def _recall(text, action):
+    """Memory action: recall / show memory / what did I say last session. Returns (handled, say, data)."""
+    q = (action.get("target") or "").strip()
+    low = text.lower()
+    if (not q or "last session" in low or "last time" in low or "what did i" in low
+            or "show memory" in low or "what did we" in low):
+        mem = zoe_memory.resume()
+        n = mem.get("command_count", 0)
+        last = mem.get("last_command")
+        say = (f"Last session you ran {n} command" + ("s" if n != 1 else "")
+               + (f"; the most recent was '{last}'." if last else "."))
+        return True, say, mem
+    mem = zoe_memory.read(q)
+    if mem.get("matches"):
+        say = f"I found {len(mem['matches'])} memory note(s) about {q}, sir."
+    elif mem.get("content"):
+        say = f"Here is your note on {q}, sir."
+    else:
+        say = f"I have nothing in memory about {q} yet, sir."
+    return True, say, mem
 
 def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=False):
     """THE shared command pipeline. Voice and the command bar both call this -- one engine, no
@@ -146,14 +175,18 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
     ({parsed, steps, intent, handled, status, say, trace_id, ...}). Never raises."""
     groq_key = groq_key or os.environ.get("GROQ_API_KEY")
     tid = uuid.uuid4().hex
+    memory = None
     try:
         action = classify(text, groq_key, history)
+        a = action.get("action", "chat")
         parsed, steps = _explain(action)
-        if simulate:
-            a, handled = action.get("action", "chat"), True
+        if a == "memory" and zoe_memory:
+            handled, say, memory = _recall(text, action)   # recall, no side effects
+        elif simulate:
+            handled, say = True, action.get("say", "On it, sir.")
         else:
             a, handled = execute(action, text, ctrl)
-        say = action.get("say", "On it, sir.")
+            say = action.get("say", "On it, sir.")
     except Exception as e:
         action, parsed, steps = {}, "Could not parse that", ["Parse the request"]
         a, handled, say = "chat", False, "Sorry sir, something went wrong."
@@ -163,13 +196,19 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
                                      workspace=action.get("target") if a == "workspace" else None)
         except Exception:
             pass
-    return {
+    if zoe_memory:                                          # log every command to the vault
+        try: zoe_memory.log_command(text, a, handled, summary=parsed)
+        except Exception: pass
+    out = {
         "schema_version": COMMAND_SCHEMA_VERSION, "trace_id": tid, "source": source,
         "text": text, "intent": a, "parsed": parsed, "steps": steps,
         "target": action.get("target", ""), "url": action.get("url", ""),
         "handled": bool(handled), "say": say,
         "status": "completed" if handled else "failed",
     }
+    if memory is not None:
+        out["memory"] = memory
+    return out
 
 def handle(text, groq_key, ctrl=None, history=None):
     """Voice entry point. Delegates to process() (the shared engine) and returns (say, action)."""

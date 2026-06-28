@@ -6,10 +6,16 @@ Reads Chris's actual CPU, RAM, disk, and network with psutil and exposes them at
 
   python tools/zoe_server.py
 """
-import http.server, json, os, socket, time, psutil
+import http.server, json, os, socket, sys, time, urllib.parse, psutil
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import zoe_memory          # Obsidian memory API; optional
+except Exception:
+    zoe_memory = None
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HUD = os.path.join(ROOT, "zoe-ui", "index.html")
+HUD3D = os.path.join(ROOT, "zoe-ui", "os3d.html")
 PORT = 7717
 
 _n = psutil.net_io_counters()
@@ -55,15 +61,43 @@ class H(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _json(self, obj, code=200):
+        self._send(code, json.dumps(obj).encode(), "application/json")
+
     def do_GET(self):
         if self.path.startswith("/stats"):
-            self._send(200, json.dumps(stats()).encode(), "application/json")
+            self._json(stats())
+        elif self.path.startswith("/memory/read"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [None])[0]
+            self._json(zoe_memory.read(q) if zoe_memory else {"error": "memory unavailable"})
+        elif self.path.startswith("/session/resume"):
+            self._json(zoe_memory.resume() if zoe_memory else {"error": "memory unavailable"})
+        elif self.path.startswith("/3d") or self.path.startswith("/os3d"):
+            self._html(HUD3D, b"zoe-ui/os3d.html not found")
         else:
-            try:
-                with open(HUD, "rb") as f:
-                    self._send(200, f.read(), "text/html; charset=utf-8")
-            except FileNotFoundError:
-                self._send(404, b"zoe-ui/index.html not found", "text/plain")
+            self._html(HUD, b"zoe-ui/index.html not found")
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0) or 0)
+        try:
+            data = json.loads(self.rfile.read(n) or b"{}")
+        except Exception:
+            data = {}
+        if self.path.startswith("/memory/write") and zoe_memory:
+            p = zoe_memory.write(data.get("title", "note"), data.get("content", ""),
+                                 data.get("folder", "notes"), data.get("tags"))
+            self._json({"ok": True, "path": p})
+        elif self.path.startswith("/memory/sync") and zoe_memory:
+            self._json({"ok": True, "path": zoe_memory.sync()})
+        else:
+            self._json({"ok": False, "error": "unknown route"}, 404)
+
+    def _html(self, path, missing):
+        try:
+            with open(path, "rb") as f:
+                self._send(200, f.read(), "text/html; charset=utf-8")
+        except FileNotFoundError:
+            self._send(404, missing, "text/plain")
 
     def log_message(self, *a):
         pass

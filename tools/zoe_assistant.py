@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jarvis_speak import load_env, tts, play
 import zoe_router   # the single command router (classify + dispatch)
 import zoe_state    # persistent continuity (memory/zoe_state.json), best-effort
+import zoe_memory   # Obsidian long-term memory vault, best-effort
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR = 16000
@@ -188,6 +189,8 @@ def main():
             speak(say)
     except KeyboardInterrupt:
         zoe_state.save(zoe_state.load())   # preserve continuity on shutdown
+        try: zoe_memory.sync()             # snapshot this session into the Obsidian vault
+        except Exception: pass
         print("\n  Zoe offline. Goodbye, sir.\n")
 
 if __name__ == "__main__":
