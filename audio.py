@@ -1,12 +1,16 @@
 import asyncio
+import logging
+
 import yt_dlp
+
+log = logging.getLogger(__name__)
 
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'restrictfilenames': True,
     'noplaylist': False,
     'playlistend': 50,
-    'nocheckcertificate': True,
+    'nocheckcertificate': False,
     'ignoreerrors': True,
     'quiet': True,
     'no_warnings': True,
@@ -25,6 +29,8 @@ class Track:
     def __init__(self, data: dict):
         self.title = data.get('title') or 'Unknown'
         self.stream_url = data.get('url', '')
+        if not self.stream_url:
+            raise ValueError(f'Track "{self.title}" has no stream URL')
         self.webpage_url = data.get('webpage_url') or self.stream_url
         self.duration = data.get('duration')
         self.thumbnail = data.get('thumbnail')
@@ -39,7 +45,10 @@ async def fetch_tracks(query: str) -> list[Track]:
 
     def _extract():
         with yt_dlp.YoutubeDL(YTDL_OPTIONS) as ytdl:
-            data = ytdl.extract_info(query, download=False)
+            try:
+                data = ytdl.extract_info(query, download=False)
+            except yt_dlp.utils.DownloadError as exc:
+                raise ValueError(f'Download failed: {exc}') from exc
         return data
 
     data = await loop.run_in_executor(None, _extract)
@@ -48,7 +57,16 @@ async def fetch_tracks(query: str) -> list[Track]:
         raise ValueError('No results found.')
 
     if 'entries' in data:
-        tracks = [Track(e) for e in data['entries'] if e and e.get('url')]
+        entries = [e for e in data['entries'] if e and e.get('url')]
+        skipped = sum(1 for e in data['entries'] if not e or not e.get('url'))
+        if skipped:
+            log.warning('Skipped %d unavailable entries in playlist', skipped)
+        tracks = []
+        for entry in entries:
+            try:
+                tracks.append(Track(entry))
+            except ValueError:
+                log.warning('Skipping entry with missing stream URL: %s', entry.get('title', '?'))
         if not tracks:
             raise ValueError('No playable tracks in playlist.')
         return tracks
