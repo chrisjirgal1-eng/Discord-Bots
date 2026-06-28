@@ -59,3 +59,26 @@ Keep entries short. One idea per line.
 - Added the portable installer (#20): tools/install-claude-setup.sh installs the rules, skills, and
   memory bank to ~/.claude (global) or another repo. Tested both modes. See tools/PORTABLE-SETUP.md.
 - Refreshed active-context to reflect the full overnight run.
+
+### JARVIS kickoff run (local Windows machine, 2026-06-27)
+
+- Ran JARVIS-KICKOFF.md end to end on Chris's own Windows PC (the persistent runtime host).
+- Phase 0: installed yt-dlp + imageio-ffmpeg via pip, wrote Groq key to gitignored .env.
+  Wrote tools/watch_batch.py, a Windows/Python port of watch-batch.sh (no PATH deps, cookies support).
+- Cookie wall: Instagram needs login; Chrome/Edge use app-bound cookie encryption that yt-dlp
+  cannot read. Tried external COM decryption via the elevation service; Edge refused (caller
+  validation). Chris exported cookies with the Get cookies.txt LOCALLY extension. End to end verified.
+- Phase 1: transcribed all 65 videos. 57 reels via Groq Whisper large-v3; the 8 /p/ image posts
+  have no audio, captured their captions instead. Committed transcripts/. 0 unresolved.
+- Merged the 4 unmerged Devin branches (tests, error handling, shared utils, security) at Chris's
+  request. Kept the verified concurrency fixes and the sanitization, adopted the helpers and logging,
+  dropped a stale yt-dlp pin. 53/53 tests pass. Pushed to default.
+- Phase 2: wrote transcripts/TECHNIQUES.md. Goal = Claude agentic OS: graph memory, 24/7 loops,
+  voice, synthesis to the next move. 5 new high-value techniques, 8 already-have, rest hype/off-target.
+- Phase 3: applied the one clean new technique, a handoff skill (session continuity, anti context-rot).
+  Verified by a fresh Sonnet reviewer. Merged.
+- Phase 4: built the JARVIS entry point. /jarvis router skill + root JARVIS.md wiring map. One door
+  that routes to every skill, subagent, and connector and ends with the next move. Voice and 24/7 are
+  specced honestly, not wired blind (need Chris's keys and a host). Fresh review caught a loop-guardrail
+  wording slip, fixed to match verification.md. Merged.
+- Working branch this run: claude/vibrant-cray-tui7og (the default). Each phase committed and pushed.

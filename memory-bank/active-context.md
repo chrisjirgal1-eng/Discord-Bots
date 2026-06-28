@@ -2,6 +2,21 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
+## Latest: JARVIS kickoff run (2026-06-27, local Windows machine)
+
+Ran JARVIS-KICKOFF.md end to end on Chris's own PC (the persistent runtime host). All merged
+to the default branch and pushed.
+
+- 65 videos transcribed (57 reels + 8 image-post captions). See transcripts/ and TECHNIQUES.md.
+- Cookie note: Instagram needs login; Chrome/Edge app-bound encryption blocks yt-dlp. The
+  working path is a cookies.txt export from the browser (Get cookies.txt LOCALLY extension).
+  Do not store the cookie file in the repo. See lessons.md.
+- Merged the 4 Devin branches (tests, error handling, shared utils, security). 53/53 tests pass.
+- Applied one new technique: the handoff skill. Skipped the hype, logged why in TECHNIQUES.md.
+- Built the JARVIS entry point: /jarvis router skill + root JARVIS.md map. One door that routes
+  and recommends the next move. Voice (11 Labs + Deepgram) and 24/7 hosting are specced, waiting
+  on Chris's keys and a host. That is the next build.
+
 ## Current focus (2026-06-27)
 
 - Set up this persistent memory bank so Claude remembers across sessions. DONE this session.
@@ -68,4 +83,4 @@ learning.md (read lessons.md before similar work, append after a mistake), model
 
 ## Working branch
 
-- claude/kos-setup-rlf1c8
+- claude/vibrant-cray-tui7og (the default; origin/HEAD). Branch fresh off it for each change.

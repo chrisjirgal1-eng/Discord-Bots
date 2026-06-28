@@ -48,3 +48,29 @@ See `.claude/rules/learning.md` for the loop.
   - Fix: grep -rnE for em dashes and delve/leverage/fantastic across ALL changed files, fixed each.
   - Prevent: run the banned-word scan on docs and workflow output too, not just code. Tell workflow
     verify agents to grep for the banned words explicitly, since a prose reviewer can miss one.
+
+- Instagram needs a login cookie, and Chromium app-bound encryption hides it.
+  - Mistake: assumed yt-dlp `--cookies-from-browser chrome/edge` would just work on Chris's PC.
+  - Fix: yt-dlp has no app-bound (v20) support; copying the profile drops the session; the
+    elevation-service COM call is refused for an external process (caller validation). The working
+    path is a cookies.txt exported by the Get cookies.txt LOCALLY browser extension, then
+    `--cookies file.txt`. Firefox also works (no app-bound encryption).
+  - Prevent: on Windows with Chrome or Edge, plan for a cookie-export extension up front. Keep the
+    cookie file out of the repo. This is a workaround, not "yt-dlp is broken."
+
+- Arg position when shelling `python -m <module>`.
+  - Mistake: inserted `--cookies` at argv index 2, before `yt_dlp`, so python read `-m --cookies`.
+  - Fix: insert module flags after the module name (index 3 in `[py, -m, yt_dlp, ...]`).
+  - Prevent: for `python -m mod`, module args go after the module token, never between -m and mod.
+
+- urllib to a Cloudflare-fronted API returns 403.
+  - Mistake: posted to the Groq API with urllib and got 403, though the key was valid (curl worked).
+  - Fix: the default `Python-urllib` User-Agent is blocked at the edge. Set a real User-Agent header.
+  - Prevent: set an explicit User-Agent on urllib requests to third-party APIs behind Cloudflare.
+
+- Merging independent branches off the same old base produces mutual contradictions.
+  - Mistake: two Devin branches disagreed: one test asserted a lenient default, another made the
+    code raise. Naive merge left a failing test.
+  - Fix: resolved to the safer behavior (raise on missing URL) and updated the stale test to match.
+  - Prevent: when merging several branches forked from one old base, expect them to contradict each
+    other and the newer default; resolve to the safer behavior and reconcile tests, then run them.
