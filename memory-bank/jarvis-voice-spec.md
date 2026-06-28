@@ -1,8 +1,8 @@
 # JARVIS voice spec (the "wide awake, sir" loop)
 
-The runbook to give JARVIS voice. Written so that once Chris adds two keys, wiring it is one
-short session. Not built yet, because it needs his 11 Labs and Deepgram keys and a smoke test on
-real hardware. This is the design and the exact steps, not a tested module.
+The runbook for JARVIS voice. BUILT and live as of 2026-06-28: `tools/jarvis_speak.py` (talk-back
+only) and `tools/jarvis_voice.py` (the full two-way loop). Keys are in `.env`. This doc is the
+design behind them; the sections below describe the architecture they implement.
 
 ## Architecture
 

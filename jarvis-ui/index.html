@@ -202,7 +202,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
         <div class="rname">JARVIS</div>
         <div class="rtag" id="tag"></div>
         <div class="voice">
-          <div class="wave" id="wave"></div><div class="vstate" id="vstate" style="color:var(--ok)">VOICE: ONLINE ◂ LILY</div>
+          <div class="wave" id="wave"></div><div class="vstate" id="vstate" style="color:var(--ok)">VOICE: TWO-WAY ◂ LILY</div>
         </div>
         <div class="qa" id="qa"></div>
       </div>
@@ -224,8 +224,8 @@ header{display:flex;justify-content:space-between;align-items:center;gap:14px;fl
     <div class="col">
       <div class="card next">
         <h2>Next move <span>PRIORITY</span></h2>
-        <div class="m" id="nm">She talks back (Lily). Add a Deepgram key so she can hear you too.</div>
-        <div class="w" id="nw">Voice is live on the free tier via tools/jarvis_speak.py. A Deepgram key adds listening for the full two-way loop. Upgrade ElevenLabs later for the original voice pick.</div>
+        <div class="m" id="nm">Two-way voice is live. Talk to her: run tools/jarvis_voice.py</div>
+        <div class="w" id="nw">She hears you (Deepgram), thinks (Groq), and answers in Lily's voice. Press Enter, speak, Enter. Upgrade ElevenLabs later for your original voice pick.</div>
         <button onclick="fire('jarvis, say wide awake sir in your voice')">▸ MAKE HER SPEAK</button>
       </div>
       <div class="card"><h2>System status <span>LIVE</span></h2><ul class="stat" id="status"></ul></div>
@@ -269,7 +269,7 @@ const CONFIG = {
   status:[
     ["ok","Memory + knowledge graph","400 nodes"],["ok","Test suite","76 green"],
     ["ok","JARVIS router + 9 skills","wired"],["ok","154 specialist agents","loaded"],
-    ["ok","Content pipeline","draft only"],["ok","Voice (Lily), talks back","live"],
+    ["ok","Content pipeline","draft only"],["ok","Voice: two-way loop (Lily)","live"],
     ["warn","24/7 automation","needs a host"],["warn","Auto-posting","needs approval"],
   ],
   connectors:["GitHub","Supabase","Vercel","Gmail","Drive","Calendar","Notion","Slack","Stripe","Zapier"],
