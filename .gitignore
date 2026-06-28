@@ -18,6 +18,12 @@ tests/__pycache__/
 *.mp3
 *.wav
 
+# Node / Electron
+node_modules/
+dist/
+out/
+package-lock.json
+
 # Env and secrets
 .env
 .env.local

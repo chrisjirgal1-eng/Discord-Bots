@@ -22,18 +22,29 @@ WAKE_WORDS = ("zoe", "zoey", "zo", "hey zoe", "ok zoe")
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 INTENT_SYS = (
-    "You are Zoe's intent router for a voice assistant that opens things in a web browser. "
-    "Given Chris's spoken request, reply with ONLY a JSON object and nothing else: "
-    '{"open": "<full https URL to open, or empty string>", "say": "<one short spoken sentence>"}. '
-    "If he wants to see, show, pull up, open, search, look up, play, or watch something, set open to "
-    "the best URL. Examples: the news -> https://news.google.com ; "
-    "youtube or a video -> https://www.youtube.com/results?search_query=QUERY ; "
-    "weather -> https://www.google.com/search?q=weather ; "
-    "a named site like gmail or maps or github -> its real URL ; "
-    "anything else he wants to look up -> https://www.google.com/search?q=QUERY (URL-encode QUERY). "
-    "If it is just conversation, leave open as an empty string and answer in say. "
-    "Keep say to one short sentence, address him as sir or Chris."
+    "You are Zoe's command router on Chris's Windows PC. Reply with ONLY a JSON object: "
+    '{"action": "workspace|launch|folder|web|chat", "target": "", "url": "", "say": ""}. '
+    "- workspace: he wants to start a named workspace or mode (coding, school, gaming, editing). "
+    "target = the workspace name or his exact phrase. "
+    "- launch: open a desktop app. target = the app name, e.g. Discord, Spotify, VS Code, Notepad. "
+    "- folder: open a folder. target = a Windows path; map Downloads, Documents, Desktop, Videos, "
+    "Pictures, Music to %USERPROFILE%\\\\<name>. "
+    "- web: see, show, pull up, search, watch, or look something up. url = the best https URL "
+    "(news -> https://news.google.com ; youtube -> https://www.youtube.com/results?search_query=QUERY ; "
+    "otherwise https://www.google.com/search?q=QUERY, URL-encoded). "
+    "- chat: plain conversation. "
+    "Always set say to one short spoken sentence, address him as sir or Chris."
 )
+
+def post_control(base, route, payload):
+    try:
+        req = urllib.request.Request(base.rstrip('/') + route,
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            return json.load(r)
+    except Exception:
+        return None
 
 def groq(messages, key, max_tokens=200):
     body = json.dumps({"model": GROQ_MODEL, "messages": messages,
@@ -152,9 +163,25 @@ def main():
                 intent = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
             except Exception as e:
                 print("  intent error:", e); speak("Sorry sir, I didn't catch that."); continue
-            url, say = intent.get("open", ""), intent.get("say", "On it, sir.")
-            if isinstance(url, str) and url.startswith(("http://", "https://")):
-                print("  opening:", url)
+            action = intent.get("action", "chat")
+            target = intent.get("target", "")
+            url = intent.get("url", "")
+            say = intent.get("say", "On it, sir.")
+            ctrl = os.environ.get("ZOE_CONTROL")   # set by the Electron app
+            print(f"  intent: {action} {target or url}")
+            if action == "workspace":
+                post_control(ctrl, "/voice", {"phrase": target or command}) if ctrl else None
+            elif action == "launch":
+                if not (ctrl and post_control(ctrl, "/action", {"launch": target})) and target:
+                    try: subprocess.Popen(["cmd", "/c", "start", "", target])
+                    except Exception: pass
+            elif action == "folder":
+                if not (ctrl and post_control(ctrl, "/action", {"folder": target})):
+                    p = os.path.expandvars(target)
+                    if p and os.path.exists(p):
+                        try: os.startfile(p)
+                        except Exception: pass
+            elif action == "web" and isinstance(url, str) and url.startswith(("http://", "https://")):
                 webbrowser.open(url)
             history += [{"role": "user", "content": command},
                         {"role": "assistant", "content": say}]

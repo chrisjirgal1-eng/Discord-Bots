@@ -1,0 +1,8 @@
+{
+  "name": "School",
+  "aliases": ["start school", "study mode", "school workspace", "homework"],
+  "launch": ["OneNote", "Notepad"],
+  "websites": ["https://classroom.google.com", "https://drive.google.com", "https://www.google.com"],
+  "folders": ["%USERPROFILE%\\Documents"],
+  "delayMs": 600
+}

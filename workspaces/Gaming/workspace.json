@@ -1,0 +1,7 @@
+{
+  "name": "Gaming",
+  "aliases": ["start gaming", "game mode", "gaming workspace", "let's game", "roblox setup"],
+  "launch": ["Discord", "Roblox", "Spotify"],
+  "websites": ["https://www.roblox.com", "https://discord.com/app"],
+  "delayMs": 800
+}

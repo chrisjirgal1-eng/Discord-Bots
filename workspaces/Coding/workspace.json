@@ -1,0 +1,7 @@
+{
+  "name": "Coding",
+  "aliases": ["start coding", "developer mode", "coding workspace", "code mode", "let's code"],
+  "launch": ["Cursor", "VS Code", "GitHub Desktop", "Windows Terminal"],
+  "websites": ["https://github.com", "https://claude.ai", "https://chat.openai.com"],
+  "delayMs": 700
+}

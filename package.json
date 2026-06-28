@@ -1,0 +1,30 @@
+{
+  "name": "zoe-desktop",
+  "version": "0.1.0",
+  "description": "Zoe, Chris's personal AI desktop assistant. Electron shell around the existing Zoe HUD, voice, and telemetry, with native app launching and workspaces.",
+  "main": "electron/main.js",
+  "author": "Chris",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:all": "electron-builder -mwl"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "build": {
+    "appId": "com.chris.zoe",
+    "productName": "Zoe",
+    "files": ["electron/**/*", "zoe-ui/**/*", "tools/**/*", "workspaces/**/*", "package.json"],
+    "extraResources": ["workspaces/**/*"],
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"], "category": "public.app-category.productivity" },
+    "linux": { "target": ["AppImage"] },
+    "publish": [{ "provider": "generic", "url": "https://example.com/zoe-updates/" }]
+  }
+}

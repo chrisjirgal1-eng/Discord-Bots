@@ -96,6 +96,17 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   (runs the assistant via the pythoncore pythonw with no console) plus a Startup-folder shortcut
   Zoe.lnk. zoe_stop.bat stops her. Note: bare python/pythonw on PATH is the WindowsApps stub without
   the packages, so the launcher must use the full LOCALAPPDATA pythoncore path (it does).
+- [x] B11 DONE 2026-06-28. Converted the web app into an Electron desktop app (package.json, electron/).
+  Wraps the existing HUD (loads the Python telemetry server) in a secure shell (contextIsolation on,
+  nodeIntegration off, sandbox, preload bridge). Native modules: launcher.js (apps/exe/bat/ps1/cmd/
+  folders/urls), workspaceManager.js (reads workspaces/<Name>/workspace.json, matches aliases, runs
+  in order with delays). System tray, minimize-to-tray, launch-on-startup, global shortcuts
+  (push-to-talk Ctrl+Shift+Space), notifications. A localhost control endpoint (7766) lets the voice
+  assistant trigger native actions, and the Electron app auto-starts the voice on boot. Example
+  workspaces Coding/School/Gaming/Editing + electron/config/apps.json. zoe.bat -> npm start; the
+  Startup VBS now launches Electron. electron-builder + electron-updater configured (publish URL is a
+  placeholder). Booted cleanly in a smoke test (control server responded, no errors). Run npm install
+  first. Live verify: window render, mic wake, and actual app launching need Chris to run it.
 
 ## Next step
 

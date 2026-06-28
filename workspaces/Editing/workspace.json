@@ -1,0 +1,8 @@
+{
+  "name": "Editing",
+  "aliases": ["start editing", "editor mode", "editing workspace", "video editing", "launch editing"],
+  "launch": ["DaVinci Resolve", "Premiere Pro", "Photoshop"],
+  "websites": ["https://www.youtube.com", "https://pixabay.com"],
+  "folders": ["%USERPROFILE%\\Videos"],
+  "delayMs": 1000
+}

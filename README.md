@@ -7,6 +7,27 @@ Chris's working repo. Three things live here, tied together:
 3. **JARVIS**, a personal AI OS layer built on Claude Code: one entry point that routes to skills,
    subagents, and connectors. See [JARVIS.md](JARVIS.md).
 
+## Zoe desktop app (Electron)
+
+Zoe is the desktop assistant: an Electron app (`package.json`, `electron/`) that wraps the existing
+HUD, telemetry, and voice and adds native power. Run it with `npm start` (or `zoe.bat`); it
+auto-starts at login via `tools/zoe_autostart.vbs`. First-time setup: `npm install`.
+
+- Window: the live Zoe HUD, served by the Python telemetry server and loaded in a secure renderer.
+- Always-on voice: say "Hey Zoe" then a request. She opens apps, folders, websites, or whole
+  workspaces and confirms out loud.
+- Native launcher (`electron/services/launcher.js`): apps, .exe, .bat, .ps1, cmd, folders, URLs.
+- Workspaces (`workspaces/<Name>/workspace.json`, via `electron/services/workspaceManager.js`): say
+  "start coding" and it launches every app and site in that workspace, in order, with delays. Edit
+  the JSON to customize and map friendly app names in `electron/config/apps.json`. No code changes.
+- System tray (minimize to tray, workspace shortcuts, voice toggle, launch-on-startup), global
+  shortcuts (Ctrl+Shift+Space push-to-talk, Ctrl+Shift+Z show/hide), native notifications.
+- Security: contextIsolation on, nodeIntegration off, sandboxed renderer, one allow-listed preload
+  bridge (`electron/preload.js`). The voice process triggers native actions through a localhost
+  control endpoint, never by touching the renderer.
+- Packaging: `npm run dist` (electron-builder; NSIS for Windows, mac/linux targets configured).
+  Auto-update (electron-updater) is wired; point `build.publish.url` at a real feed to enable.
+
 ## The Discord music bot
 
 A persistent, auto-joining music bot with slash commands.

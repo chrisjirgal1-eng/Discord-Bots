@@ -1,0 +1,23 @@
+{
+  "_comment": "Map friendly app names (used in workspace.json) to a command on PATH or a full path. Edit freely, no code changes needed. Lowercase keys.",
+  "vs code": "code",
+  "visual studio code": "code",
+  "vscode": "code",
+  "cursor": "cursor",
+  "windows terminal": "wt",
+  "terminal": "wt",
+  "github desktop": "github",
+  "discord": "discord",
+  "spotify": "spotify",
+  "notepad": "notepad",
+  "onenote": "onenote",
+  "calculator": "calc",
+  "file explorer": "explorer",
+  "explorer": "explorer",
+  "chrome": "chrome",
+  "edge": "msedge",
+  "roblox": "roblox-player",
+  "davinci resolve": "C:\\Program Files\\Blackmagic Design\\DaVinci Resolve\\Resolve.exe",
+  "premiere pro": "C:\\Program Files\\Adobe\\Adobe Premiere Pro 2024\\Adobe Premiere Pro.exe",
+  "photoshop": "C:\\Program Files\\Adobe\\Adobe Photoshop 2024\\Photoshop.exe"
+}
