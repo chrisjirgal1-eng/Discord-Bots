@@ -64,19 +64,25 @@ map honest about wired vs gated. Everything committed and pushed.
   cookie-export extension (cookies.txt) or Firefox. Cookie file stays out of the repo.
 - Native Windows Python cannot open Git Bash `/c/...` paths; use `C:/...` or the Read tool.
 
+## Backlog Phase B: make JARVIS video-grade (Chris's direction)
+
+Chris wants JARVIS to look and work like the high-production video demos. UI revamp DONE
+(jarvis-ui/index.html, neural bg + agent team + activity + voice waveform, ui-designer critique
+applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verified only.
+
+- [ ] B1 (easy). UI theme presets: add a few accent themes to the CONFIG (Zenthra purple, Clearcoat
+  ice, Stark gold) and a small theme switcher. Pure CSS variables. Verify it renders.
+- [ ] B2 (easy). Local launcher: a `jarvis.bat` / `jarvis.ps1` that opens jarvis-ui/index.html in the
+  default browser. Convenience only.
+- [ ] B3 (medium). Make the agent team real: split the content-pipeline stages (scout, hook, topic,
+  script) into discrete sub-skills the orchestrator calls, matching the UI roster and DZ_xzicxQPx.
+- [ ] B4 (medium). Status generator: a script that reads the repo (skill count, test count, graph
+  nodes) and writes the UI CONFIG status block, so the HUD is always accurate. Run it, verify.
+- [ ] B5 (hard, gated). Voice: needs Chris's 11 Labs + Deepgram keys. Spec ready in jarvis-voice-spec.md.
+- [ ] B6 (hard, gated). 24/7: rename the CI template to enable; nightly jobs need secrets + a host.
+- [ ] B7 (hard, gated). Live connector data in the HUD (real bookings, guild activity): needs creds.
+
 ## Next step
 
-BACKLOG DRAINED, waiting on Chris. Items 1 to 5 are done and pushed. Do not invent more work or
-refactor working code. A resumed session should confirm this, then stop.
-
-What Chris must provide to go further (all credentialed, none doable autonomously):
-- Voice: an 11 Labs API key + a chosen voice ID, and a Deepgram API key, in `.env`. Then say
-  "jarvis, build the voice loop from memory-bank/jarvis-voice-spec.md".
-- 24/7 automation: turn the CI on (rename `.github/workflows/jarvis-ci.yml.disabled` to `.yml`),
-  and for nightly jobs, add the needed secrets to the repo and a host (GitHub Actions / Zapier).
-- Auto-posting: explicit approval before the content-pipeline is allowed to post rather than draft.
-- The deployed Clearcoat site fixes in `clearcoatco-website/SECURITY-NOTES.md` are his call to apply
-  and redeploy.
-
-If Chris adds any of the above, that becomes the next item. Until then, there is nothing safe left
-to build without him.
+B1 (UI theme presets). Branch: claude/vibrant-cray-tui7og. When B1 to B4 are done, only the gated
+items (B5 to B7) remain; park and wait on Chris for keys, a host, and approvals.
