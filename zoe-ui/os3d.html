@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZOE // Command Center</title>
+<style>
+  :root{
+    --acc:#a855f7; --acc2:#22d3ee; --txt:#ece8ff; --dim:#9b8fd0;
+    --ok:#46e6a4; --bad:#ff6b81;
+    --glass:rgba(24,18,48,.42); --line:rgba(168,85,247,.30);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#05030c;color:var(--txt);
+    font-family:"Segoe UI",system-ui,sans-serif}
+  #webgl,#css3d{position:fixed;inset:0}
+  #css3d{pointer-events:none}              /* panels turn pointer-events back on */
+  #vignette{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(2,1,8,.85) 100%)}
+  #topbar{position:fixed;top:0;left:0;right:0;z-index:3;display:flex;justify-content:space-between;
+    align-items:center;padding:14px 22px;pointer-events:none;
+    font-size:12px;letter-spacing:3px;color:var(--dim)}
+  #topbar b{color:var(--acc);text-shadow:0 0 14px var(--acc)}
+  /* glass panel */
+  .panel{width:330px;background:var(--glass);border:1px solid var(--line);border-radius:16px;
+    padding:16px 18px;backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px);
+    box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04) inset,
+      0 0 40px rgba(168,85,247,.10);pointer-events:auto;color:var(--txt)}
+  .panel h2{margin:0 0 12px;font-size:11px;letter-spacing:3px;color:var(--acc2);font-weight:600;
+    display:flex;justify-content:space-between;text-transform:uppercase}
+  .panel h2 .led{width:7px;height:7px;border-radius:50%;background:var(--acc2);
+    box-shadow:0 0 10px var(--acc2);align-self:center}
+  .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:var(--dim)}
+  .row b{color:var(--txt);font-variant-numeric:tabular-nums}
+  .bar{height:5px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:3px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc));
+    box-shadow:0 0 10px var(--acc)}
+  .cores{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
+  .cores span{height:22px;border-radius:3px;background:rgba(168,85,247,.16);position:relative;overflow:hidden}
+  .cores span i{position:absolute;bottom:0;left:0;right:0;background:var(--acc);box-shadow:0 0 8px var(--acc)}
+  .mem-item{font-size:12.5px;color:var(--dim);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .mem-item b{color:var(--txt)}
+  #cmd{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:11px;
+    padding:12px 14px;color:var(--txt);font-size:15px;outline:none}
+  #cmd::placeholder{color:var(--dim)}
+  #out{margin-top:12px;font-size:13px;min-height:20px}
+  #out .parsed{color:var(--acc2);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  #out .step{color:var(--dim);padding:3px 0;opacity:0;transform:translateX(-5px);transition:.25s}
+  #out .step.on{opacity:1;transform:none}
+  #out .step::before{content:"▸ ";color:var(--acc)}
+  #out .res{margin-top:8px;padding:8px 11px;border-radius:9px;background:rgba(70,230,164,.10);
+    border:1px solid rgba(70,230,164,.3)}
+  #out .res.bad{background:rgba(255,107,129,.10);border-color:rgba(255,107,129,.3)}
+  #fallback{position:fixed;inset:0;z-index:9;display:none;place-items:center;text-align:center;
+    background:#05030c;color:var(--dim);padding:40px}
+  #fallback.show{display:grid}
+  a{color:var(--acc2)}
+</style>
+</head>
+<body>
+<div id="webgl"></div>
+<div id="css3d"></div>
+<div id="vignette"></div>
+<div id="topbar"><span><b>ZOE</b> &nbsp; COMMAND CENTER</span><span id="clock"></span></div>
+<div id="fallback">
+  <div>
+    <h2>3D engine unavailable</h2>
+    <p>This view needs WebGL and the Three.js library (loaded from a CDN).<br>
+    If you are offline, the flat HUD still works at <a href="/">localhost:7717</a>.</p>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+let THREE, CSS3DRenderer, CSS3DObject;
+try {
+  THREE = await import('three');
+  ({ CSS3DRenderer, CSS3DObject } = await import('three/addons/renderers/CSS3DRenderer.js'));
+  boot();
+} catch (e) {
+  document.getElementById('fallback').classList.add('show');
+  console.error('3D init failed:', e);
+}
+
+function boot() {
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05030c, 0.00055);
+  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 6000);
+  camera.position.set(0, 0, 1250);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  document.getElementById('webgl').appendChild(renderer.domElement);
+
+  const cssRenderer = new CSS3DRenderer();
+  cssRenderer.setSize(innerWidth, innerHeight);
+  document.getElementById('css3d').appendChild(cssRenderer.domElement);
+
+  // ---- lighting (soft, purple/cyan) ----
+  scene.add(new THREE.AmbientLight(0x3a2d66, 0.7));
+  const p1 = new THREE.PointLight(0xa855f7, 2.4, 4000); p1.position.set(-400, 300, 600); scene.add(p1);
+  const p2 = new THREE.PointLight(0x22d3ee, 1.6, 4000); p2.position.set(500, -200, 500); scene.add(p2);
+  const rim = new THREE.DirectionalLight(0x8b5cf6, 0.6); rim.position.set(0, 400, -600); scene.add(rim);
+
+  // ---- central orb (PBR) + glow + rings ----
+  const orb = new THREE.Group();
+  const core = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(165, 3),
+    new THREE.MeshStandardMaterial({ color: 0x140d2e, emissive: 0x7c3aed, emissiveIntensity: 0.55,
+      metalness: 0.65, roughness: 0.25, flatShading: true }));
+  orb.add(core);
+  const wire = new THREE.Mesh(new THREE.IcosahedronGeometry(170, 2),
+    new THREE.MeshBasicMaterial({ color: 0xb98bff, wireframe: true, transparent: true, opacity: 0.18 }));
+  orb.add(wire);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(120, 32, 32),
+    new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.32,
+      blending: THREE.AdditiveBlending }));
+  orb.add(glow);
+  const rings = [];
+  for (let i = 0; i < 3; i++) {
+    const r = new THREE.Mesh(new THREE.TorusGeometry(250 + i * 55, 1.6, 12, 120),
+      new THREE.MeshBasicMaterial({ color: i % 2 ? 0x22d3ee : 0xa855f7, transparent: true, opacity: 0.5 }));
+    r.rotation.x = Math.PI / 2 + i * 0.5; r.rotation.y = i * 0.6; orb.add(r); rings.push(r);
+  }
+  scene.add(orb);
+
+  // ---- depth particle field ----
+  const N = 1400, pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 700 + Math.random() * 2200, t = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    pos[i*3] = r*Math.sin(ph)*Math.cos(t); pos[i*3+1] = r*Math.sin(ph)*Math.sin(t); pos[i*3+2] = r*Math.cos(ph);
+  }
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const stars = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0x9b7cff, size: 2.2,
+    transparent: true, opacity: 0.7, depthWrite: false }));
+  scene.add(stars);
+
+  // ---- CSS3D glass panels ----
+  const cssScene = new THREE.Scene();
+  function panel(html, x, y, z, ry) {
+    const el = document.createElement('div'); el.className = 'panel'; el.innerHTML = html;
+    const obj = new CSS3DObject(el); obj.position.set(x, y, z);
+    obj.rotation.y = ry || 0; obj.scale.setScalar(0.62); cssScene.add(obj); return el;
+  }
+  const memEl = panel('<h2>MEMORY TIMELINE<span class="led"></span></h2><div id="mem">loading…</div>',
+    -560, 70, 120, 0.5);
+  const procEl = panel('<h2>ACTIVE SYSTEM<span class="led"></span></h2><div id="proc">loading…</div>',
+    560, 70, 120, -0.5);
+  panel('<h2>COMMAND CONSOLE<span class="led"></span></h2>' +
+    '<input id="cmd" autocomplete="off" placeholder="Ask Zoe…  open youtube · start coding · recall">' +
+    '<div id="out"></div>', 0, -300, 360, 0);
+
+  // ---- parallax camera ----
+  const mouse = { x: 0, y: 0 };
+  addEventListener('mousemove', e => { mouse.x = (e.clientX / innerWidth - 0.5); mouse.y = (e.clientY / innerHeight - 0.5); });
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight); cssRenderer.setSize(innerWidth, innerHeight);
+  });
+
+  const clk = document.getElementById('clock');
+  function animate() {
+    requestAnimationFrame(animate);
+    const t = performance.now() * 0.001;
+    core.rotation.y += 0.0016; core.rotation.x += 0.0008; wire.rotation.y -= 0.001;
+    glow.scale.setScalar(1 + Math.sin(t * 1.5) * 0.05);
+    rings.forEach((r, i) => { r.rotation.z += 0.002 + i * 0.001; });
+    stars.rotation.y += 0.0003;
+    camera.position.x += (mouse.x * 260 - camera.position.x) * 0.045;
+    camera.position.y += (-mouse.y * 180 - camera.position.y) * 0.045;
+    camera.lookAt(0, 0, 0);
+    renderer.render(scene, camera); cssRenderer.render(cssScene, camera);
+    if (clk) clk.textContent = new Date().toLocaleTimeString();
+  }
+  animate();
+
+  // ---- live data ----
+  const esc = s => String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
+  async function pollStats() {
+    try {
+      const s = await (await fetch('/stats', { cache: 'no-store' })).json();
+      const cores = (s.cores || []).map(c => `<span><i style="height:${c}%"></i></span>`).join('');
+      document.getElementById('proc').innerHTML =
+        `<div class="row"><span>CPU</span><b>${s.cpu}%</b></div><div class="bar"><i style="width:${s.cpu}%"></i></div>` +
+        `<div class="row"><span>MEMORY</span><b>${s.ram}%</b></div><div class="bar"><i style="width:${s.ram}%"></i></div>` +
+        `<div class="row"><span>DISK</span><b>${s.disk}%</b></div><div class="bar"><i style="width:${s.disk}%"></i></div>` +
+        `<div class="cores">${cores}</div>` +
+        `<div class="row" style="margin-top:8px"><span>PROCESSES</span><b>${s.procs}</b></div>` +
+        `<div class="row"><span>NET</span><b>↓${s.net_down} ↑${s.net_up} KB/s</b></div>`;
+    } catch (e) {}
+  }
+  async function loadMemory() {
+    try {
+      const m = await (await fetch('/session/resume', { cache: 'no-store' })).json();
+      document.getElementById('mem').innerHTML =
+        `<div class="mem-item"><b>${m.command_count || 0}</b> commands last session</div>` +
+        `<div class="mem-item">last: <b>${esc(m.last_command) || '-'}</b></div>` +
+        `<div class="mem-item">workspace: <b>${esc(m.last_workspace) || '-'}</b></div>` +
+        `<div class="mem-item">note: ${esc(m.last_session_note) || '-'}</div>` +
+        `<div class="mem-item" style="border:0">Obsidian vault linked</div>`;
+    } catch (e) {}
+  }
+  pollStats(); setInterval(pollStats, 1500); loadMemory();
+
+  // ---- command console -> same pipeline ----
+  const cmd = document.getElementById('cmd'), out = document.getElementById('out');
+  cmd.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter' || !cmd.value.trim()) return;
+    const text = cmd.value.trim(); cmd.value = '';
+    out.innerHTML = '<div class="parsed">thinking…</div>';
+    let r; try { r = await (await fetch('/command', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })).json(); }
+    catch (err) { r = { handled: false, parsed: 'Error', steps: [], status: 'failed' }; }
+    const steps = (r.steps || []).map((s, i) => `<div class="step" data-i="${i}">${esc(s)}</div>`).join('');
+    out.innerHTML = `<div class="parsed">${esc(r.parsed || '')}</div>${steps}`;
+    [...out.querySelectorAll('.step')].forEach((n, i) => setTimeout(() => n.classList.add('on'), 110 * (i + 1)));
+    setTimeout(() => {
+      out.insertAdjacentHTML('beforeend',
+        `<div class="res ${r.handled ? '' : 'bad'}">${r.handled ? '✓ ' : '✕ '}${esc(r.say || r.error || '')}</div>`);
+      loadMemory();
+    }, 110 * ((r.steps || []).length + 1) + 120);
+  });
+}
+</script>
+</body>
+</html>

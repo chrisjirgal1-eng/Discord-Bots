@@ -12,6 +12,11 @@ try:
     import zoe_memory          # Obsidian memory API; optional
 except Exception:
     zoe_memory = None
+try:
+    from jarvis_speak import load_env
+    load_env()                 # so POST /command's classify has the Groq key from .env
+except Exception:
+    pass
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HUD = os.path.join(ROOT, "zoe-ui", "index.html")
@@ -89,6 +94,13 @@ class H(http.server.BaseHTTPRequestHandler):
             self._json({"ok": True, "path": p})
         elif self.path.startswith("/memory/sync") and zoe_memory:
             self._json({"ok": True, "path": zoe_memory.sync()})
+        elif self.path.startswith("/command"):
+            try:
+                import zoe_router          # the one shared pipeline (same as voice + command bar)
+                self._json(zoe_router.process(data.get("text", ""), source="ui3d"))
+            except Exception as e:
+                self._json({"handled": False, "parsed": "Error", "steps": [],
+                            "error": str(e), "status": "failed"}, 200)
         else:
             self._json({"ok": False, "error": "unknown route"}, 404)
 

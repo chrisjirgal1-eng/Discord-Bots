@@ -29,7 +29,7 @@ const CONTROL_PORT = 7766;
 // tray and Zoe just listens; say "hey zoe" to open it. A manual launch (npm start) shows normally.
 const START_HIDDEN = process.argv.includes('--hidden') || process.env.ZOE_START_HIDDEN === '1';
 let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
-let paletteHotkey = null;
+let paletteHotkey = null, cc = null;
 
 // ---- python resolution (the bare `python` on PATH is the Windows Store stub) ----
 function pythonExe() {
@@ -128,6 +128,7 @@ function refreshTrayMenu() {
     { label: 'Show Zoe', click: showWindow },
     { label: paletteHotkey ? `Command bar  (${paletteHotkey.replace('CommandOrControl', 'Ctrl')})`
                            : 'Command bar', click: togglePalette },
+    { label: '3D Command Center', click: openCommandCenter },
     { label: 'Hide to tray', click: () => win && win.hide() },
     { type: 'separator' },
     { label: 'Workspaces', submenu: wsItems.length ? wsItems : [{ label: '(none yet)', enabled: false }] },
@@ -176,6 +177,18 @@ function togglePalette() {
   paletteWin.focus();
   paletteWin.webContents.send('palette:show');
 }
+// ---- the 3D Command Center (Three.js) in its own window ----
+function openCommandCenter() {
+  if (cc && !cc.isDestroyed()) { cc.show(); cc.focus(); return; }
+  cc = new BrowserWindow({
+    width: 1320, height: 860, backgroundColor: '#05030c', title: 'Zoe Command Center',
+    autoHideMenuBar: true, icon: icon(),
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  cc.loadURL(`http://127.0.0.1:${TELEMETRY_PORT}/3d`);
+  cc.on('closed', () => { cc = null; });
+}
+
 // Typed command -> the SAME pipeline voice uses (zoe_router.process via the CLI bridge).
 // python.exe (capturable stdout) with windowsHide so no console appears.
 function runCommandText(text) {
