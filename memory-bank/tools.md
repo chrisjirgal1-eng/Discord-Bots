@@ -145,6 +145,16 @@ subagents across 10 bundles: core-dev, lang, infra, qa-sec, data-ai, dev-exp, do
 meta, research. They appear as Agent tool types like `voltagent-core-dev:backend-developer`
 or `voltagent-qa-sec:code-reviewer`, and register at session start.
 
+Installed on Chris's local machine 2026-06-27, user scope, all 10 bundles, registered and in use.
+Per-bundle agent counts: core-dev 12, lang 31, infra 17, qa-sec 18, data-ai 14, dev-exp 16,
+domains 15, biz 17, meta 12, research 12 (164 files; the marketplace advertises 154). High-value
+ones for Chris: `voltagent-qa-sec:security-auditor` and `:code-reviewer` (bot and site reviews),
+`voltagent-core-dev:websocket-developer` (Discord), `voltagent-biz:content-marketer` and
+`voltagent-research:competitive-analyst` (content), `voltagent-data-ai:llm-architect` (KOS).
+Local install note: the canonical `claude plugin marketplace add VoltAgent/awesome-claude-code-subagents`
+WORKS on a local machine (git is not blocked here); the tarball workaround below is only needed in
+the cloud session where third-party clone 403s.
+
 Install note: `git clone` of third-party repos is blocked in this network, so the canonical
 `claude plugin marketplace add VoltAgent/awesome-claude-code-subagents` fails with 403. The
 working path (and what the SessionStart hook does) is to fetch the repo tarball with curl,

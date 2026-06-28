@@ -51,7 +51,10 @@ map honest about wired vs gated. Everything committed and pushed.
    CI template `.github/workflows/jarvis-ci.yml.disabled` (runs the 76 tests; the .disabled suffix
    keeps GitHub from firing it; rename to enable). YAML validated. Cross-linked the voice spec in
    JARVIS.md. No secrets, nothing auto-fires.
-5. [ ] Quick audit of the 154 VoltAgents: confirm the 10 bundles loaded, note coverage in tools.md.
+5. [x] DONE 2026-06-27. All 10 VoltAgent bundles loaded and registered (164 agent files: core-dev 12,
+   lang 31, infra 17, qa-sec 18, data-ai 14, dev-exp 16, domains 15, biz 17, meta 12, research 12).
+   Noted coverage and the high-value agents for Chris in tools.md, plus the correction that the
+   canonical marketplace-add works locally (only the cloud session needs the tarball workaround).
 6. [ ] When 1-5 are done or all remaining are BLOCKED: write "BACKLOG DRAINED, waiting on Chris"
    below, list exactly what Chris must provide (voice keys, host secrets, auto-post approval), stop.
 
@@ -63,4 +66,17 @@ map honest about wired vs gated. Everything committed and pushed.
 
 ## Next step
 
-Item 5 (audit the 154 VoltAgents, note coverage in tools.md). Branch: claude/vibrant-cray-tui7og.
+BACKLOG DRAINED, waiting on Chris. Items 1 to 5 are done and pushed. Do not invent more work or
+refactor working code. A resumed session should confirm this, then stop.
+
+What Chris must provide to go further (all credentialed, none doable autonomously):
+- Voice: an 11 Labs API key + a chosen voice ID, and a Deepgram API key, in `.env`. Then say
+  "jarvis, build the voice loop from memory-bank/jarvis-voice-spec.md".
+- 24/7 automation: turn the CI on (rename `.github/workflows/jarvis-ci.yml.disabled` to `.yml`),
+  and for nightly jobs, add the needed secrets to the repo and a host (GitHub Actions / Zapier).
+- Auto-posting: explicit approval before the content-pipeline is allowed to post rather than draft.
+- The deployed Clearcoat site fixes in `clearcoatco-website/SECURITY-NOTES.md` are his call to apply
+  and redeploy.
+
+If Chris adds any of the above, that becomes the next item. Until then, there is nothing safe left
+to build without him.
