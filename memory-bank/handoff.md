@@ -73,8 +73,8 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
 - [x] B1 DONE 2026-06-27. Theme switcher in the header: Arc cyan, Zenthra purple, Clearcoat ice,
   Stark gold. Refactored the accent to a single --acc/--acc2 RGB variable so every element including
   the neural-net canvas recolors live. Verified: 0 hardcoded accents left, balanced braces, clean scan.
-- [ ] B2 (easy). Local launcher: a `jarvis.bat` / `jarvis.ps1` that opens jarvis-ui/index.html in the
-  default browser. Convenience only.
+- [x] B2 DONE 2026-06-27. Added jarvis.bat at the repo root: double-click to open the command center
+  UI in the default browser.
 - [ ] B3 (medium). Make the agent team real: split the content-pipeline stages (scout, hook, topic,
   script) into discrete sub-skills the orchestrator calls, matching the UI roster and DZ_xzicxQPx.
 - [ ] B4 (medium). Status generator: a script that reads the repo (skill count, test count, graph
@@ -85,6 +85,6 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
 
 ## Next step
 
-B2 (local launcher: jarvis.bat / jarvis.ps1 to open the UI). Branch: claude/vibrant-cray-tui7og.
-When B2 to B4 are done, only the gated items (B5 to B7) remain; park and wait on Chris for keys,
-a host, and approvals.
+B3 (split the content-pipeline stages into real sub-skills matching the UI roster). Branch:
+claude/vibrant-cray-tui7og. When B3 to B4 are done, only the gated items (B5 to B7) remain; park
+and wait on Chris for keys, a host, and approvals.
