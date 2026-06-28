@@ -85,6 +85,9 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   is the talk-back-only engine. Optional later: ElevenLabs Creator upgrade for the original voice pick.
 - [ ] B6 (hard, gated). 24/7: rename the CI template to enable; nightly jobs need secrets + a host.
 - [ ] B7 (hard, gated). Live connector data in the HUD (real bookings, guild activity): needs creds.
+- [x] B8 DONE 2026-06-28. Renamed the assistant to ZOE and built a live Rainmeter/Iron-Man HUD:
+  zoe-ui/index.html (arc reactor, gauges, live graphs, wireframe globe) fed by tools/zoe_server.py
+  (real CPU/RAM/disk/network via psutil at localhost:7717). zoe.bat launches it. Voice persona is Zoe.
 
 ## Next step
 

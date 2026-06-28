@@ -45,9 +45,12 @@ to the right skill, subagent, connector, or automation, and ends with the recomm
 
 What is wired and what still needs Chris's keys or a host is tracked honestly in JARVIS.md.
 
-- Command center UI: `jarvis-ui/index.html`, a HUD dashboard of the live state (skills, agents,
-  connectors, wired vs gated, the next move). Open it in a browser. Customize the CONFIG block at
-  the top of the file: name, taglines, accent color, panels, quick actions, command routing.
+- Command center UI: `zoe-ui/index.html`, a live Iron Man-style telemetry HUD (arc reactor, gauges,
+  graphs of real CPU, RAM, disk, and network from `tools/zoe_server.py` via psutil). Double-click
+  `zoe.bat` to start the server and open it at localhost:7717. Standalone it shows a simulated feed.
+- Voice: `tools/jarvis_voice.py` is the two-way loop (mic to Deepgram to Groq to ElevenLabs); the
+  spoken assistant is Zoe. `tools/jarvis_speak.py` just speaks text. The older card-style dashboard
+  is `jarvis-ui/index.html`. Both HUDs have a theme switcher and a CONFIG block at the top.
 
 ## The memory bank
 

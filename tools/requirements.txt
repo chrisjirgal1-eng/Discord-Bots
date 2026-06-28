@@ -1,0 +1,7 @@
+# Dependencies for the JARVIS/Zoe tooling (separate from the Discord bot's requirements.txt).
+# Install with: pip install -r tools/requirements.txt
+yt-dlp            # video downloads (watch_batch.py)
+imageio-ffmpeg    # bundled ffmpeg, no PATH needed (transcription + voice playback)
+psutil            # live system telemetry for the Zoe HUD (zoe_server.py)
+sounddevice       # microphone capture (jarvis_voice.py)
+numpy             # audio buffers (jarvis_voice.py)

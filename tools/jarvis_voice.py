@@ -18,9 +18,9 @@ from jarvis_speak import load_env, tts, play  # reuse the talk-back engine
 
 SR = 16000
 GROQ_MODEL = "llama-3.3-70b-versatile"
-JARVIS = (
-    "You are JARVIS, Chris's personal AI assistant: a warm, witty, confident British-sounding "
-    "AI, the female Iron Man Jarvis. Address him as 'sir' or 'Chris'. You know his world: "
+ZOE = (
+    "You are Zoe, Chris's personal AI assistant: a warm, witty, confident AI like the one from "
+    "Iron Man, but your name is Zoe. Address him as 'sir' or 'Chris'. You know his world: "
     "Zenthra (his Roblox guild), Clearcoat Co. (his detailing business), his content, his coding, "
     "and D1 track goals. This is spoken aloud, so keep replies SHORT and natural: one to three "
     "sentences, no markdown, no lists, no emoji, no stage directions. Be capable and a little playful."
@@ -55,7 +55,7 @@ def stt(wav_bytes, key):
     return d["results"]["channels"][0]["alternatives"][0]["transcript"].strip()
 
 def brain(text, history, key):
-    msgs = [{"role": "system", "content": JARVIS}] + history + [{"role": "user", "content": text}]
+    msgs = [{"role": "system", "content": ZOE}] + history + [{"role": "user", "content": text}]
     body = json.dumps({"model": GROQ_MODEL, "messages": msgs, "max_tokens": 160, "temperature": 0.7}).encode()
     req = urllib.request.Request(
         "https://api.groq.com/openai/v1/chat/completions", data=body,
@@ -76,7 +76,7 @@ def main():
     if missing:
         sys.exit("missing in .env: " + ", ".join(missing))
 
-    print("\n  JARVIS voice loop. Press Enter to talk, Ctrl+C to quit.\n")
+    print("\n  ZOE voice loop. Press Enter to talk, Ctrl+C to quit.\n")
     history = []
     try:
         while True:
@@ -94,7 +94,7 @@ def main():
                 reply = brain(text, history, groq)
             except Exception as e:
                 print("  brain error:", e, "\n"); continue
-            print("  JARVIS: ", reply, "\n")
+            print("  ZOE:    ", reply, "\n")
             history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]
             history = history[-8:]
             try:
