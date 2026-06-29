@@ -5,3 +5,4 @@ imageio-ffmpeg    # bundled ffmpeg, no PATH needed (transcription + voice playba
 psutil            # live system telemetry for the Zoe HUD (zoe_server.py)
 sounddevice       # microphone capture (jarvis_voice.py)
 numpy             # audio buffers (jarvis_voice.py)
+websockets        # OpenAI Realtime speech-to-speech client (zoe_realtime.py)

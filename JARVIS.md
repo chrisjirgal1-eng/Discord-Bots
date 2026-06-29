@@ -29,7 +29,7 @@ never just display.
 | Session continuity, no context rot | `handoff` skill + `memory-update` skill | wired, local |
 | Reach into real services | MCP: GitHub, Supabase, Vercel, Gmail, Drive, Calendar, Notion, Slack, Stripe, Zapier | wired, credentialed |
 | Loops that act, verify, report | verification.md discipline (verifier not the writer, budget cap) | rule wired, runtime needs a host |
-| Voice in and out ("Wide awake, sir") | 11 Labs TTS + Deepgram STT | needs Chris's keys |
+| Voice in and out ("Wide awake, sir") | 11 Labs TTS + Deepgram STT (cascade), or OpenAI Realtime speech-to-speech (`tools/zoe_realtime.py`) | needs Chris's keys |
 | Content pipeline of named agents | `content-pipeline` skill: scout, topic, hook, script stages, routes to caption | wired, draft only |
 | Always-on, 24/7 | GitHub Actions / Supabase / Zapier (a web session cannot stay alive) | needs a host |
 
@@ -46,9 +46,13 @@ This machine is the JARVIS runtime host. Right now, with no extra setup:
 
 Honest about the gap, so nothing is wired blind:
 
-1. **Voice.** Needs an 11 Labs key (TTS, a chosen voice ID) and a Deepgram key (STT). Once
-   provided, the loop is: mic to Deepgram to JARVIS router to 11 Labs to speaker. Keys go in
-   the gitignored `.env`, never the repo. Full runbook: `memory-bank/jarvis-voice-spec.md`.
+1. **Voice.** Two modes, both keyed in the gitignored `.env`, never the repo.
+   - **Cascade** (cheap, ~$0.02/min): 11 Labs TTS + Deepgram STT. The loop is mic to Deepgram
+     to JARVIS router to 11 Labs to speaker. Runbook: `memory-bank/jarvis-voice-spec.md`.
+   - **Realtime** (demo-grade, metered): OpenAI Realtime is her ears, brain, and mouth in one
+     speech-to-speech model, with all her powers wired in as tools. Needs `OPENAI_API_KEY`.
+     `python tools/zoe_realtime.py`. She idles in a free local wake-listen and only opens the
+     paid session while you talk, then closes it on silence so cost stays bounded.
 2. **24/7 loops.** A web session cannot fire a schedule after it ends. The nightly and
    watcher jobs run on GitHub Actions (free) or Zapier. Each writes a heartbeat so a missed
    run is visible. See `memory-bank/autonomous-potential.md`.
