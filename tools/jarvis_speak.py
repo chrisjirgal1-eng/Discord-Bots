@@ -62,7 +62,7 @@ def _stream_request(text, key, voice_id, output_format):
            f"?output_format={output_format}")
     req = urllib.request.Request(url, data=body,
         headers={"xi-api-key": key, "Content-Type": "application/json",
-                 "Accept": "audio/mpeg", "User-Agent": "curl/8.19.0"})
+                 "Accept": "audio/pcm", "User-Agent": "curl/8.19.0"})
     return urllib.request.urlopen(req, timeout=60)
 
 def stream_pcm(text, key, voice_id, stop):
@@ -96,31 +96,42 @@ def stream_pcm(text, key, voice_id, stop):
         except Exception: pass
 
 # Non-blocking speak with barge-in. A new call cancels the current utterance.
+# stop_current() only sets the flag (it never closes the socket), so stream_pcm
+# always exits by returning cleanly on cancel and only raises on a genuine error.
+# That keeps the fallback gate simple: any exception is a real failure.
 _worker = None
 _stop = threading.Event()
+_lock = threading.Lock()
 
 def speak(text, key, voice_id):
     """Speak without blocking the caller. Cancels any utterance still playing."""
     global _worker, _stop
-    stop_current()
-    _stop = threading.Event()
-    stop = _stop
-    def run():
-        try:
-            stream_pcm(text, key, voice_id, stop)
-        except Exception as e:
-            if stop.is_set():
-                return                      # barge-in, not a real failure
-            try:                            # fall back to the known-good blocking path
-                play(tts(text, key, voice_id))
-            except Exception as e2:
-                print("  (speak error:", e2, "| stream:", e, ")")
-    _worker = threading.Thread(target=run, daemon=True)
-    _worker.start()
+    with _lock:
+        _do_stop()                          # cancel + join the previous utterance
+        _stop = threading.Event()
+        stop = _stop
+        def run():
+            try:
+                stream_pcm(text, key, voice_id, stop)
+            except Exception as e:          # cancel returns cleanly, so this is real
+                try:                        # fall back to the known-good blocking path
+                    play(tts(text, key, voice_id))
+                except Exception as e2:
+                    print("  (speak error:", e2, "| stream:", e, ")")
+        _worker = threading.Thread(target=run, daemon=True)
+        _worker.start()
 
 def stop_current():
     """Cut off whatever is playing (barge-in / shutdown)."""
-    global _worker
+    with _lock:
+        _do_stop()
+
+def _do_stop():
+    """Signal the current worker and wait it out. Caller holds _lock.
+
+    Barge-in cancels at the next chunk boundary (one network read). The blocking
+    MP3 fallback path cannot be interrupted, so a join here may wait it out.
+    """
     try: _stop.set()
     except Exception: pass
     w = _worker
