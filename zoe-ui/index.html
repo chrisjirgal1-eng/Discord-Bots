@@ -93,7 +93,7 @@
     <div class="cstate"><span id="cstate">Idle _</span></div>
     <div class="chips">
       <span class="chip"><span class="d">●</span> CORE</span><span class="chip"><span class="d">●</span> MEMORY</span>
-      <span class="chip"><span class="d">●</span> VOICE: LILY</span><span class="chip"><span class="d">●</span> 9 SKILLS</span>
+      <span class="chip"><span class="d">●</span> VOICE: LILY</span><span class="chip"><span class="d">●</span> 10 SKILLS</span>
       <span class="chip"><span class="d">●</span> 132 AGENTS</span></div>
   </div>
 
@@ -106,7 +106,7 @@
 
 <div id="low">
   <div class="pan"><div class="ph">VOICE <b>LILY</b></div><canvas id="voice" class="graph" style="height:70px"></canvas></div>
-  <div class="pan"><div class="ph">SKILLS <b>9</b></div><div class="skills" id="skills"></div></div>
+  <div class="pan"><div class="ph">SKILLS <b>10</b></div><div class="skills" id="skills"></div></div>
   <div class="pan"><div class="ph">AGENTS <b style="color:var(--ok)">ACTIVE</b></div><span class="agnum">132</span><div class="grid" id="agrid"></div></div>
   <div class="pan" style="cursor:pointer" id="netpan"><div class="ph">NETWORK - OBSIDIAN <b id="netv">--</b></div><canvas id="gNet" class="graph" style="height:74px"></canvas></div>
 </div>
@@ -116,7 +116,7 @@
   <span class="pfx">● ZOE &gt;</span>
   <input id="cmd" autocomplete="off" spellcheck="false" placeholder="Type a command or ask ZOE…   try /status, open youtube, what did I say last session">
   <span class="slash" data-c="/status">/status</span><span class="slash" data-c="/agents">/agents</span>
-  <span class="slash" data-c="/skills">/skills</span><span class="slash" data-c="/restart">/restart</span>
+  <span class="slash" data-c="/skills">/skills</span><span class="slash" data-c="ask hermes" style="color:#ffb24d;border-color:rgba(255,178,77,.4)">/hermes</span>
   <span id="vbtn">● VOICE</span><span id="exe">EXECUTE</span>
 </div>
 
@@ -234,7 +234,8 @@ requestAnimationFrame(drawGlobe);
 
 // ---------- skills + agents ----------
 $('#skills').innerHTML = ['VISION','SEARCH','CODE','SHELL','MEMORY','VOICE','SCHEDULE','BROWSE','RECALL']
-  .map(s=>`<span class="sk"><span class="d">●</span> ${s}</span>`).join('');
+  .map(s=>`<span class="sk"><span class="d">●</span> ${s}</span>`).join('')
+  + '<span class="sk" style="color:#ffb24d;border-color:rgba(255,178,77,.35)"><span class="d" style="color:#ffb24d">◆</span> HERMES</span>';
 const agrid=$('#agrid'); agrid.innerHTML=Array.from({length:55},()=>'<i></i>').join('');
 setInterval(()=>{ [...agrid.children].forEach(c=>c.classList.toggle('on',Math.random()<0.45)); },700);
 
