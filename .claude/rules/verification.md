@@ -38,6 +38,8 @@ Four stale rounds: stop and ask Chris.
 Reversible and internal: run free, commit, merge.
 Irreversible or outward-facing (emails to real people, public posts, prod data,
 credentialed or security config): stop and flag first.
+Git history is sacred: never force-push, never delete a branch or rewrite history
+without Chris's confirmation. A bad commit is fixed with another commit, not a rewrite.
 
 ## Memory hygiene
 
