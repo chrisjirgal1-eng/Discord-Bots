@@ -49,16 +49,50 @@ def _ctrl():
     return os.environ.get("ZOE_CONTROL") or zoe_tools.zoe_router.DEFAULT_CONTROL
 
 
-def session_config():
-    """The session.update payload: persona, voice, server-VAD turn-taking, and her tools."""
+# She greets the moment the session opens, so there is zero dead air after the wake word.
+GREETING = {"type": "response.create",
+            "response": {"instructions": "Greet Chris in one short, warm line and ask what "
+                                         "he needs. Keep it to a single spoken sentence."}}
+
+
+def _recent_context():
+    """A short 'what we were doing' note from long-term memory so she opens already knowing
+    his recent work. Best-effort: empty string if memory is unavailable."""
+    try:
+        import zoe_memory
+        m = zoe_memory.resume()
+        bits = []
+        if m.get("command_count"): bits.append(f"last session he ran {m['command_count']} command(s)")
+        if m.get("last_command"): bits.append(f"the most recent was '{m['last_command']}'")
+        if m.get("last_workspace"): bits.append(f"last workspace was {m['last_workspace']}")
+        return ("Recent context: " + "; ".join(bits) + ".") if bits else ""
+    except Exception:
+        return ""
+
+
+def _log_turn(text, action="voice", handled=True, summary=None):
+    """Persist a turn / tool call to state + the vault, like the cascade's process() does."""
+    try:
+        import zoe_state; zoe_state.record_command(text, action, handled, summary=summary)
+    except Exception: pass
+    try:
+        import zoe_memory; zoe_memory.log_command(text, action, handled, summary=summary)
+    except Exception: pass
+
+
+def session_config(extra_context=""):
+    """The session.update payload: persona (+ recent context), voice, server-VAD turn-taking,
+    input transcription, and her tools."""
+    instructions = PERSONA + (("\n\n" + extra_context) if extra_context else "")
     return {
         "type": "session.update",
         "session": {
             "modalities": ["audio", "text"],
-            "instructions": PERSONA,
+            "instructions": instructions,
             "voice": VOICE,
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
+            "input_audio_transcription": {"model": "whisper-1"},
             "turn_detection": {"type": "server_vad", "silence_duration_ms": 500,
                                "prefix_padding_ms": 300},
             "tools": zoe_tools.TOOLS,
@@ -132,6 +166,7 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
     mic_q = asyncio.Queue()
     last = [time.monotonic()]
     started = time.monotonic()
+    cur = {"id": None, "ms": 0.0}     # current response item + audio ms played (for truncate)
     player = Player()
 
     def mic_cb(indata, frames, t, status):
@@ -139,7 +174,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
 
     ws = await _connect(url, headers)
     try:
-        await ws.send(json.dumps(session_config()))
+        await ws.send(json.dumps(session_config(_recent_context())))
+        await ws.send(json.dumps(GREETING))     # open with a line, no dead air
 
         async def sender():
             while True:
@@ -157,17 +193,34 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                 et = ev.get("type", "")
                 if et in ("response.audio.delta", "response.output_audio.delta"):
                     last[0] = time.monotonic()
+                    if ev.get("item_id"): cur["id"] = ev["item_id"]
                     pcm = base64.b64decode(ev.get("delta", ""))
+                    cur["ms"] += len(pcm) / (2 * SR) * 1000.0   # 16-bit mono -> ms played
                     await loop.run_in_executor(None, player.write, pcm)
+                elif et in ("response.created", "response.output_item.added"):
+                    cur["id"], cur["ms"] = None, 0.0            # new turn, reset truncate state
                 elif et == "input_audio_buffer.speech_started":
                     last[0] = time.monotonic()
-                    player.reset()                       # barge-in: stop talking, listen
+                    if cur["id"]:                              # tell the server she was cut off
+                        await ws.send(json.dumps({"type": "conversation.item.truncate",
+                            "item_id": cur["id"], "content_index": 0,
+                            "audio_end_ms": int(cur["ms"])}))
+                        cur["id"], cur["ms"] = None, 0.0
+                    player.reset()                            # barge-in: stop talking, listen
                 elif et == "response.function_call_arguments.done":
                     last[0] = time.monotonic()
                     msg, res = handle_function_call(ev, ctrl=ctrl, simulate=False)
                     print(f"  tool: {ev.get('name')} -> {json.dumps(res)[:160]}")
+                    _log_turn(f"{ev.get('name')} {ev.get('arguments','')}".strip(),
+                              action=ev.get("name", "tool"), handled=bool(res.get("ok")))
                     await ws.send(json.dumps(msg))
                     await ws.send(json.dumps({"type": "response.create"}))
+                elif et == "conversation.item.input_audio_transcription.completed":
+                    last[0] = time.monotonic()
+                    t = (ev.get("transcript") or "").strip()
+                    if t:
+                        print("  you:", t)
+                        _log_turn(t, action="voice", handled=True)
                 elif et in ("response.audio_transcript.done",
                             "response.output_audio_transcript.done"):
                     if ev.get("transcript"): print("  ZOE:", ev["transcript"])
@@ -220,6 +273,8 @@ def wait_for_wake():
                     continue
                 if text and any(w in text.lower() for w in zoe_assistant.WAKE_WORDS):
                     print("  heard:", text)
+                    try: zoe_assistant.summon_ui(os.environ.get("ZOE_CONTROL"))  # pop her window
+                    except Exception: pass
                     return True
         except Exception as e:
             print("  (voice wake unavailable:", e, "-- press Enter instead)")
@@ -243,10 +298,14 @@ def main():
         msg, res = handle_function_call(ev, ctrl="http://127.0.0.1:7766", simulate=True)
         assert msg["item"]["type"] == "function_call_output" and msg["item"]["call_id"] == "call_1"
         assert json.loads(msg["item"]["output"]) == res
-        cfg = session_config()["session"]
+        cfg = session_config("Recent context: last session he ran 3 command(s).")["session"]
         assert cfg["voice"] == VOICE and cfg["tools"] and cfg["turn_detection"]["type"] == "server_vad"
+        assert cfg["input_audio_transcription"]["model"] == "whisper-1"
+        assert "Recent context:" in cfg["instructions"]    # continuity injected into persona
+        assert GREETING["type"] == "response.create" and GREETING["response"]["instructions"]
         print("  function-call round trip ok:", json.dumps(msg)[:160])
-        print("  session config ok: model=%s voice=%s tools=%d" % (MODEL, VOICE, len(cfg["tools"])))
+        print("  session config ok: model=%s voice=%s tools=%d  (transcription+context+greeting wired)"
+              % (MODEL, VOICE, len(cfg["tools"])))
         print("  selftest ok")
         return
 
