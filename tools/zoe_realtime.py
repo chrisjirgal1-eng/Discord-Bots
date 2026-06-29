@@ -190,6 +190,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for t in pending:
                 t.cancel()
+            if pending:                       # let cancels unwind before we close the socket
+                await asyncio.gather(*pending, return_exceptions=True)
     finally:
         player.close()
         try: await ws.close()
