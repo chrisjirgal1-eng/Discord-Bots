@@ -167,6 +167,7 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
     last = [time.monotonic()]
     started = time.monotonic()
     cur = {"id": None, "ms": 0.0}     # current response item + audio ms played (for truncate)
+    greeted = [False]                 # send the opening line once the session config is applied
     player = Player()
 
     def mic_cb(indata, frames, t, status):
@@ -175,7 +176,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
     ws = await _connect(url, headers)
     try:
         await ws.send(json.dumps(session_config(_recent_context())))
-        await ws.send(json.dumps(GREETING))     # open with a line, no dead air
+        # the opening line is sent on session.updated (below), not eagerly, so it never
+        # runs against a half-applied config (wrong voice / missing instructions).
 
         async def sender():
             while True:
@@ -191,13 +193,17 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                 try: ev = json.loads(raw)
                 except Exception: continue
                 et = ev.get("type", "")
-                if et in ("response.audio.delta", "response.output_audio.delta"):
+                if et == "session.updated":
+                    if not greeted[0]:                          # greet once config is applied
+                        greeted[0] = True
+                        await ws.send(json.dumps(GREETING))
+                elif et in ("response.audio.delta", "response.output_audio.delta"):
                     last[0] = time.monotonic()
                     if ev.get("item_id"): cur["id"] = ev["item_id"]
                     pcm = base64.b64decode(ev.get("delta", ""))
                     cur["ms"] += len(pcm) / (2 * SR) * 1000.0   # 16-bit mono -> ms played
                     await loop.run_in_executor(None, player.write, pcm)
-                elif et in ("response.created", "response.output_item.added"):
+                elif et == "response.created":
                     cur["id"], cur["ms"] = None, 0.0            # new turn, reset truncate state
                 elif et == "input_audio_buffer.speech_started":
                     last[0] = time.monotonic()
