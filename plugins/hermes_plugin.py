@@ -18,14 +18,26 @@ PLUGIN = {
 }
 
 def _hermes_exe():
-    """Resolve the installed hermes executable: PATH first, then the install dir."""
+    """Resolve the hermes executable. Order: HERMES_EXE (full path) -> PATH -> HERMES_HOME ->
+    %LOCALAPPDATA%\\hermes, each checking the known venv layout then a recursive search. Set
+    HERMES_EXE or HERMES_HOME in Zoe's .env if Hermes lives somewhere non-standard."""
+    direct_env = os.environ.get("HERMES_EXE")
+    if direct_env and os.path.exists(direct_env):
+        return direct_env
     p = shutil.which("hermes")
     if p:
         return p
-    base = os.path.join(os.environ.get("LOCALAPPDATA", ""), "hermes")
-    for pat in ("hermes.exe", "bin/hermes.exe", "bin/hermes",
-                "*/Scripts/hermes.exe", "*/*/Scripts/hermes.exe", "*/bin/hermes"):
-        hits = glob.glob(os.path.join(base, pat))
+    bases = []
+    if os.environ.get("HERMES_HOME"):
+        bases.append(os.environ["HERMES_HOME"])
+    if os.environ.get("LOCALAPPDATA"):
+        bases.append(os.path.join(os.environ["LOCALAPPDATA"], "hermes"))
+    for base in bases:
+        direct = os.path.join(base, "hermes-agent", "venv", "Scripts", "hermes.exe")
+        if os.path.exists(direct):
+            return direct
+        hits = (glob.glob(os.path.join(base, "**", "hermes.exe"), recursive=True)
+                or glob.glob(os.path.join(base, "**", "hermes"), recursive=True))
         if hits:
             return hits[0]
     return None
