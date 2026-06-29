@@ -9,10 +9,11 @@ Usage:
   python tools/jarvis_speak.py "Wide awake, sir. What shall we build today?"
   echo "text" | python tools/jarvis_speak.py        # reads stdin if no arg
 """
-import os, sys, json, tempfile, subprocess, urllib.request
+import os, sys, json, tempfile, subprocess, urllib.request, threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL = "eleven_turbo_v2_5"  # fast, low-latency, free-tier friendly
+MODEL = "eleven_flash_v2_5"  # ~75ms model latency, 2-4x faster than turbo
+PCM_SR = 24000               # ElevenLabs pcm_24000 stream: raw 16-bit mono @ 24kHz
 
 def load_env():
     p = os.path.join(ROOT, ".env")
@@ -32,6 +33,105 @@ def tts(text, key, voice_id):
                  "Accept": "audio/mpeg", "User-Agent": "curl/8.19.0"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return r.read()
+
+# ---- streaming path (the latency fix) ---------------------------------------
+# Stream raw PCM straight to the speaker so the first word plays in ~150-400ms
+# instead of waiting 1-3s for the whole MP3. Playback runs on a worker thread so
+# the listen loop is never frozen, and a stop flag lets a new utterance cut in.
+
+def _gain_factor():
+    """ZOE_VOICE_GAIN is in dB (default +4); convert to a linear multiplier."""
+    try:
+        db = float(os.environ.get("ZOE_VOICE_GAIN", "4"))
+    except ValueError:
+        db = 4.0
+    return 10.0 ** (db / 20.0)
+
+def _apply_gain(pcm_bytes, factor):
+    if factor == 1.0:
+        return pcm_bytes
+    import numpy as np
+    a = np.frombuffer(pcm_bytes, dtype="<i2").astype(np.float32) * factor
+    np.clip(a, -32768, 32767, out=a)
+    return a.astype("<i2").tobytes()
+
+def _stream_request(text, key, voice_id, output_format):
+    body = json.dumps({"text": text, "model_id": MODEL,
+                       "voice_settings": {"stability": 0.4, "similarity_boost": 0.8}}).encode()
+    url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
+           f"?output_format={output_format}")
+    req = urllib.request.Request(url, data=body,
+        headers={"xi-api-key": key, "Content-Type": "application/json",
+                 "Accept": "audio/mpeg", "User-Agent": "curl/8.19.0"})
+    return urllib.request.urlopen(req, timeout=60)
+
+def stream_pcm(text, key, voice_id, stop):
+    """Stream pcm_24000 from ElevenLabs into sounddevice, chunk by chunk.
+
+    Raises on any error so the caller can fall back to the blocking MP3 path.
+    `stop` is a threading.Event; setting it aborts playback for barge-in.
+    """
+    import sounddevice as sd
+    factor = _gain_factor()
+    resp = _stream_request(text, key, voice_id, "pcm_24000")
+    out = sd.RawOutputStream(samplerate=PCM_SR, channels=1, dtype="int16")
+    out.start()
+    leftover = b""
+    try:
+        while not stop.is_set():
+            chunk = resp.read(4096)
+            if not chunk:
+                break
+            data = leftover + chunk
+            n = len(data) - (len(data) % 2)   # whole 16-bit frames only
+            frame, leftover = data[:n], data[n:]
+            if frame:
+                out.write(_apply_gain(frame, factor))
+    finally:
+        try: resp.close()
+        except Exception: pass
+        try:
+            out.abort() if stop.is_set() else out.stop()
+            out.close()
+        except Exception: pass
+
+# Non-blocking speak with barge-in. A new call cancels the current utterance.
+_worker = None
+_stop = threading.Event()
+
+def speak(text, key, voice_id):
+    """Speak without blocking the caller. Cancels any utterance still playing."""
+    global _worker, _stop
+    stop_current()
+    _stop = threading.Event()
+    stop = _stop
+    def run():
+        try:
+            stream_pcm(text, key, voice_id, stop)
+        except Exception as e:
+            if stop.is_set():
+                return                      # barge-in, not a real failure
+            try:                            # fall back to the known-good blocking path
+                play(tts(text, key, voice_id))
+            except Exception as e2:
+                print("  (speak error:", e2, "| stream:", e, ")")
+    _worker = threading.Thread(target=run, daemon=True)
+    _worker.start()
+
+def stop_current():
+    """Cut off whatever is playing (barge-in / shutdown)."""
+    global _worker
+    try: _stop.set()
+    except Exception: pass
+    w = _worker
+    if w and w.is_alive():
+        w.join(timeout=2)
+
+def wait_speech(timeout=None):
+    """Block until the current utterance finishes (keeps the mic off her own voice)."""
+    w = _worker
+    if w:
+        w.join(timeout)
 
 def play(mp3_bytes):
     """Play mp3 with no popup: convert to wav via the bundled ffmpeg (loudness-maximized), winsound.
