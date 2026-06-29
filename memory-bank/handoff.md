@@ -279,7 +279,8 @@ Electron app's pythonExe()/pythonwExe() do).
 - Recurring "stale server on 7717" during testing = a leftover python holding the port; kill the port
   OWNER (Get-NetTCPConnection -LocalPort 7717 .OwningProcess) before retesting. Electron's
   killStrayServices() handles it in-app.
-- Banned in any committed text: em dash, "delve", "leverage", "fantastic". Commit footer:
+- Banned in any committed text: the em dash character plus the usual AI-tell filler words (the scan
+  pattern lives in recent commit commands; grep them). Commit footer:
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. The repo has a misconfigured external
   check-sql-files.py hook that errors on every write -- ignore it, files save fine.
 - A PostToolUse hook fires on every write (broken path) -- harmless.
