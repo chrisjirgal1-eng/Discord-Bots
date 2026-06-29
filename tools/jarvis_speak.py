@@ -12,7 +12,10 @@ Usage:
 import os, sys, json, tempfile, subprocess, urllib.request, threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL = "eleven_flash_v2_5"  # ~75ms model latency, 2-4x faster than turbo
+# The voice quality dial. The default is the natural, expressive model; streaming
+# keeps it from feeling slow. Set ZOE_TTS_MODEL=eleven_flash_v2_5 in .env to trade
+# naturalness for the lowest possible latency.
+DEFAULT_MODEL = "eleven_multilingual_v2"
 PCM_SR = 24000               # ElevenLabs pcm_24000 stream: raw 16-bit mono @ 24kHz
 
 def load_env():
@@ -24,9 +27,24 @@ def load_env():
                 k, v = line.split("=", 1)
                 os.environ.setdefault(k.strip(), v.strip())
 
+def _model():
+    return os.environ.get("ZOE_TTS_MODEL", DEFAULT_MODEL)
+
+def _voice_settings():
+    """Tuned for a natural, alive read. Each knob is overridable from .env so the
+    voice can be dialed in by ear. Lower stability = more emotion; style adds
+    character; speaker_boost sharpens the likeness to the chosen voice."""
+    def f(k, d):
+        try: return float(os.environ.get(k, d))
+        except (ValueError, TypeError): return d
+    return {"stability": f("ZOE_VOICE_STABILITY", 0.4),
+            "similarity_boost": f("ZOE_VOICE_SIMILARITY", 0.85),
+            "style": f("ZOE_VOICE_STYLE", 0.35),
+            "use_speaker_boost": os.environ.get("ZOE_VOICE_SPEAKER_BOOST", "1") != "0"}
+
 def tts(text, key, voice_id):
-    body = json.dumps({"text": text, "model_id": MODEL,
-                       "voice_settings": {"stability": 0.4, "similarity_boost": 0.8}}).encode()
+    body = json.dumps({"text": text, "model_id": _model(),
+                       "voice_settings": _voice_settings()}).encode()
     req = urllib.request.Request(
         f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}", data=body,
         headers={"xi-api-key": key, "Content-Type": "application/json",
@@ -56,8 +74,8 @@ def _apply_gain(pcm_bytes, factor):
     return a.astype("<i2").tobytes()
 
 def _stream_request(text, key, voice_id, output_format):
-    body = json.dumps({"text": text, "model_id": MODEL,
-                       "voice_settings": {"stability": 0.4, "similarity_boost": 0.8}}).encode()
+    body = json.dumps({"text": text, "model_id": _model(),
+                       "voice_settings": _voice_settings()}).encode()
     url = (f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream"
            f"?output_format={output_format}")
     req = urllib.request.Request(url, data=body,
