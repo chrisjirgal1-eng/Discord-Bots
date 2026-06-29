@@ -45,9 +45,12 @@ DEFAULT_CONTROL = "http://127.0.0.1:7766"
 
 INTENT_SYS = (
     "You are Zoe's command router on Chris's Windows PC. Reply with ONLY a JSON object: "
-    '{"action": "workspace|launch|close|folder|web|memory|chat", "target": "", "url": "", "say": ""}. '
+    '{"action": "workspace|launch|close|folder|web|memory|agent|chat", "target": "", "url": "", "say": ""}. '
     "- memory: recall, show memory, what did I say/do last session, what did we work on. "
     "target = the thing to recall, or empty for the last session. "
+    "- agent: hand a hard reasoning, research, or multi-step coding task to the Hermes agent. Use "
+    "when he says 'ask hermes', 'have hermes', or for a complex task beyond a simple command. "
+    "target = the full request. "
     "- workspace: start a named workspace or mode (coding, school, gaming, editing). "
     "target = the workspace name or his exact phrase. "
     "- launch: open a desktop app. target = the app name (Discord, Spotify, VS Code, Notepad). "
@@ -146,6 +149,8 @@ def _explain(action):
                 [f"Load workspace '{target}'", "Launch its apps and sites in order"])
     if a == "memory":
         return "Recall from long-term memory", ["Search the Obsidian vault", "Return what was found"]
+    if a == "agent":
+        return "Hand off to the Hermes agent", ["Send the request to Hermes", "Return its answer"]
     return "Answer in conversation", ["Understand the request", "Compose a reply"]
 
 def _recall(text, action):
@@ -176,6 +181,7 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
     groq_key = groq_key or os.environ.get("GROQ_API_KEY")
     tid = uuid.uuid4().hex
     memory = None
+    agent_result = None
     trace = []                                            # live, timed, per-step execution log
     t0 = time.perf_counter()
     def step(label, status, since=None):
@@ -193,6 +199,17 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
             handled, say, memory = _recall(text, action)   # recall, no side effects
             for s in steps: step(s, "done" if handled else "fail")
             step("Recalled from long-term memory", "done" if handled else "fail", ts)
+        elif a == "agent":
+            ts = time.perf_counter()
+            cmd = make_command(intent="plugin_action", target="hermes",
+                               payload={"prompt": action.get("target") or text})
+            handled, res = _run_plugin(cmd)
+            ans = res.get("answer") if isinstance(res, dict) else None
+            err = res.get("error") if isinstance(res, dict) else None
+            agent_result = {"agent": "hermes", "answer": ans, "error": err}
+            say = (ans[:240] if ans else (err or "Hermes had no answer, sir."))
+            for s in steps: step(s, "done" if handled else "fail")
+            step("Hermes responded" if handled else "Hermes unavailable", "done" if handled else "fail", ts)
         elif simulate:
             handled, say = True, action.get("say", "On it, sir.")
             for s in steps: step(s, "done")
@@ -228,6 +245,8 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
     }
     if memory is not None:
         out["memory"] = memory
+    if agent_result is not None:
+        out["agent"] = agent_result
     return out
 
 def handle(text, groq_key, ctrl=None, history=None):
