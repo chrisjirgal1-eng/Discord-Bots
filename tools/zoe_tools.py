@@ -234,6 +234,23 @@ TOOLS = [
                     "/login and finishes the sign-in in his browser. You cannot complete the login "
                     "yourself, that is his to approve.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "improve_self",
+     "description": "Look at her own ops loop and IMPROVE her own system: review a command or feature, "
+                    "draft a fix, or actually make the code change. Use when Chris says things like 'look "
+                    "at the ops loop', 'fix your commands', 'fix yourself', 'improve your code', or "
+                    "'add/repair X in your system'. With act=false she just reviews and reports what she "
+                    "would change (safe, no edit). With act=true she makes the change for real on an "
+                    "isolated, tested branch that is never pushed and never touches his working tree. "
+                    "use_claude=true routes it through the Claude coding actor for deeper work, which "
+                    "needs Claude signed in first (claude_login). Tell him what she found or changed.",
+     "parameters": {"type": "object", "properties": {
+         "task": {"type": "string", "description": "What to look at or fix in plain words, e.g. 'review "
+                  "the voice commands and fix any that are broken'."},
+         "act": {"type": "boolean", "description": "true = actually make the change on a safe branch; "
+                 "false = just review and report. Confirm with him before act=true."},
+         "use_claude": {"type": "boolean", "description": "true = use the Claude coding actor (deeper, "
+                        "needs claude_login). Default false uses the lighter built-in editor."}},
+        "required": ["task"]}},
 ]
 
 
@@ -606,6 +623,28 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "improve_self":
+            task = (args.get("task") or "").strip()
+            act = bool(args.get("act"))
+            use_claude = bool(args.get("use_claude"))
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "improve_self",
+                        "act": act, "use_claude": use_claude}
+            if not task:
+                return {"ok": False, "error": "no task given"}
+            try:
+                import zoe_ops_loop as ol
+                if act:
+                    rec = ol.act_once(task, speak=False, actor=("claude" if use_claude else "edit"))
+                else:
+                    rec = ol.run_once(task, speak=False)
+                say = (rec.get("spoken") or rec.get("result") or "")[:700]
+                return {"ok": rec.get("status") != "ERROR", "action": "improve_self",
+                        "status": rec.get("status"), "branch": rec.get("branch", ""),
+                        "say": say, "error": rec.get("error", "")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:250]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -644,6 +683,8 @@ def _selftest():
         ("see_screen", {"query": "what is open"}),
         ("control_screen", {"action": "scroll", "direction": "down"}),
         ("claude_login", {}),
+        ("improve_self", {"task": "review the voice commands and fix any broken one"}),
+        ("improve_self", {"task": "add a status line to the ops view", "act": True, "use_claude": True}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
