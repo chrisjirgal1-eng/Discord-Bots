@@ -332,10 +332,12 @@ def wait_for_wake():
         except Exception as e:
             print("  (voice wake unavailable:", e, ") -> running always-on", flush=True)
             return True
-    # No Deepgram and no console to press Enter in: keep her usable by just listening.
-    print("  no DEEPGRAM_API_KEY -> always-on mode (just talk). Add a Deepgram key for a cheap "
-          "'Hey Zoe' wake that idles for free.", flush=True)
-    return True
+    # No Deepgram and no explicit gate: do NOT open a paid session on its own. Always-on is
+    # opt-in only (ZOE_REALTIME_GATE=always), so she can never sit there billing 24/7 by accident.
+    print("  no DEEPGRAM_API_KEY and no gate set -> not starting a session (no 24/7 billing). "
+          "Add a Deepgram key for the 'Hey Zoe' wake, or set ZOE_REALTIME_GATE=always to opt in.",
+          flush=True)
+    return False
 
 
 def main():
