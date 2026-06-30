@@ -119,8 +119,11 @@ def _ctrl():
 
 # She greets the moment the session opens, so there is zero dead air after the wake word.
 GREETING = {"type": "response.create",
-            "response": {"instructions": "Greet Chris in one short, warm line and ask what "
-                                         "he needs. Keep it to a single spoken sentence."}}
+            "response": {"instructions": "Greet Chris warmly in one or two short spoken lines. If the "
+                         "recent-context note above mentions reminders coming up or unfinished work, "
+                         "fold the most relevant one into your greeting like a quick brief (for example "
+                         "'morning sir, you've got the coach call at five'). Otherwise just greet and "
+                         "ask what he needs."}}
 
 # Proactive brief: the OPS loop writes a short message here; when idle, Zoe wakes, speaks it, and then
 # listens, so the brief becomes a real back-and-forth instead of a one-way announcement.
@@ -163,7 +166,17 @@ def _recent_context():
         if m.get("command_count"): bits.append(f"last session he ran {m['command_count']} command(s)")
         if m.get("last_command"): bits.append(f"the most recent was '{m['last_command']}'")
         if m.get("last_workspace"): bits.append(f"last workspace was {m['last_workspace']}")
-        return ("Recent context: " + "; ".join(bits) + ".") if bits else ""
+        note = ("Recent context: " + "; ".join(bits) + ".") if bits else ""
+        try:                                          # fold in upcoming reminders for a morning brief
+            import zoe_reminders, datetime as _dt
+            up = zoe_reminders.upcoming()
+            if up:
+                rs = "; ".join(f"{it['text']} at {_dt.datetime.fromtimestamp(it['due']).strftime('%I:%M %p')}"
+                               for it in up[:4])
+                note = (note + " " if note else "") + f"Reminders coming up: {rs}."
+        except Exception:
+            pass
+        return note
     except Exception:
         return ""
 
