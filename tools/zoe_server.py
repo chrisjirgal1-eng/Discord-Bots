@@ -6,12 +6,20 @@ Reads Chris's actual CPU, RAM, disk, and network with psutil and exposes them at
 
   python tools/zoe_server.py
 """
-import http.server, json, os, socket, sys, time, urllib.parse, psutil
+import http.server, json, os, socket, sys, threading, time, urllib.parse, psutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import zoe_memory          # Obsidian memory API; optional
 except Exception:
     zoe_memory = None
+try:
+    import zoe_research        # bridge to the C:\Users\chris\Zoe research second-brain; optional
+except Exception:
+    zoe_research = None
+try:
+    import zoe_ops_loop        # the local ops loop engine (/ops workspace); optional
+except Exception:
+    zoe_ops_loop = None
 try:
     from jarvis_speak import load_env
     load_env()                 # so POST /command's classify has the Groq key from .env
@@ -23,6 +31,9 @@ HUD = os.path.join(ROOT, "zoe-ui", "index.html")
 HUD3D = os.path.join(ROOT, "zoe-ui", "os3d.html")
 HUDVAULT = os.path.join(ROOT, "zoe-ui", "vault.html")
 HUDSHELL = os.path.join(ROOT, "zoe-ui", "shell.html")
+HUDLAB = os.path.join(ROOT, "zoe-ui", "research.html")
+HUDOPS = os.path.join(ROOT, "zoe-ui", "ops.html")
+CONFIG_JSON = os.path.join(ROOT, "zoe-ui", "config.json")
 PORT = 7717
 
 _n = psutil.net_io_counters()
@@ -74,6 +85,17 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/stats"):
             self._json(stats())
+        elif self.path.startswith("/config"):
+            try:
+                with open(CONFIG_JSON) as f:
+                    self._json(json.load(f))
+            except FileNotFoundError:
+                # generate on-demand if config.json is missing
+                try:
+                    import zoe_status
+                    self._json(zoe_status.build())
+                except Exception as e:
+                    self._json({"error": str(e)}, 500)
         elif self.path.startswith("/memory/read"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [None])[0]
             self._json(zoe_memory.read(q) if zoe_memory else {"error": "memory unavailable"})
@@ -89,6 +111,29 @@ class H(http.server.BaseHTTPRequestHandler):
             self._html(HUDVAULT, b"zoe-ui/vault.html not found")
         elif self.path.startswith("/shell"):
             self._html(HUDSHELL, b"zoe-ui/shell.html not found")
+        elif self.path.startswith("/research/agents"):
+            self._json(zoe_research.agents() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/capabilities"):
+            self._json(zoe_research.capabilities() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/creators"):
+            self._json(zoe_research.creators() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/watchlist"):
+            self._json(zoe_research.watchlist() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/summary"):
+            self._json(zoe_research.summary() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/voice"):
+            self._json(zoe_research.voice() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/search"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
+            self._json(zoe_research.search(q) if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research") or self.path.startswith("/lab"):
+            self._html(HUDLAB, b"zoe-ui/research.html not found")
+        elif self.path.startswith("/ops/log"):
+            self._json({"runs": zoe_ops_loop.read_log()} if zoe_ops_loop else {"runs": [], "error": "ops loop unavailable"})
+        elif self.path.startswith("/ops/status"):
+            self._json(zoe_ops_loop.status() if zoe_ops_loop else {"error": "ops loop unavailable"})
+        elif self.path.startswith("/ops"):
+            self._html(HUDOPS, b"zoe-ui/ops.html not found")
         else:
             self._html(HUD, b"zoe-ui/index.html not found")
 
@@ -111,6 +156,13 @@ class H(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self._json({"handled": False, "parsed": "Error", "steps": [],
                             "error": str(e), "status": "failed"}, 200)
+        elif self.path.startswith("/ops/run") and zoe_ops_loop:
+            try:
+                self._json(zoe_ops_loop.run_once(data.get("task") or None))
+            except Exception as e:
+                self._json({"status": "ERROR", "error": str(e)}, 200)
+        elif self.path.startswith("/ops/config") and zoe_ops_loop:
+            self._json(zoe_ops_loop.set_config(data))
         else:
             self._json({"ok": False, "error": "unknown route"}, 404)
 
@@ -126,6 +178,8 @@ class H(http.server.BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"ZOE online. Open http://localhost:{PORT}  (Ctrl+C to stop)")
+    if zoe_ops_loop:
+        threading.Thread(target=zoe_ops_loop.serve_scheduler, daemon=True).start()
     try:
         # threaded so a slow /command (Groq ~1s) never blocks /stats polling or the UI
         http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()

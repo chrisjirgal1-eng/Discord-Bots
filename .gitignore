@@ -27,6 +27,8 @@ package-lock.json
 # Zoe runtime session state (generated; not committed)
 memory/zoe_state.json
 memory/*.tmp
+memory-bank/ops-log.jsonl
+memory-bank/ops-config.json
 
 # Obsidian memory vault: keep curated notes + README, ignore runtime churn
 vault/index.md
