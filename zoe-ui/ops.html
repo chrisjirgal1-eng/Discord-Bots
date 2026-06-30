@@ -54,6 +54,7 @@
 </header>
 <div class="bar">
   <button class="primary" id="run">&#9654; Run now</button>
+  <button id="build" title="ACT mode: make the change for real on an isolated branch, tested, never pushed">&#128296; Build</button>
   <button id="pause">Pause</button>
   <button id="edit">Edit task</button>
   <button id="speak">&#128266; Speak: off</button>
@@ -83,9 +84,11 @@
     const body = r.status === "ERROR"
       ? `<div class="result" style="color:var(--red)">${esc(r.error)}</div>`
       : `${spoken}<div class="result">${esc(r.result)}</div><div class="verdict">${esc(r.verdict)}</div>`;
+    const br = r.branch ? ` &middot; <b style="color:var(--p2)">${esc(r.branch)}</b>` : "";
+    const md = r.mode === "act" ? ' &middot; ACT' : "";
     $("#last").innerHTML =
       `<span class="badge ${r.status}">${r.status}</span> `+
-      `<span class="meta">${fmtTs(r.ts)} &middot; ${esc(r.engine||"")} &middot; ${r.secs||0}s</span>`+
+      `<span class="meta">${fmtTs(r.ts)} &middot; ${esc(r.engine||"")} &middot; ${r.secs||0}s${md}${br}</span>`+
       body;
   }
 
@@ -128,6 +131,16 @@
       renderLast(r); await loadLog(); await loadStatus();
     }catch(e){ alert("Run failed: " + e); }
     b.disabled = false; b.textContent = "▶ Run now";
+  });
+  $("#build").addEventListener("click", async () => {
+    if(!confirm("ACT mode: JARVIS makes ONE change on an isolated branch (ops/auto-*), runs the tests, and commits only if they pass + a fresh reviewer approves. It never pushes or merges, and never touches your working tree. Proceed?")) return;
+    const b = $("#build"); b.disabled = true; b.textContent = "Building…";
+    try{
+      const r = await (await fetch("/ops/act", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"})).json();
+      renderLast(r); await loadLog(); await loadStatus();
+      if(r.branch) alert("Committed on branch:\n" + r.branch + "\n\nReview it, then merge if you like. Nothing was pushed.");
+    }catch(e){ alert("Build failed: " + e); }
+    b.disabled = false; b.textContent = "🔨 Build";
   });
   $("#pause").addEventListener("click", async () => {
     const s = await (await fetch("/ops/status")).json();

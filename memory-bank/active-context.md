@@ -41,8 +41,12 @@ Groq/OpenAI keys, no cloud secrets.
 Scope: the task is configurable (Edit task in the UI), so it does double duty. Default task is
 self-evolution (work one item from the handoff backlog), but it can be pointed at any recurring task
 (a metrics brief, outreach drafts, the content pipeline). DRAFT-ONLY today: it thinks, drafts,
-verifies, and briefs, then Chris executes. Real write/execute power (true "build itself") is the
-deliberate next step, gated behind the same four exits.
+verifies, and briefs, then Chris executes. ACT mode (manual Build button or `--act`, off the
+schedule) now makes ONE change on an isolated git worktree branch off HEAD, runs the 76 tests plus a
+fresh review, and commits only if green. Act never pushes, never merges, never touches the working
+tree, and has a path denylist (.env, secrets, cookies, .git, node_modules, workflows). Verified end
+to end: a clean edit ran the suite green and committed to an ops/auto-* branch; bad/ambiguous edits
+revert with no branch left behind.
 
 Always-on: Windows task "Zoe Ops Loop" (daily 9am, speaks) fires even with the app closed; the
 in-app scheduler (13:00) is the fallback, coordinated via last_run_date so they never double-fire.

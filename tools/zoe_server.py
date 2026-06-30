@@ -163,6 +163,11 @@ class H(http.server.BaseHTTPRequestHandler):
                 self._json({"status": "ERROR", "error": str(e)}, 200)
         elif self.path.startswith("/ops/config") and zoe_ops_loop:
             self._json(zoe_ops_loop.set_config(data))
+        elif self.path.startswith("/ops/act") and zoe_ops_loop:
+            try:
+                self._json(zoe_ops_loop.act_once(data.get("task") or None))
+            except Exception as e:
+                self._json({"status": "ERROR", "error": str(e)}, 200)
         else:
             self._json({"ok": False, "error": "unknown route"}, 404)
 

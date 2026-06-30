@@ -15,7 +15,7 @@ chat-completions pattern as zoe_router. No cloud host, no GitHub secrets needed.
 The server (tools/zoe_server.py) calls run_once() for the UI Run-now button and fires
 it on a daily schedule while Zoe is open.
 """
-import json, os, sys, time, datetime, urllib.request
+import json, os, re, subprocess, sys, time, datetime, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     from jarvis_speak import load_env
@@ -177,6 +177,134 @@ def run_once(task=None, speak=None):
     return rec
 
 
+# ----- ACT mode: the loop makes the change for real, on an isolated branch, tests it, commits if
+# green. It never pushes, never merges, never touches your working tree (uses a git worktree off
+# HEAD), and never runs on the schedule. Manual trigger only (UI Build button or `--act`).
+DENY = (".env", ".git/", "cookies", "secret", "ig_cookies", "id_rsa", ".pem", "node_modules",
+        "package-lock", ".github/workflows")
+# Reject AI tells in a proposed edit. The dash is matched via its escape so this file holds no
+# literal one; the words below are detection targets, not prose.
+_BANNED_RX = re.compile(chr(0x2014) + r"|\b(?:leverage|delve|fantastic|seamless)\b")
+
+
+def _git(args, timeout=120):
+    return subprocess.run(["git"] + args, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+
+
+def _safe_path(path):
+    p = str(path).replace("\\", "/").lstrip("/")
+    if not p or ".." in p.split("/"):
+        return False
+    if any(d in p.lower() for d in DENY):
+        return False
+    full = os.path.normpath(os.path.join(ROOT, p))
+    return (full == ROOT or full.startswith(ROOT + os.sep)) and os.path.isfile(full)
+
+
+def _propose_change(task, ctx, cfg):
+    sys_p = (
+        "You are JARVIS in ACT mode. Propose ONE small, safe, internal code or doc change that moves "
+        "the task forward. Reply with STRICT JSON and nothing else: "
+        '{"no_change": false, "summary": "<one line>", "path": "<repo-relative file>", '
+        '"find": "<exact text that appears EXACTLY ONCE in the file>", "replace": "<new text>"} '
+        'or {"no_change": true, "why": "<reason>"}. Keep the change tiny and reversible. Never touch '
+        ".env, secrets, cookies, .git, node_modules, or workflows. No em dashes or AI-tell words."
+    )
+    raw = _chat([{"role": "system", "content": sys_p},
+                 {"role": "user", "content": f"TASK: {task}\n\nCONTEXT:\n{ctx[:3000]}"}], cfg, max_tokens=900)
+    m = re.search(r"\{.*\}", raw, re.S)
+    try:
+        return json.loads(m.group(0)) if m else {"no_change": True, "why": "model returned no JSON"}
+    except Exception:
+        return {"no_change": True, "why": "model JSON did not parse"}
+
+
+def act_once(task=None, speak=None):
+    """Make the change on an isolated worktree branch, test it, commit only if green. Never pushes."""
+    load_env()
+    cfg = load_cfg()
+    task = (task or cfg.get("task") or DEFAULT_TASK).strip()
+    started = time.time()
+    ts = datetime.datetime.now()
+    branch = "ops/auto-" + ts.strftime("%Y%m%d-%H%M%S")
+    wt = os.path.join(ROOT, ".ops-worktrees", ts.strftime("%H%M%S"))
+    status, result, verdict, spoken, keep = "NEEDS-WORK", "", "", "", False
+    try:
+        prop = _propose_change(task, read_context(), cfg)
+        if prop.get("no_change"):
+            result = "No change proposed. " + str(prop.get("why", ""))[:300]
+        else:
+            path, find, replace = str(prop.get("path", "")), prop.get("find", ""), str(prop.get("replace", ""))
+            if not find or not _safe_path(path):
+                result = f"Rejected unsafe or invalid edit target: {path!r}"
+            elif _BANNED_RX.search(replace):
+                result = "Rejected: the proposed edit contained a banned word or em dash."
+            else:
+                add = _git(["worktree", "add", "-b", branch, wt, "HEAD"])
+                if add.returncode != 0:
+                    status, result = "ERROR", "worktree add failed: " + add.stderr[:300]
+                else:
+                    fp = os.path.join(wt, path.replace("\\", "/"))
+                    src = open(fp, encoding="utf-8").read()
+                    if src.count(find) != 1:
+                        result = f"Find text appears {src.count(find)} times in {path} (need exactly 1). Reverted."
+                    else:
+                        open(fp, "w", encoding="utf-8").write(src.replace(find, replace, 1))
+                        diff = _git(["-C", wt, "diff"]).stdout
+                        try:
+                            tr = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=wt,
+                                                capture_output=True, text=True, timeout=600)
+                            tests_ok = tr.returncode == 0
+                            tail = "\n".join((tr.stdout + tr.stderr).strip().splitlines()[-5:])
+                        except Exception as te:
+                            tests_ok, tail = False, "tests could not run: " + str(te)[:150]
+                        verdict = _chat([
+                            {"role": "system", "content": "You are a FRESH reviewer. You did NOT write this diff."},
+                            {"role": "user", "content": f"TASK: {task}\n\nDIFF:\n{diff[:2500]}\n\npytest passed: "
+                             f"{tests_ok}\n\nIn 3 lines: PASS or NEEDS-WORK and the key risk."}], cfg, max_tokens=180)
+                        review_ok = verdict.upper().lstrip().startswith("PASS")
+                        if tests_ok and review_ok:
+                            _git(["-C", wt, "add", "-A"])
+                            _git(["-C", wt, "commit", "-m",
+                                  f"ops(auto): {str(prop.get('summary', 'change'))[:60]}\n\nAutonomous Ops Loop "
+                                  "change on an isolated branch. Review before merging; not pushed.\n\n"
+                                  "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"])
+                            status, keep = "PASS", True
+                            result = (f"Shipped on branch {branch}\n  {path}: {prop.get('summary', '')}\n"
+                                      f"  tests green, review pass\n{tail}")
+                        else:
+                            result = (f"Reverted, not committed. tests={'green' if tests_ok else 'red'} "
+                                      f"review={'pass' if review_ok else 'fail'}\n  {path}: "
+                                      f"{prop.get('summary', '')}\n{tail}")
+        spoken = _spoken_brief(result, cfg) if status != "ERROR" else ""
+    except Exception as e:
+        status, result = "ERROR", str(e)[:400]
+    finally:
+        try:
+            if os.path.isdir(wt):
+                _git(["worktree", "remove", wt, "--force"])
+        except Exception:
+            pass
+        if not keep:
+            try:
+                _git(["branch", "-D", branch])
+            except Exception:
+                pass
+    rec = {"ts": ts.isoformat(timespec="seconds"), "task": task[:240], "mode": "act",
+           "branch": branch if keep else "", "status": status, "result": result, "verdict": verdict,
+           "spoken": spoken, "error": result if status == "ERROR" else "",
+           "engine": cfg.get("engine"), "secs": round(time.time() - started, 1)}
+    os.makedirs(os.path.dirname(LOG), exist_ok=True)
+    with open(LOG, "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec) + "\n")
+    cfg["last_run_date"] = datetime.date.today().isoformat()
+    save_cfg(cfg)
+    do_speak = cfg.get("speak", True) if speak is None else speak
+    if do_speak and spoken:
+        speak_text(spoken)
+    return rec
+
+
 def read_log(n=25):
     if not os.path.exists(LOG):
         return []
@@ -244,11 +372,15 @@ if __name__ == "__main__":
     load_env()
     args = list(sys.argv[1:])
     force = None
+    do_act = "--act" in args
+    if do_act:
+        args.remove("--act")
     if "--speak" in args:
         force = True; args.remove("--speak")
     if "--quiet" in args:
         force = False; args.remove("--quiet")
-    rec = run_once(" ".join(args).strip() or None, speak=force)
+    _task = " ".join(args).strip() or None
+    rec = act_once(_task, speak=force) if do_act else run_once(_task, speak=force)
     print(f"[{rec['status']}] {rec['ts']}  ({rec['secs']}s)")
     print(rec["result"][:1500] or rec["error"])
     if rec.get("spoken"):
