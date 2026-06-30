@@ -98,7 +98,7 @@ PERSONA = (
     "If he asks what you have built or what is ready to review, use builds to list the branches you shipped. "
     "If he asks for a status report, a systems check, or how you are running, use status. If he asks "
     "about the weather or temperature, use weather. If he asks you to summarize or tldr a link or some "
-    "text, use summarize. "
+    "text, use summarize. If he says turn it up or down, louder, quieter, or mute, use volume. "
     "You also have saved expert skills (your installed list is given below); when his ask matches one "
     "of them, run it with use_skill and follow the playbook it loads, using your other tools to carry "
     "it out. If he asks you to import or install a new skill from a GitHub repo or link, use "

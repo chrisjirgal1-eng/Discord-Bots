@@ -103,6 +103,22 @@ def scroll(direction="down", amount=500):
         return {"ok": False, "error": str(e)[:200]}
 
 
+def volume(direction="up", steps=3):
+    """System volume via media keys. direction up/down/mute. Safe (just media keys)."""
+    try:
+        g = _gui()
+        d = str(direction).lower()
+        if d in ("mute", "unmute", "toggle"):
+            g.press("volumemute")
+            return {"ok": True, "action": "volume", "did": "mute toggle"}
+        key = "volumedown" if d in ("down", "lower", "quieter") else "volumeup"
+        for _ in range(max(1, min(int(steps or 3), 10))):
+            g.press(key)
+        return {"ok": True, "action": "volume", "did": f"{d}"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "see":
         print(see(" ".join(sys.argv[2:])))

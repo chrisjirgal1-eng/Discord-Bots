@@ -315,6 +315,13 @@ TOOLS = [
                     "last ops run, builds awaiting review, and system load. Use when he asks 'status', "
                     "'how are you running', 'systems check', or 'are you good'.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "volume",
+     "description": "Control the system volume. Use when Chris says turn it up or down, louder, "
+                    "quieter, or mute. direction is up, down, or mute.",
+     "parameters": {"type": "object", "properties": {
+         "direction": {"type": "string", "enum": ["up", "down", "mute"], "description": "up, down, or mute."},
+         "steps": {"type": "number", "description": "How many notches (default 3)."}},
+        "required": ["direction"]}},
     {"type": "function", "name": "summarize",
      "description": "Summarize a web page (give its URL) or a block of text. Use when Chris says "
                     "'summarize this', 'tldr this article', or gives a link or text to condense.",
@@ -862,6 +869,12 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "volume":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "volume", "direction": args.get("direction")}
+            import zoe_screen
+            return zoe_screen.volume(args.get("direction", "up"), args.get("steps", 3))
+
         if name == "summarize":
             tgt = (args.get("target") or "").strip()
             if simulate:
@@ -1004,6 +1017,7 @@ def _selftest():
         ("status", {}),
         ("weather", {"location": "Boston"}),
         ("summarize", {"target": "https://example.com"}),
+        ("volume", {"direction": "up"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
