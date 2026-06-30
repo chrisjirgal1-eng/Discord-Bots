@@ -159,8 +159,8 @@ def news(topic="", n=6):
         with urllib.request.urlopen(req, timeout=20) as r:
             xml = r.read().decode("utf-8", "replace")
         titles = re.findall(r"<title>(.*?)</title>", xml, re.S)
-        heads = [html.unescape(re.sub(r"<.*?>", "", t)).strip() for t in titles[1:n + 1]]  # [0] is feed name
-        heads = [h for h in heads if h]
+        heads = [html.unescape(re.sub(r"<.*?>", "", t)).strip() for t in titles]
+        heads = [h for h in heads if h and not h.endswith("Google News")][:n]   # drop channel/feed titles
         return {"ok": bool(heads), "headlines": heads}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
