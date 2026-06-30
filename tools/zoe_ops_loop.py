@@ -48,6 +48,7 @@ DEFAULTS = {
     "model_openai": "gpt-4o-mini",
     "max_tokens": 700,
     "schedule": "13:00",                   # local HH:MM daily fire
+    "speak": False,                        # speak the brief aloud (ElevenLabs via jarvis_speak)
     "last_run_date": "",
 }
 
@@ -103,13 +104,42 @@ def read_context(limit=4000):
     return "\n\n".join(parts) or "(no memory-bank context found)"
 
 
-def run_once(task=None):
-    """Draft, then verify with a fresh pass, log it, and return the record."""
+def _spoken_brief(result, cfg):
+    """A short JARVIS brief for the voice line, in the 'Wide awake, sir' style of the goal reel."""
+    try:
+        return _chat([
+            {"role": "system", "content":
+                "You are JARVIS giving Chris a spoken brief out loud. Two or three sentences, "
+                "address him as sir, synthesize the key point and the single recommended next move, "
+                "and end by asking what he would like handled first. No markdown, no lists, spoken prose."},
+            {"role": "user", "content": f"Brief him based on this:\n{result[:1500]}"},
+        ], cfg, max_tokens=170)
+    except Exception:
+        return ""
+
+
+def speak_text(text):
+    """Speak via jarvis_speak.py (ElevenLabs). Never raises: a voice failure must not break a run."""
+    if not text:
+        return False
+    try:
+        import subprocess
+        script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis_speak.py")
+        subprocess.run([sys.executable, script, text], cwd=ROOT, timeout=120,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
+
+
+def run_once(task=None, speak=None):
+    """Draft, verify with a fresh pass, build a spoken brief, log it, and optionally speak it."""
     load_env()
     cfg = load_cfg()
     task = (task or cfg.get("task") or DEFAULT_TASK).strip()
     ctx = read_context()
     started = time.time()
+    spoken = ""
     try:
         draft = _chat([
             {"role": "system", "content":
@@ -125,14 +155,15 @@ def run_once(task=None):
                 "and draft-only (no outward action taken)? Begin with PASS or NEEDS-WORK."},
         ], cfg, max_tokens=200)
         status = "PASS" if verdict.upper().lstrip().startswith("PASS") else "NEEDS-WORK"
-        result = draft
-        error = ""
+        result, error = draft, ""
+        spoken = _spoken_brief(draft, cfg)
     except Exception as e:
         status, result, verdict, error = "ERROR", "", "", str(e)
     rec = {
         "ts": datetime.datetime.now().isoformat(timespec="seconds"),
         "task": task[:240], "status": status, "result": result, "verdict": verdict,
-        "error": error, "engine": cfg.get("engine"), "secs": round(time.time() - started, 1),
+        "spoken": spoken, "error": error, "engine": cfg.get("engine"),
+        "secs": round(time.time() - started, 1),
     }
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     with open(LOG, "a", encoding="utf-8") as f:
@@ -140,6 +171,9 @@ def run_once(task=None):
     if status != "ERROR":
         cfg["last_run_date"] = datetime.date.today().isoformat()
         save_cfg(cfg)
+    do_speak = cfg.get("speak", False) if speak is None else speak
+    if do_speak and status != "ERROR" and spoken:
+        speak_text(spoken)
     return rec
 
 
@@ -162,13 +196,14 @@ def status():
         "paused": cfg.get("paused", False), "task": cfg.get("task"),
         "engine": cfg.get("engine"), "schedule": cfg.get("schedule"),
         "max_tokens": cfg.get("max_tokens"), "last_run_date": cfg.get("last_run_date", ""),
+        "speak": cfg.get("speak", False),
         "next_run": _next_run_str(cfg), "last": last[0] if last else None,
     }
 
 
 def set_config(updates):
     cfg = load_cfg()
-    for k in ("paused", "task", "engine", "schedule", "max_tokens"):
+    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak"):
         if k in updates and updates[k] is not None:
             cfg[k] = updates[k]
     save_cfg(cfg)
@@ -207,8 +242,16 @@ def serve_scheduler():
 
 if __name__ == "__main__":
     load_env()
-    rec = run_once(sys.argv[1] if len(sys.argv) > 1 else None)
+    args = list(sys.argv[1:])
+    force = None
+    if "--speak" in args:
+        force = True; args.remove("--speak")
+    if "--quiet" in args:
+        force = False; args.remove("--quiet")
+    rec = run_once(" ".join(args).strip() or None, speak=force)
     print(f"[{rec['status']}] {rec['ts']}  ({rec['secs']}s)")
     print(rec["result"][:1500] or rec["error"])
+    if rec.get("spoken"):
+        print("--- spoken ---"); print(rec["spoken"])
     print("--- verdict ---")
     print(rec["verdict"][:400])
