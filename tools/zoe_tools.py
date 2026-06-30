@@ -321,6 +321,17 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "topic": {"type": "string", "description": "Optional topic; omit for general top headlines."}},
         "required": []}},
+    {"type": "function", "name": "now",
+     "description": "Get the exact current local date and time. Use when Chris asks what time it is, "
+                    "what day it is, or the date.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "clipboard",
+     "description": "Read or write the Windows clipboard. action='read' (default) tells him what is on "
+                    "it; action='write' with text copies text to it.",
+     "parameters": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["read", "write"], "description": "read or write."},
+         "text": {"type": "string", "description": "For write: the text to copy."}},
+        "required": []}},
     {"type": "function", "name": "volume",
      "description": "Control the system volume. Use when Chris says turn it up or down, louder, "
                     "quieter, or mute. direction is up, down, or mute.",
@@ -875,6 +886,29 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "now":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "now"}
+            import datetime as _dt
+            return {"ok": True, "action": "now", "say": _dt.datetime.now().strftime("It's %A, %B %d, %I:%M %p.")}
+
+        if name == "clipboard":
+            act = (args.get("action") or "read").lower()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "clipboard", "do": act}
+            import subprocess
+            try:
+                if act == "write":
+                    subprocess.run(["powershell", "-NoProfile", "-Command", "Set-Clipboard", "-Value",
+                                    args.get("text", "")], timeout=10)
+                    return {"ok": True, "action": "clipboard", "say": "Copied to your clipboard, sir."}
+                out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
+                                     capture_output=True, text=True, timeout=10).stdout.strip()
+                return {"ok": True, "action": "clipboard", "text": out[:1000],
+                        "say": ("Clipboard: " + out[:400]) if out else "Your clipboard is empty, sir."}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "news":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "news"}
@@ -1039,6 +1073,8 @@ def _selftest():
         ("summarize", {"target": "https://example.com"}),
         ("volume", {"direction": "up"}),
         ("news", {"topic": "technology"}),
+        ("now", {}),
+        ("clipboard", {"action": "read"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
