@@ -291,8 +291,10 @@ TOOLS = [
                     "set; action='cancel' with 'which' (a number like 1, or words from the reminder) "
                     "removes one.",
      "parameters": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["list", "cancel"], "description": "list or cancel."},
-         "which": {"type": "string", "description": "For cancel: a number (1, 2...) or words from the reminder."}},
+         "action": {"type": "string", "enum": ["list", "cancel", "snooze"], "description": "list, cancel, or snooze."},
+         "which": {"type": "string", "description": "For cancel/snooze: a number (1, 2...) or words from the reminder. Omit on snooze to snooze the one that just fired."},
+         "delay_minutes": {"type": "number", "description": "For snooze: push it this many minutes from now (default 10)."},
+         "at": {"type": "string", "description": "For snooze: a clock time like '5pm' instead of a delay."}},
         "required": []}},
 ]
 
@@ -807,11 +809,18 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return {"ok": True, "simulated": True, "action": "reminders"}
             try:
                 import zoe_reminders as rem, datetime as _dt
-                if (args.get("action") or "list").lower() == "cancel":
+                act = (args.get("action") or "list").lower()
+                if act == "cancel":
                     res = rem.cancel(args.get("which", ""))
                     res["action"] = "reminders"
                     if res.get("ok"):
                         res["say"] = f"Cancelled: {res.get('cancelled')}."
+                    return res
+                if act == "snooze":
+                    res = rem.snooze(args.get("which", ""), args.get("delay_minutes", 10), args.get("at"))
+                    res["action"] = "reminders"
+                    if res.get("ok"):
+                        res["say"] = f"Snoozed {res.get('text')} to {res.get('when')}."
                     return res
                 up = rem.upcoming()
                 items = [{"text": it["text"],

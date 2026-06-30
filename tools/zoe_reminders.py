@@ -111,6 +111,32 @@ def cancel(which=""):
     return {"ok": True, "cancelled": target.get("text", "")}
 
 
+def snooze(which="", delay_minutes=10, at=None):
+    """Push a reminder to a new time. Matches an upcoming OR just-fired (within an hour) reminder by
+    1-based index, text, or -- if no `which` -- the most recent one. Returns {ok, text, when}."""
+    items = _load()
+    now = time.time()
+    cands = [it for it in items if (not it.get("fired") and it.get("due", 0) > now)
+             or (it.get("fired") and now - it.get("due", 0) <= 3600)]
+    w = str(which or "").strip()
+    target = None
+    if w.isdigit():
+        i = int(w) - 1
+        if 0 <= i < len(cands):
+            target = cands[i]
+    if target is None:
+        target = next((it for it in cands if w and w.lower() in it.get("text", "").lower()), None)
+    if target is None and not w and cands:
+        target = cands[-1]
+    if target is None:
+        return {"ok": False, "error": "no reminder to snooze"}
+    new_due = parse_when(delay_minutes if at is None else None, at) or (now + 600)
+    target["due"], target["fired"] = new_due, False
+    _save(items)
+    return {"ok": True, "text": target.get("text", ""),
+            "when": datetime.datetime.fromtimestamp(new_due).strftime("%I:%M %p")}
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[1] == "add":
         print(add(sys.argv[2], delay_minutes=(sys.argv[3] if len(sys.argv) > 3 else None)))
