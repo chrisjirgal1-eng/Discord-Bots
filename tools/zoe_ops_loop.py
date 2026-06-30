@@ -187,6 +187,21 @@ def _vault_note(rec):
         pass
 
 
+def _ship_ping(rec):
+    """When a build actually ships, proactively invite Chris to review or merge it (replaces the
+    generic brief in the voice queue). Bounded: only real ships, only when voice replies are on."""
+    try:
+        if rec.get("status") != "PASS" or not rec.get("branch"):
+            return
+        if not load_cfg().get("voice_reply", True):
+            return
+        summary = (rec.get("task") or "a change")[:80]
+        _queue_voice(f"Hey sir, I just shipped {summary} on a branch. Say 'what have you built' to "
+                     "review it, or 'merge that build' to apply it.")
+    except Exception:
+        pass
+
+
 def run_once(task=None, speak=None):
     """Draft, verify with a fresh pass, build a spoken brief, log it, and optionally speak it."""
     load_env()
@@ -392,6 +407,7 @@ def _act_claude(task, speak=None):
     if do_speak and spoken:
         _deliver_brief(spoken, cfg)
     _vault_note(rec)
+    _ship_ping(rec)
     return rec
 
 
@@ -481,6 +497,7 @@ def act_once(task=None, speak=None, actor=None):
     if do_speak and spoken:
         _deliver_brief(spoken, cfg)
     _vault_note(rec)
+    _ship_ping(rec)
     return rec
 
 
