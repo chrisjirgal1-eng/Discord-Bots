@@ -1,0 +1,131 @@
+# JARVIS Ops Loop (template, currently OFF)
+#
+# The 24/7 "always-on loop" from the goal videos: on a schedule it runs one JARVIS skill
+# (draft-only), has a FRESH agent verify the result (verification.md: the verifier is never
+# the writer), then reports a summary to your own Discord via a Zapier webhook.
+#
+# This file ends in .disabled on purpose, so GitHub Actions ignores it and it cannot fire on
+# its own. A loop that runs unattended on your repo and spends API budget should be turned on
+# by you, watching the first run. It is also safe-by-default: it runs with READ-ONLY tools, so
+# the agent physically cannot push, post, or edit anything. It only drafts and reports.
+#
+# ---------------------------------------------------------------------------------------------
+# TURN IT ON
+#   1. Add two repo secrets (Settings -> Secrets and variables -> Actions -> New repository secret):
+#        ANTHROPIC_API_KEY       your Anthropic key. Each run spends API tokens (this is the
+#                                cost the "billing split" reels warned about). Omit it and the
+#                                loop runs a harmless dry-run heartbeat instead.
+#        DISCORD_ZAPIER_WEBHOOK  a Zapier "Catch Hook" trigger URL whose action posts to your
+#                                Discord channel. Omit it and the loop just logs to the run output.
+#   2. Rename this file to `jarvis-ops.yml` (drop the .disabled).
+#   3. Commit and push, then trigger it once by hand: Actions tab -> JARVIS Ops Loop -> Run workflow.
+#   4. Watch that first run. When happy, leave it on; the daily schedule takes over.
+#
+# THE FOUR LOOP EXITS (verification.md)
+#   quality verdict  -> the Verify step (a fresh reviewer reads the raw artifact)
+#   iteration cap    -> --max-turns on the agent
+#   budget cap       -> job timeout-minutes (hard wall-clock stop) + read-only tools
+#   no-progress      -> dry-run path when no key, and the task itself exits if the backlog is empty
+# ---------------------------------------------------------------------------------------------
+
+name: JARVIS Ops Loop
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # 13:00 UTC = ~09:00 ET, daily
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Task/skill prompt to run (draft-only)"
+        required: false
+        default: ""
+      max_turns:
+        description: "Iteration cap (agent turns)"
+        required: false
+        default: "25"
+
+permissions:
+  contents: read   # the loop never writes back to the repo
+
+env:
+  DEFAULT_TASK: >-
+    Run the daily JARVIS brief. Read memory-bank/handoff.md and memory-bank/active-context.md,
+    pick ONE safe internal backlog item, draft it, and summarize what was done plus the single
+    recommended next move and its follow-on effects. If the backlog is drained, say so and stop.
+    Draft-only: do not push, post, email, or take any outward or irreversible action.
+
+jobs:
+  ops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20   # hard budget exit (wall-clock)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run skill (draft-only, read-only tools, budget-capped)
+        id: run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          INPUT_TASK: ${{ github.event.inputs.task }}
+          INPUT_TURNS: ${{ github.event.inputs.max_turns }}
+        run: |
+          set -uo pipefail
+          mkdir -p .ops
+          TASK="${INPUT_TASK:-$DEFAULT_TASK}"
+          TURNS="${INPUT_TURNS:-25}"
+          if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+            echo "DRY RUN: no ANTHROPIC_API_KEY secret set, so no agent ran." | tee .ops/result.md
+            echo "status=dry-run" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          npm install -g @anthropic-ai/claude-code >/dev/null 2>&1 || { echo "claude install failed" | tee .ops/result.md; echo "status=error" >> "$GITHUB_OUTPUT"; exit 0; }
+          # Read-only tools mean the agent can gather context and DRAFT, but cannot act.
+          claude -p "$TASK" \
+            --max-turns "$TURNS" \
+            --allowedTools "Read Grep Glob" \
+            > .ops/result.md 2> .ops/err.log \
+            || echo "(agent exited non-zero, see err.log tail below)" >> .ops/result.md
+          tail -n 5 .ops/err.log >> .ops/result.md 2>/dev/null || true
+          echo "status=ran" >> "$GITHUB_OUTPUT"
+
+      - name: Verify (fresh reviewer, never the writer)
+        if: steps.run.outputs.status == 'ran'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -uo pipefail
+          claude -p "You are a FRESH reviewer and did NOT write this. Read .ops/result.md as a raw artifact. In 8 lines or fewer: is the work correct, useful, and draft-only (no outward or irreversible action taken)? Answer with PASS or NEEDS-WORK and the single most important issue." \
+            --max-turns 6 \
+            --allowedTools "Read" \
+            > .ops/verify.md 2>/dev/null \
+            || echo "verify pass errored" > .ops/verify.md
+
+      - name: Report to your Discord (via Zapier)
+        if: always()
+        env:
+          HOOK: ${{ secrets.DISCORD_ZAPIER_WEBHOOK }}
+        run: |
+          set -uo pipefail
+          RESULT="$(head -c 1500 .ops/result.md 2>/dev/null || echo '(no result)')"
+          VERDICT="$(head -c 600 .ops/verify.md 2>/dev/null || echo '(no verify)')"
+          STAMP="$(date -u +%FT%TZ)"
+          if [ -z "${HOOK:-}" ]; then
+            echo "No DISCORD_ZAPIER_WEBHOOK secret. Would have reported:"
+            echo "--- result ---"; echo "$RESULT"
+            echo "--- verdict ---"; echo "$VERDICT"
+            exit 0
+          fi
+          jq -n \
+            --arg content "JARVIS ops loop $STAMP status=${{ steps.run.outputs.status }}" \
+            --arg result "$RESULT" \
+            --arg verdict "$VERDICT" \
+            '{content: $content, result: $result, verdict: $verdict}' \
+          | curl -sf -X POST -H "Content-Type: application/json" -d @- "$HOOK" \
+            && echo "reported to Discord" || echo "report POST failed (check the webhook URL)"

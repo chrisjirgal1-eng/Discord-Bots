@@ -28,6 +28,17 @@ can act on the machine. NOT yet merged (PR #37 is draft); test, then merge to de
   smoke-tests on Windows. Confirmed working: app + voice + "Hey Zoe" + English + detailed replies.
 - Still to test: music (needs a track in `music/`), web browsing, the read_file/run_command fixing.
 
+## Build: JARVIS 24/7 ops loop scaffold (2026-06-30, .github/workflows/jarvis-ops.yml.disabled)
+
+The "always-on loop" host the roadmap kept flagging as "needs Chris". A GitHub Actions cron
+workflow (daily 13:00 UTC) that runs one JARVIS skill draft-only with READ-ONLY tools, has a
+fresh agent verify the result (the verifier is never the writer), then reports to Discord via a
+Zapier Catch Hook. Four exits per verification.md: verify verdict, `--max-turns`, job
+`timeout-minutes`, and a dry-run / no-progress path. Shipped `.disabled` and safe-by-default:
+with no secrets it runs a harmless dry-run heartbeat. To go live, Chris adds two repo secrets
+(ANTHROPIC_API_KEY, DISCORD_ZAPIER_WEBHOOK), renames off `.disabled`, and watches the first
+manual `workflow_dispatch` run. Read-only tools mean it physically cannot push, post, or edit.
+
 ## Earlier: JARVIS kickoff run (2026-06-27, local Windows machine)
 
 Ran JARVIS-KICKOFF.md end to end on Chris's own PC (the persistent runtime host). All merged
