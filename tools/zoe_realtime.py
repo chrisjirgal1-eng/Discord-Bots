@@ -100,7 +100,9 @@ PERSONA = (
     "it out. When he asks you to research, look up, or get the latest on something, use research -- it "
     "searches the web AND his own research vault, then gives you a cited answer; tell him the bottom "
     "line and offer the sources. When he tells you to remember something, or shares a fact or "
-    "preference worth keeping, save it with remember and confirm in one line. "
+    "preference worth keeping, save it with remember and confirm in one line. When he asks you to "
+    "remind him of something at a time or after a delay, set it with remind; you will speak it aloud "
+    "when it comes due. "
     "If he asks what you can do or for 'the rundown', give a confident, cinematic rundown of your "
     "capabilities; if he wants the full effect, start background music first (play_music) and "
     "narrate over it, then stop it (stop_music) when he says stop. If he says 'switch to' a song "
@@ -137,6 +139,16 @@ def _take_proactive(max_age=600):
         if time.time() - float(d.get("ts", 0)) > max_age:
             return ""
         return (d.get("text") or "").strip()
+    except Exception:
+        return ""
+
+
+def _due_reminder():
+    """A reminder whose time has arrived, phrased for the voice, or '' if none. Best-effort."""
+    try:
+        import zoe_reminders
+        t = zoe_reminders.due()
+        return ("Quick reminder, sir: " + t) if t else ""
     except Exception:
         return ""
 
@@ -450,6 +462,10 @@ def wait_for_wake():
             if brief:
                 print("  proactive brief from the ops loop, waking to speak it.", flush=True)
                 return brief
+            rem = _due_reminder()                    # a reminder whose time has arrived?
+            if rem:
+                print("  reminder due, waking to say it.", flush=True)
+                return rem
             audio = zoe_assistant.listen_utterance()
             if audio is None or len(audio) < zoe_assistant.SR * 0.3:
                 continue                     # nothing loud enough to be speech

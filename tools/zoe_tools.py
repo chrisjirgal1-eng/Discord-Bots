@@ -277,6 +277,15 @@ TOOLS = [
          "note": {"type": "string", "description": "What to remember, in his words."},
          "title": {"type": "string", "description": "Optional short title; omit to auto-title from the note."}},
         "required": ["note"]}},
+    {"type": "function", "name": "remind",
+     "description": "Set a time-based reminder Zoe speaks out loud when it is due (she must be running). "
+                    "Use when Chris says 'remind me to X in N minutes' or 'remind me to X at 5pm'. Pass "
+                    "either delay_minutes (relative) or at (a clock time).",
+     "parameters": {"type": "object", "properties": {
+         "text": {"type": "string", "description": "What to remind him about."},
+         "delay_minutes": {"type": "number", "description": "Fire this many minutes from now."},
+         "at": {"type": "string", "description": "Clock time like '5pm', '17:30', or '9:00am'."}},
+        "required": ["text"]}},
 ]
 
 
@@ -772,6 +781,19 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "remind":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "remind"}
+            try:
+                import zoe_reminders as rem
+                r = rem.add(args.get("text", ""), args.get("delay_minutes"), args.get("at"))
+                if r.get("ok"):
+                    return {"ok": True, "action": "remind", "when": r.get("when"),
+                            "say": f"Got it, I'll remind you at {r.get('when')}."}
+                return {"ok": False, "error": r.get("error", "could not set reminder")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -816,6 +838,7 @@ def _selftest():
         ("use_skill", {"skill": "content-pipeline", "context": "new roblox short"}),
         ("research", {"question": "best resting heart rate for athletes"}),
         ("remember", {"note": "Chris prefers casual replies and hates em dashes"}),
+        ("remind", {"text": "call the coach", "delay_minutes": 30}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

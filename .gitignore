@@ -30,6 +30,7 @@ memory/*.tmp
 memory-bank/ops-log.jsonl
 memory-bank/ops-config.json
 memory/zoe_proactive.txt
+memory/reminders.json
 .ops-worktrees/
 
 # Obsidian memory vault: keep curated notes + README, ignore runtime churn
