@@ -116,6 +116,39 @@ def research(question, n=6):
         return {"ok": False, "error": str(e)[:200]}
 
 
+def _fetch_text(url):
+    """Fetch a page and strip it to readable text (bounded). '' on failure."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            page = r.read().decode("utf-8", "replace")
+        page = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", page, flags=re.S | re.I)
+        text = re.sub(r"<[^>]+>", " ", page)
+        return re.sub(r"\s+", " ", html.unescape(text)).strip()[:8000]
+    except Exception:
+        return ""
+
+
+def summarize(target):
+    """Summarize a URL (fetched) or a block of text. Returns {ok, summary}."""
+    load_env()
+    t = (target or "").strip()
+    if not t:
+        return {"ok": False, "error": "nothing to summarize"}
+    body = _fetch_text(t) if t.startswith("http") else t
+    if not body:
+        return {"ok": False, "error": "could not read that"}
+    try:
+        ans = _openai([
+            {"role": "system", "content": "You are Zoe summarizing for Chris. Give a tight, "
+             "spoken-friendly summary: the gist in two to four sentences, then the single most useful "
+             "takeaway. No markdown headers."},
+            {"role": "user", "content": "Summarize this:\n\n" + body[:8000]}], max_tokens=400)
+        return {"ok": True, "summary": ans}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 if __name__ == "__main__":
     import pprint
     pprint.pprint(research(" ".join(sys.argv[1:]) or "best evidence-based protein intake for muscle gain"))

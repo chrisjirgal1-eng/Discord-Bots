@@ -315,6 +315,12 @@ TOOLS = [
                     "last ops run, builds awaiting review, and system load. Use when he asks 'status', "
                     "'how are you running', 'systems check', or 'are you good'.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "summarize",
+     "description": "Summarize a web page (give its URL) or a block of text. Use when Chris says "
+                    "'summarize this', 'tldr this article', or gives a link or text to condense.",
+     "parameters": {"type": "object", "properties": {
+         "target": {"type": "string", "description": "A URL to fetch and summarize, or the text itself."}},
+        "required": ["target"]}},
     {"type": "function", "name": "weather",
      "description": "Get the current weather. Use when Chris asks about weather, temperature, or the "
                     "forecast. Omit location to use his current location.",
@@ -856,6 +862,21 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "summarize":
+            tgt = (args.get("target") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "summarize"}
+            if not tgt:
+                return {"ok": False, "error": "nothing to summarize"}
+            try:
+                import zoe_deep_research as dr
+                out = dr.summarize(tgt)
+                if out.get("ok"):
+                    return {"ok": True, "action": "summarize", "say": out["summary"][:1500]}
+                return {"ok": False, "error": out.get("error", "summarize failed")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "weather":
             loc = (args.get("location") or "").strip()
             if simulate:
@@ -982,6 +1003,7 @@ def _selftest():
         ("builds", {}),
         ("status", {}),
         ("weather", {"location": "Boston"}),
+        ("summarize", {"target": "https://example.com"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
