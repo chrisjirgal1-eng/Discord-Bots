@@ -82,3 +82,22 @@ See `.claude/rules/learning.md` for the loop.
     or pipe data via stdin, or just use the Read tool which handles the path.
   - Prevent: when handing a path from the Bash tool to native Python, convert `/c/` to `C:/` first, or
     avoid the intermediate file and pipe through stdin.
+
+## 2026-06-30
+
+- The live Instagram cookie file was the small IG-only export, not the big multi-site one.
+  - Mistake: copied `research/Automation/ig_cookies.txt` (539KB, all sites, newer) to `cookies.txt`;
+    it failed auth with "empty media response". The 12KB Instagram-only export authenticated fine.
+  - Fix: smoke-test with `yt-dlp -s --cookies <file> <reel>` and pick the file that prints OK before
+    a batch. Also `.gitignore` had no cookies rule (despite "keep it out of the repo"), and
+    `watch-batch.sh` was not passing `--cookies` at all. Added cookie patterns to `.gitignore` and
+    wired `--cookies cookies.txt` into `watch-batch.sh`.
+  - Prevent: validate the cookie file with a one-reel simulate first; never assume newer or bigger
+    means valid. Confirm `git check-ignore cookies.txt` before copying any secret into the repo root.
+
+- Image carousels and silent reels cannot be transcribed; that is not a pipeline failure.
+  - Mistake: treated 4 "download FAILED" reels as something to fix and retried them twice.
+  - Fix: diagnosed each. 3 were `/p/` image posts ("No video formats found"); 1 reel pulled a 132KB
+    clip with no audio stream (ffmpeg "Output file does not contain any stream"). None have speech.
+  - Prevent: a `/p/` image post or a no-audio reel is expected attrition. Confirm "No video formats"
+    or "no stream" once, mark it failed, and move on instead of retrying.

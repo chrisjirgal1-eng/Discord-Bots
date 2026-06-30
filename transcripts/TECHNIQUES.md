@@ -1,6 +1,6 @@
 # TECHNIQUES
 
-Digest of the 65 saved videos, judged against the 3 goal videos. Honest and ranked.
+Digest of the saved videos (130 transcribed across two batches), judged against the 3 goal videos. Honest and ranked.
 Each training technique earns a place only if it moves the setup toward what the goals describe.
 Source = Instagram shortcode (see tools/video-urls.txt). Status = new / already-have / hype-or-off-target.
 
@@ -15,6 +15,53 @@ From the 3 goal videos (DZlQ7GZnJR7, DZu4FFeDtIH, DZVEN4gMRXV):
 5. It **synthesizes to the next move**, it does not just draw pretty dashboards. It says "do X, here are the follow-on effects."
 
 The training videos are the means. JARVIS is the end.
+
+---
+
+# Round 2 - 69 new videos (2026-06-30)
+
+65 of 69 transcribed (4 had no audio: 3 image carousels + 1 silent reel). Judged against the same
+goal. Most of the batch repeats Round 1 themes (graph memory, multi-agent swarms, skill lists),
+which confirms the direction but earns no new change. A few items are genuinely new.
+
+## NEW, high-value (apply these)
+
+| Technique | Source | Value | Status | Action |
+|---|---|---|---|---|
+| Plan with the premium model, build with the cheaper one. Fable 5 is the most expensive and over-explains, so spend it only on low-volume planning and architecture, then hand a tight plan to Opus for the bulk build. A vague plan makes the cheaper model rethink everything, so the plan has to be tight. | DZc-ajJKT1L | high | new (routing refinement) | Add to model-routing.md: premium model for planning (low token volume), cheaper frontier for the build. Pairs with prompt-first-planning. |
+| Ultracode / Dynamic Workflows (Opus 4.8): `/effort` -> Ultra spawns 100+ parallel sub-agents in one session for hard tasks, then returns one checked result. Token-heavy: one creator reported 72 agents at once and a 250-instance workflow. | DY5yKZ8Jgke, DZT9OtvJj4B, DY7-4V7htXM, DZs4Caci87V | high | new (capability) | Note in throughput.md: reach for Ultra / dynamic workflows on hard parallel work only, always under the verification.md budget cap. This is the native version of the swarm tools the reels keep pushing. |
+| MCP tunnels + self-hosted sandboxes: run Claude agents on your own infra (your box or VPC), same model and skills, nothing leaving the machine. Removes the "data leaves the building" objection for regulated buyers. | DYxSlEjOMq3 | med | new (hosting option) | Folds into the "owned, not rented" goal and the autonomous-loop hosting decision. An option, not an immediate change. |
+| Clone an open-source repo into the project, then Graphify the clone, so the agent reads the real code (not just the README) with a semantic map first. | DaLg2dBjQah | med | new (extends graphify) | Optional small skill. Natural extension of the graphify the setup already runs. |
+
+## Confirms the goal / already-have (no rebuild)
+
+| Theme | Sources (sample) | Note |
+|---|---|---|
+| Graphify + Obsidian "second brain", 70x fewer tokens, Karpathy raw-folder origin. | DXxTmplOABg, DYzrTT7u5TN, DZQcHlwBO44, DZyCJeHEVqK, DWo1P-KDpMf, DYYjiiEJh5m, DZMFrWqszBt | Goal step 1, already core. The most repeated theme in the batch. |
+| Multi-agent swarms with shared memory + an orchestrator (Claude Flow, RooFlow-likes, "harness" framing). | DZmqlETDkLl, DZSU_0WMfqf, DY5yJSAxP00, DXe8RlbCSrv, DZg2-lVqvFg | The 154 subagents + model-routing already cover this. "Harness" just names what is built. |
+| Agentic OS, not a pretty dashboard: 24/7 daemon, phone control, self-improving agents. | DYAL7pNk-1F, DWINJhFDW-v, DXkSk6ZjgmD, DYtVwjzsTZC | This is the JARVIS goal restated. Confirms direction. |
+| Skill ecosystems and skill-creator tools (Superpowers, GSD, Context Mode, ClaudeMem, stop-slop, grill-me, slash review). | DXGQ6-2t11w, DXGRONttjhp, DZfULkBD_aB, DZY9plMOHNa | SkillSmith + the local skills + /code-review + handoff + memory-bank already cover these. stop-slop = the banned-words rule. |
+| App security for vibe-coded apps: turn on RLS, no client-side admin checks, rate-limit auth, no tokens in localStorage, minify, free security-review plugin. | DXvKgfFJF7a, DZK-53TAAW2, DZK9n6mxjFT, DZsXW-HonCi, DYqJY7TgN-d, DZOS1ywhWSl | The `/security-review` skill already exists; run it on bot.py and the websites. Worth a short app-security checklist if those ship to users. |
+| Billing split (June 15): automated, headless, Hermes, OpenClaw agents bill at full API rate. | DZkFtPxigOy | Already logged in Round 1 (DZltJGZsGnG) and the cost map. |
+
+## HYPE or off-target (skipped, logged honestly)
+
+- LLM "all vulnerabilities / jailbreak" repo (DaI2IMrphj6) and "Fable 5 banned, paste this prompt" echoes: sketchy, skip.
+- n8n Chat (DT8PqVCEVEi): off-target tool, not Claude.
+- Trading (DaFZTFPgF0V), "Project Quant" satire (DZtlkLmuyFv), Meta brain-to-text news (DaLt5fWvVEM), 3D-print iteration (DXgDNe0DV89): off-target.
+- Arc-reactor / JARVIS roleplay shorts (DY26vG0h0G-, DZOHIqmSAcj, DZLivf_h_Vm) and ~16 music or filler clips: no technique. Expected for social reels.
+
+## What to apply from Round 2
+
+Small and earned only:
+1. model-routing.md: plan with the premium model, build with the cheaper one (DZc-ajJKT1L).
+2. throughput.md: a note on Ultra / dynamic workflows for hard parallel work, under the budget cap.
+
+Everything else confirms the existing direction or did not earn a change. Quality over volume.
+
+---
+
+# Round 1 (original 65 videos)
 
 ## NEW, high-value (apply these)
 

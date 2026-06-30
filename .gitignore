@@ -47,6 +47,13 @@ vault/log/
 .env
 .env.local
 
+# Instagram / browser session cookies (live login tokens, never commit)
+cookies.txt
+ig_cookies*
+*_cookies.txt
+research/Automation/ig_cookies.txt
+research/Automation/ig-cookies.py
+
 # Local-only Claude notes
 CLAUDE.local.md
 

@@ -1,0 +1,1 @@
+ Oh, your little vibe-coded app uses Superbase so you think you're all nice and secure? Did you even turn on RLS? Or if I go to your website right now, do I get all permissions to your database? Am I the new administrator? Do I own your business?

@@ -15,6 +15,12 @@ Reasoning, architecture, and synthesis go to the biggest model.
 Search, lookups, transforms, and boilerplate go to the smallest model that won't botch them.
 Match the model to task altitude first. Then dial effort for cost vs quality.
 
+Premium for the plan, cheaper for the build: when a task is worth the top tier, spend it on the
+low-volume planning and architecture, then hand a tight plan down to the next tier for the bulk
+build. The premium model barely costs on a short plan, and a high-volume build does not need it.
+The catch is that the plan must be tight, or the cheaper model rethinks everything and the saving
+disappears. (Source: reel DZc-ajJKT1L, pairs with prompt-first planning.)
+
 ## Default behavior (do this automatically, no need to ask Chris)
 
 - Default real coding work to Sonnet 4.6.

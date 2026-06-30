@@ -10,6 +10,10 @@ costs more than the time it saved. There is no magic switch. These habits are th
    Batch independent tool calls into one message instead of a slow staircase of round trips.
    Fan out independent subtasks with the Workflow tool or parallel subagents.
    This is the biggest wall-clock win. Only serialize when step B needs step A's result.
+   For a genuinely hard, parallelizable job, Ultra mode (`/effort` then Ultra) and dynamic workflows
+   spawn 100+ sub-agents in one session and return one checked result. It is token-heavy (a single
+   workflow can spin up dozens of instances at once), so use it only on hard parallel work and
+   always under the verification.md budget cap. (Source: reels DY5yKZ8Jgke, DZT9OtvJj4B, DZs4Caci87V.)
 
 2. Route by altitude (see model-routing.md).
    Fast model for search, retrieval, and bulk edits. Big model for planning and error recovery.
