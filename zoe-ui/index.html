@@ -45,7 +45,7 @@
   .chip .d{color:var(--ok)}
   .graph{height:78px;width:100%}
   /* lower row */
-  #low{display:grid;grid-template-columns:248px 168px 200px 1fr;gap:12px;padding:0 16px 10px}
+  #low{display:grid;grid-template-columns:210px 150px 186px 210px 1fr;gap:12px;padding:0 16px 10px}
   .skills{display:flex;flex-wrap:wrap;gap:5px}
   .sk{font-size:9px;letter-spacing:.5px;color:var(--p3);background:rgba(147,51,234,.1);border:1px solid var(--ln);border-radius:6px;padding:3px 7px}
   .sk .d{color:var(--ok)}
@@ -53,6 +53,16 @@
   .grid{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;margin-top:6px}
   .grid i{width:100%;aspect-ratio:1;border-radius:50%;background:rgba(147,51,234,.18)}
   .grid i.on{background:var(--p2);box-shadow:0 0 5px var(--p2)}
+  /* live agent status pills + workflow panel */
+  .apills{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+  .pill{display:flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.5px;color:var(--p3)}
+  .pill .d{font-size:9px} .pill.live .d{color:var(--ok)} .pill.idle .d{color:var(--dm)} .pill.idle{color:var(--dm)}
+  .pill .volt{margin-left:auto;color:var(--p3);font-size:8.5px;letter-spacing:1px}
+  #wfbody{display:flex;flex-direction:column;gap:5px}
+  .wfrow{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.4px;color:var(--p3)}
+  .wfrow b{color:#fff;font-weight:600} .wfrow .d{font-size:10px}
+  .wfrow.green .d{color:var(--ok)} .wfrow.amber .d{color:#fbbf24} .wfrow.red .d{color:var(--bad)} .wfrow.unknown .d{color:var(--dm)}
+  .wffocus{font-size:9.5px;color:var(--dm);line-height:1.35;margin-top:2px}
   /* command bar */
   #bar{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid var(--ln);background:rgba(12,7,22,.5)}
   #bar .pfx{color:var(--p2);letter-spacing:2px;font-size:12px;white-space:nowrap}
@@ -93,8 +103,8 @@
     <div class="cstate"><span id="cstate">Idle _</span></div>
     <div class="chips">
       <span class="chip"><span class="d">●</span> CORE</span><span class="chip"><span class="d">●</span> MEMORY</span>
-      <span class="chip"><span class="d">●</span> VOICE: LILY</span><span class="chip"><span class="d">●</span> 10 SKILLS</span>
-      <span class="chip"><span class="d">●</span> 132 AGENTS</span></div>
+      <span class="chip"><span class="d">●</span> VOICE: LILY</span><span class="chip"><span class="d">●</span> <span id="chSk">--</span> SKILLS</span>
+      <span class="chip"><span class="d">●</span> <span id="chAg">--</span> AGENTS</span></div>
   </div>
 
   <div class="col">
@@ -106,8 +116,9 @@
 
 <div id="low">
   <div class="pan"><div class="ph">VOICE <b>LILY</b></div><canvas id="voice" class="graph" style="height:70px"></canvas></div>
-  <div class="pan"><div class="ph">SKILLS <b>10</b></div><div class="skills" id="skills"></div></div>
-  <div class="pan"><div class="ph">AGENTS <b style="color:var(--ok)">ACTIVE</b></div><span class="agnum">132</span><div class="grid" id="agrid"></div></div>
+  <div class="pan"><div class="ph">SKILLS <b id="skn">--</b></div><div class="skills" id="skills"></div></div>
+  <div class="pan"><div class="ph">AGENTS <b id="agstat" style="color:var(--ok)">--</b></div><span class="agnum" id="agnum">--</span><div class="apills" id="apills"></div></div>
+  <div class="pan"><div class="ph">WORKFLOW <b id="wfsec">--</b></div><div id="wfbody"></div></div>
   <div class="pan" style="cursor:pointer" id="netpan"><div class="ph">NETWORK - OBSIDIAN <b id="netv">--</b></div><canvas id="gNet" class="graph" style="height:74px"></canvas></div>
 </div>
 
@@ -232,12 +243,41 @@ function drawGlobe(t){ const r=globe.getBoundingClientRect(); globe.width=r.widt
   gbx.restore(); requestAnimationFrame(drawGlobe); }
 requestAnimationFrame(drawGlobe);
 
-// ---------- skills + agents ----------
-$('#skills').innerHTML = ['VISION','SEARCH','CODE','SHELL','MEMORY','VOICE','SCHEDULE','BROWSE','RECALL']
-  .map(s=>`<span class="sk"><span class="d">●</span> ${s}</span>`).join('')
-  + '<span class="sk" style="color:#ffb24d;border-color:rgba(255,178,77,.35)"><span class="d" style="color:#ffb24d">◆</span> HERMES</span>';
-const agrid=$('#agrid'); agrid.innerHTML=Array.from({length:55},()=>'<i></i>').join('');
-setInterval(()=>{ [...agrid.children].forEach(c=>c.classList.toggle('on',Math.random()<0.45)); },700);
+// ---------- live skills + agents + workflow ----------
+const skLabel=s=>s.replace(/-/g,' ').toUpperCase();
+function applyAgents(d){
+  const sk=d.skills||[];
+  $('#skn').textContent=d.skills_count??sk.length;
+  $('#chSk').textContent=d.skills_count??sk.length;
+  $('#skills').innerHTML=sk.map(s=>`<span class="sk"><span class="d">●</span> ${esc(skLabel(s))}</span>`).join('')||'<span class="mut">none</span>';
+  const ag=d.agents||[];
+  $('#agnum').textContent=d.count??ag.length;
+  $('#chAg').textContent=(d.count??ag.length)+(d.voltagents?`+${d.voltagents}`:'');
+  $('#agstat').textContent=`${d.active||0} LIVE`;
+  $('#apills').innerHTML=ag.map(a=>{const live=a.status==='active';
+    return `<span class="pill ${live?'live':'idle'}"><span class="d">●</span> ${esc((a.name||'').toUpperCase())}<span class="volt">${live?'ACTIVE':'SCAFFOLD'}</span></span>`;}).join('')
+    +(d.voltagents?`<span class="pill idle"><span class="d">●</span> VOLTAGENTS<span class="volt">${d.voltagents}</span></span>`:'');
+}
+function applyWorkflow(d){
+  const sec=d.security||{level:'unknown',summary:''};
+  $('#wfsec').textContent=(sec.level||'--').toUpperCase();
+  const loop=d.loop||{};
+  $('#wfbody').innerHTML=
+    `<div class="wfrow ${sec.level||'unknown'}"><span class="d">●</span> SECURITY <b>${esc((sec.level||'--').toUpperCase())}</b></div>`
+    +`<div class="wffocus">${esc(sec.summary||'')}</div>`
+    +`<div class="wfrow ${loop.enabled?'green':'unknown'}"><span class="d">●</span> LOOP <b>${loop.enabled?'ARMED':'WAITING'}</b></div>`
+    +`<div class="wffocus">${esc(loop.status||'')}</div>`
+    +(d.focus?`<div class="wffocus">FOCUS: ${esc(d.focus.split('\n')[0])}</div>`:'');
+}
+const AG_OFFLINE={agents:[{name:'security',status:'active'},{name:'content',status:'scaffold'},
+  {name:'research',status:'scaffold'},{name:'ops',status:'scaffold'}],count:4,active:1,
+  skills:['caption','clearcoat-post','coach-email','content-pipeline','digest-transcripts','handoff','jarvis','memory-update','zen-announce'],skills_count:9,voltagents:0};
+const WF_OFFLINE={security:{level:'unknown',summary:'server offline'},loop:{enabled:false,status:'start zoe_server.py for live status'},focus:''};
+async function pollMeta(){
+  try{ const a=await fetch('/agents',{cache:'no-store'}); applyAgents(a.ok?await a.json():AG_OFFLINE); }catch(e){ applyAgents(AG_OFFLINE); }
+  try{ const w=await fetch('/workflow',{cache:'no-store'}); applyWorkflow(w.ok?await w.json():WF_OFFLINE); }catch(e){ applyWorkflow(WF_OFFLINE); }
+}
+pollMeta(); setInterval(pollMeta,5000);
 
 // ---------- command bar ----------
 const cmd=$('#cmd'), cmdout=$('#cmdout');
