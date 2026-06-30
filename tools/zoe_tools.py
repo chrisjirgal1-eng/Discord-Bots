@@ -89,6 +89,52 @@ TOOLS = [
      "parameters": {"type": "object",
         "properties": {"name": {"type": "string", "description": "The workspace/mode name."}},
         "required": ["name"]}},
+    {"type": "function", "name": "browser_open",
+     "description": "Open her controllable browser to a URL or site and return what's on the page. "
+                    "This is the browser she can actually operate (click, type, navigate), separate "
+                    "from open_web. Use it when he wants to DO something on a site, not just view it.",
+     "parameters": {"type": "object",
+        "properties": {"url": {"type": "string", "description": "URL or site to open."}},
+        "required": ["url"]}},
+    {"type": "function", "name": "browser_read",
+     "description": "Read the current page again: its title, url, visible text, and the clickable/"
+                    "typable elements with their labels. Use this to see what's on the page before "
+                    "deciding what to click or type.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "browser_click",
+     "description": "Click the element whose visible text/label matches. Irreversible labels (post, "
+                    "send, buy, pay, delete, unfollow) are REFUSED unless confirmed is true -- so "
+                    "ask him yes/no first, then call again with confirmed true.",
+     "parameters": {"type": "object",
+        "properties": {
+            "text": {"type": "string", "description": "The visible text/label of the button or "
+                     "link to click."},
+            "confirmed": {"type": "boolean", "description": "Set true only after he says yes to an "
+                          "irreversible click."}},
+        "required": ["text"]}},
+    {"type": "function", "name": "browser_type",
+     "description": "Type text into a field (matched by its label/placeholder/name). Leave submit "
+                    "false to just fill it. Submitting is REFUSED unless confirmed is true, so ask "
+                    "him yes/no first, then call again with submit and confirmed true.",
+     "parameters": {"type": "object",
+        "properties": {
+            "field": {"type": "string", "description": "Label/placeholder of the field."},
+            "text": {"type": "string", "description": "What to type."},
+            "submit": {"type": "boolean", "description": "Press Enter to submit."},
+            "confirmed": {"type": "boolean", "description": "Set true only after he says yes to "
+                          "submitting."}},
+        "required": ["field", "text"]}},
+    {"type": "function", "name": "browser_back",
+     "description": "Go back one page in the browser (undoes the last navigation).",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "browser_forward",
+     "description": "Go forward one page in the browser.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "browser_scroll",
+     "description": "Scroll the page up or down to reveal more.",
+     "parameters": {"type": "object",
+        "properties": {"direction": {"type": "string", "enum": ["up", "down"]}},
+        "required": ["direction"]}},
     {"type": "function", "name": "play_music",
      "description": "Start epic background music, looping and ducked under your voice. Use for a "
                     "cinematic moment, like narrating a full rundown of what you can do. It keeps "
@@ -207,6 +253,17 @@ def _open_url(url):
         return False
 
 
+_BROWSER = {
+    "browser_open": ("open", ("url",)),
+    "browser_read": ("read", ()),
+    "browser_click": ("click", ("text", "confirmed")),
+    "browser_type": ("type", ("field", "text", "submit", "confirmed")),
+    "browser_back": ("back", ()),
+    "browser_forward": ("forward", ()),
+    "browser_scroll": ("scroll", ("direction",)),
+}
+
+
 def _profiles():
     """His account label -> Chrome profile directory, from ZOE_BROWSER_PROFILES.
     Format: 'personal=Default; zenthra=Profile 1; clearcoat=Profile 2'."""
@@ -319,6 +376,16 @@ def dispatch(name, args, ctrl=None, simulate=True):
             return {"ok": _open_in_chrome(url, profiles.get(account, "")),
                     "action": "account", "account": account or "default", "url": url}
 
+        if name in _BROWSER:
+            method, keys = _BROWSER[name]
+            payload = {k: args.get(k) for k in keys if args.get(k) is not None}
+            if simulate:
+                return {"ok": True, "simulated": True, "action": name, **payload}
+            import zoe_browser
+            r = zoe_browser.action(method, **payload)
+            r["action"] = name
+            return r
+
         if name == "play_music":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "music_start",
@@ -387,6 +454,10 @@ def _selftest():
         ("search_site", {"site": "espn.com", "query": "lakers score"}),
         ("search_site", {"site": "amazon", "query": "resistance bands"}),
         ("open_in_account", {"url_or_query": "https://youtube.com", "account": "zenthra"}),
+        ("browser_open", {"url": "youtube.com"}),
+        ("browser_click", {"text": "Subscribe"}),
+        ("browser_type", {"field": "Search", "text": "lofi", "submit": True}),
+        ("browser_back", {}),
         ("play_music", {}),
         ("stop_music", {}),
         ("set_music", {"query": "epic orchestral"}),

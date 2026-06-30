@@ -47,6 +47,13 @@ PERSONA = (
     "use a plain web search only when no site is named. To open a site as one of his accounts or "
     "switch accounts, use open_in_account -- if more than one account fits, suggest one and get a "
     "yes or no first, and never ask for or handle passwords. "
+    "When he wants to actually DO things on a site (not just view it) -- click, type, fill, "
+    "navigate, go back -- use the browser_ tools: browser_open then browser_read to see the page, "
+    "and click/type by the labels in the snapshot. ALWAYS confirm with a yes or no before anything "
+    "irreversible: posting, sending a message, buying, paying, deleting, unfollowing, or submitting "
+    "a form. Read-and-navigate freely; stop and ask before the irreversible step. The browser "
+    "tools refuse those unless you pass confirmed true, so after he says yes, call again with "
+    "confirmed true. "
     "If he asks what you can do or for 'the rundown', give a confident, cinematic rundown of your "
     "capabilities; if he wants the full effect, start background music first (play_music) and "
     "narrate over it, then stop it (stop_music) when he says stop. If he says 'switch to' a song "
@@ -239,7 +246,10 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                     player.reset()                            # barge-in: stop talking, listen
                 elif et == "response.function_call_arguments.done":
                     last[0] = time.monotonic()
-                    msg, res = handle_function_call(ev, ctrl=ctrl, simulate=False)
+                    # run the tool off the event loop so a slow action (browser, download)
+                    # never stutters her audio
+                    msg, res = await loop.run_in_executor(None, handle_function_call,
+                                                          ev, ctrl, False)
                     print(f"  tool: {ev.get('name')} -> {json.dumps(res)[:160]}")
                     _log_turn(f"{ev.get('name')} {ev.get('arguments','')}".strip(),
                               action=ev.get("name", "tool"), handled=bool(res.get("ok")))
