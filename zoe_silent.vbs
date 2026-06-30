@@ -15,5 +15,5 @@ sh.CurrentDirectory = root
 py = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\Python\pythoncore-3.14-64\python.exe")
 If Not fso.FileExists(py) Then py = "python"
 
-' run hidden (window style 0), don't wait; tee stdout+stderr to zoe.log
-sh.Run "cmd /c """ & py & """ tools\zoe_realtime.py >> zoe.log 2>&1", 0, False
+' run hidden (window style 0), don't wait; -u = unbuffered so zoe.log is live
+sh.Run "cmd /c """ & py & """ -u tools\zoe_realtime.py >> zoe.log 2>&1", 0, False
