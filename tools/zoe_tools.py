@@ -197,6 +197,36 @@ TOOLS = [
             "enum": ["zoey", "vault", "graph", "lab", "ops"],
             "description": "Which screen to show."}},
         "required": ["view"]}},
+    {"type": "function", "name": "see_screen",
+     "description": "Take a screenshot of Chris's screen and tell him what is on it right now. Use "
+                    "when he asks what is on the screen, to check the result of something you or he "
+                    "did, or BEFORE you act on the desktop so you know what you are looking at. "
+                    "Read-only and safe.",
+     "parameters": {"type": "object",
+        "properties": {"query": {"type": "string", "description": "What to look for or answer about "
+            "the screen. Optional; default is a general description."}},
+        "required": []}},
+    {"type": "function", "name": "control_screen",
+     "description": "Control the desktop directly: click or move the mouse, type text, press a key "
+                    "or hotkey, or scroll. Call see_screen first so you know where things are and "
+                    "what the click coordinates should be. Anything consequential (typing a command, "
+                    "pressing Enter on something risky, clicking buy/delete/send) is REFUSED unless "
+                    "confirmed is true, so ask him yes/no first, then call again with confirmed true.",
+     "parameters": {"type": "object",
+        "properties": {
+            "action": {"type": "string",
+                       "enum": ["click", "double_click", "right_click", "type", "key", "scroll"],
+                       "description": "What to do."},
+            "x": {"type": "number", "description": "Mouse x pixel (for click actions)."},
+            "y": {"type": "number", "description": "Mouse y pixel (for click actions)."},
+            "text": {"type": "string", "description": "Text to type (for the type action)."},
+            "keys": {"type": "string", "description": "Key or hotkey for the key action, e.g. "
+                     "'enter', 'alt+tab', 'win', 'ctrl+s'."},
+            "direction": {"type": "string", "enum": ["up", "down"],
+                          "description": "Scroll direction."},
+            "confirmed": {"type": "boolean", "description": "Set true only after he says yes to a "
+                          "consequential action."}},
+        "required": ["action"]}},
 ]
 
 
@@ -534,6 +564,29 @@ def dispatch(name, args, ctrl=None, simulate=True):
                     pass
             return out
 
+        if name == "see_screen":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "see_screen"}
+            import zoe_screen
+            return zoe_screen.see(args.get("query", ""))
+
+        if name == "control_screen":
+            action = (args.get("action") or "").strip().lower()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "control_screen", "do": action}
+            import zoe_screen
+            if action in ("click", "double_click", "right_click"):
+                return zoe_screen.click(args.get("x"), args.get("y"),
+                                        button=("right" if action == "right_click" else "left"),
+                                        double=(action == "double_click"))
+            if action == "type":
+                return zoe_screen.type_text(args.get("text", ""), bool(args.get("confirmed", False)))
+            if action == "key":
+                return zoe_screen.press(args.get("keys", ""), bool(args.get("confirmed", False)))
+            if action == "scroll":
+                return zoe_screen.scroll(args.get("direction", "down"), args.get("amount", 500))
+            return {"ok": False, "error": f"unknown screen action {action}"}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -569,6 +622,8 @@ def _selftest():
         ("run_command", {"command": "rm -rf /"}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
         ("switch_view", {"view": "ops"}),
+        ("see_screen", {"query": "what is open"}),
+        ("control_screen", {"action": "scroll", "direction": "down"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
