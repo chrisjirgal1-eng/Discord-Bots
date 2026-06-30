@@ -57,14 +57,27 @@ function openLog(name) {
   try { return fs.openSync(path.join(app.getPath('userData'), name), 'a'); }
   catch (e) { return 'ignore'; }
 }
-// Kill any leftover Zoe Python services from a previous crashed/force-killed run, so we never end
-// up with several voice listeners fighting over the microphone. Runs once at startup.
+// Kill ONLY orphaned voice listeners (zoe_realtime + legacy zoe_assistant), synchronously, so the
+// new voice never starts while an old one is still on the mic. Runs before each startVoice. This is
+// the fix for "Zoe talks to herself / repeats": two listeners were running at once.
+function killStrayVoiceSync() {
+  if (process.platform !== 'win32') return;
+  try {
+    require('child_process').spawnSync('powershell', ['-NoProfile', '-Command',
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' " +
+      "-or $_.CommandLine -like '*zoe_assistant.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
+      { windowsHide: true, stdio: 'ignore' });
+  } catch (e) { /* best-effort */ }
+}
+// Kill any leftover Zoe Python services (voice + telemetry) from a previous crashed/force-killed run,
+// so we never accumulate duplicate listeners. Runs once at startup.
 function killStrayServices() {
   if (process.platform !== 'win32') return;
   try {
     spawn('powershell', ['-NoProfile', '-Command',
-      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_assistant.py*' " +
-      "-or $_.CommandLine -like '*zoe_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' " +
+      "-or $_.CommandLine -like '*zoe_assistant.py*' -or $_.CommandLine -like '*zoe_server.py*' } | " +
+      "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
       { windowsHide: true, stdio: 'ignore' });
   } catch (e) { /* best-effort */ }
 }
@@ -228,6 +241,7 @@ function runCommandText(text) {
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
   if (voiceProc) return;
+  killStrayVoiceSync();   // never run two voices: clear any orphaned listener first
   const vlog = openLog('zoe-voice.log');
   voiceProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_realtime.py')],
     { cwd: ROOT, stdio: ['ignore', vlog, vlog], windowsHide: true,
