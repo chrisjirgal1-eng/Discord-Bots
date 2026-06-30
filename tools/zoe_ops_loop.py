@@ -111,10 +111,12 @@ def _spoken_brief(result, cfg):
     try:
         return _chat([
             {"role": "system", "content":
-                "You are JARVIS giving Chris a spoken brief out loud. Two or three sentences, "
-                "address him as sir, synthesize the key point and the single recommended next move, "
-                "and end by asking what he would like handled first. No markdown, no lists, spoken prose."},
-            {"role": "user", "content": f"Brief him based on this:\n{result[:1500]}"},
+                "You are Zoe giving Chris a quick spoken update, like a sharp teammate, not a formal "
+                "butler. Default to ONE short, casual, warm line, for example 'Hey sir, handled the "
+                "daily brief, nothing urgent.' Only go longer (two or three sentences with the "
+                "recommended next move) if the result is genuinely complex or needs his decision. "
+                "Address him as sir or Chris. No markdown, no lists, spoken prose."},
+            {"role": "user", "content": f"Update him based on this:\n{result[:1500]}"},
         ], cfg, max_tokens=170)
     except Exception:
         return ""
