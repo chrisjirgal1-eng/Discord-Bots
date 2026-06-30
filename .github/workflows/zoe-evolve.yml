@@ -1,0 +1,69 @@
+name: Zoe Evolve
+
+# The evolving loop (agents/README.md): once a day it runs Claude headless to make ONE verified
+# improvement, then opens a DRAFT PR a human reviews. It never pushes to or merges the default
+# branch. Needs the ANTHROPIC_API_KEY repo secret; until that's set, this is a no-op you can
+# trigger manually. Token-efficient: the driver runs on Sonnet and escalates only when needed.
+
+on:
+  schedule:
+    - cron: '23 8 * * *'   # daily ~08:23 UTC, off the :00 mark
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Guard on API key
+        id: guard
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ANTHROPIC_API_KEY not set -- skipping the evolving loop (add it in repo Secrets)."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Claude Code
+        if: steps.guard.outputs.run == 'true'
+        run: npm install -g @anthropic-ai/claude-code
+      - name: One verified improvement
+        if: steps.guard.outputs.run == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "$(cat .github/zoe-evolve-prompt.md)" \
+            --model sonnet \
+            --dangerously-skip-permissions \
+            --max-turns 50 || echo "loop step finished (non-zero exit tolerated)"
+      - name: Open a draft PR if anything changed
+        if: steps.guard.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes this run (a valid outcome)."
+            exit 0
+          fi
+          branch="zoe-evolve/$(date +%Y%m%d-%H%M%S)"
+          git config user.name "zoe-evolve"
+          git config user.email "noreply@anthropic.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "Zoe evolve: one verified improvement"
+          git push origin "$branch"
+          gh pr create --draft \
+            --base claude/vibrant-cray-tui7og --head "$branch" \
+            --title "Zoe evolve: automated improvement" \
+            --body "One verified step from the evolving loop (agents/README.md). Review before merge."
