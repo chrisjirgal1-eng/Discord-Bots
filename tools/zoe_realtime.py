@@ -26,6 +26,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jarvis_speak import load_env
 import zoe_tools
 
+
+def _force_env_key():
+    """Make .env authoritative for OPENAI_API_KEY. load_env() uses setdefault, so a stale key
+    already in the process environment would shadow the real one and 401 the wake-word STT
+    (the 'she cannot hear Hey Zoe' bug). This forces the .env value to win."""
+    try:
+        p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+        for line in open(p, encoding="utf-8"):
+            s = line.strip()
+            if s.startswith("OPENAI_API_KEY=") and "=" in s:
+                os.environ["OPENAI_API_KEY"] = s.split("=", 1)[1].strip().strip('"')
+                break
+    except Exception:
+        pass
+
 OPENAI_WS = "wss://api.openai.com/v1/realtime"
 MODEL = os.environ.get("ZOE_REALTIME_MODEL", "gpt-realtime")
 VOICE = os.environ.get("ZOE_REALTIME_VOICE", "marin")
@@ -479,6 +494,7 @@ def main():
         return
 
     load_env()
+    _force_env_key()                  # .env wins over any stale inherited key (fixes wake-word 401)
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         sys.exit("set OPENAI_API_KEY in .env (the Realtime voice runs on it)")
