@@ -296,6 +296,14 @@ TOOLS = [
          "delay_minutes": {"type": "number", "description": "For snooze: push it this many minutes from now (default 10)."},
          "at": {"type": "string", "description": "For snooze: a clock time like '5pm' instead of a delay."}},
         "required": []}},
+    {"type": "function", "name": "import_skill",
+     "description": "Install a new skill from a public GitHub repo so Zoe can run it with use_skill. "
+                    "Use when Chris says 'import the X skill from <repo>' or gives a GitHub link to a "
+                    "SKILL.md. Only the skill's playbook is downloaded (no scripts run), so it is safe.",
+     "parameters": {"type": "object", "properties": {
+         "source": {"type": "string", "description": "owner/repo, or a GitHub link to a SKILL.md."},
+         "skill": {"type": "string", "description": "The skill name/folder (needed when source is owner/repo)."}},
+        "required": ["source"]}},
 ]
 
 
@@ -831,6 +839,22 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "import_skill":
+            src = (args.get("source") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "import_skill", "source": src}
+            if not src:
+                return {"ok": False, "error": "no source"}
+            try:
+                import zoe_skill_import as si
+                r = si.import_skill(src, args.get("skill"))
+                if r.get("ok"):
+                    return {"ok": True, "action": "import_skill", "name": r["name"],
+                            "say": f"Imported the {r['name']} skill. Say 'use the {r['name']} skill' to run it."}
+                return {"ok": False, "error": r.get("error", "import failed")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -878,6 +902,8 @@ def _selftest():
         ("remind", {"text": "call the coach", "delay_minutes": 30}),
         ("reminders", {"action": "list"}),
         ("reminders", {"action": "cancel", "which": "1"}),
+        ("reminders", {"action": "snooze", "delay_minutes": 15}),
+        ("import_skill", {"source": "anthropics/skills", "skill": "pdf"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
