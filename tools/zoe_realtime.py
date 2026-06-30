@@ -315,23 +315,29 @@ def wait_for_wake():
         try:
             import zoe_assistant
             zoe_assistant.RMS_THRESHOLD = zoe_assistant.calibrate_threshold()
+            print(f"  mic threshold: {zoe_assistant.RMS_THRESHOLD} "
+                  "(set ZOE_MIC_THRESHOLD in .env if she can't hear you -- lower = more sensitive)",
+                  flush=True)
             print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).", flush=True)
             while True:
                 audio = zoe_assistant.listen_utterance()
                 if audio is None or len(audio) < zoe_assistant.SR * 0.3:
-                    continue
+                    continue                 # nothing loud enough to be speech
                 try:
                     text = zoe_assistant.stt(zoe_assistant.to_wav(audio), dg)
-                except Exception:
-                    continue
-                if text and any(w in text.lower() for w in zoe_assistant.WAKE_WORDS):
+                except Exception as e:
+                    print("  (stt error:", e, ")", flush=True); continue
+                if not text:
+                    print("  (heard sound but no words)", flush=True); continue
+                if any(w in text.lower() for w in zoe_assistant.WAKE_WORDS):
                     print("  heard:", text, flush=True)
                     try: zoe_assistant.summon_ui(os.environ.get("ZOE_CONTROL"))
                     except Exception: pass
                     return True
+                print("  (heard, not a wake word):", text, flush=True)   # she IS hearing you
         except Exception as e:
-            print("  (voice wake unavailable:", e, ") -> running always-on", flush=True)
-            return True
+            print("  (voice wake unavailable:", e, ")", flush=True)
+            return False
     # No Deepgram and no explicit gate: do NOT open a paid session on its own. Always-on is
     # opt-in only (ZOE_REALTIME_GATE=always), so she can never sit there billing 24/7 by accident.
     print("  no DEEPGRAM_API_KEY and no gate set -> not starting a session (no 24/7 billing). "
