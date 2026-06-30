@@ -304,6 +304,11 @@ TOOLS = [
          "source": {"type": "string", "description": "owner/repo, or a GitHub link to a SKILL.md."},
          "skill": {"type": "string", "description": "The skill name/folder (needed when source is owner/repo)."}},
         "required": ["source"]}},
+    {"type": "function", "name": "builds",
+     "description": "List the changes Zoe has autonomously built on isolated branches (via improve_self "
+                    "/ the ops loop) that are waiting for Chris to review and merge. Use when he asks "
+                    "what you have built, what is on your branches, or what is ready to review.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -839,6 +844,20 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "builds":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "builds"}
+            try:
+                import zoe_ops_loop as ol
+                bs = ol.branches()
+                if not bs:
+                    return {"ok": True, "action": "builds", "builds": [], "say": "No builds waiting for review, sir."}
+                say = "Built and waiting for your review: " + "; ".join(
+                    f"{b['subject']} ({b['date']})" for b in bs[:5])
+                return {"ok": True, "action": "builds", "builds": bs, "say": say}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "import_skill":
             src = (args.get("source") or "").strip()
             if simulate:
@@ -904,6 +923,7 @@ def _selftest():
         ("reminders", {"action": "cancel", "which": "1"}),
         ("reminders", {"action": "snooze", "delay_minutes": 15}),
         ("import_skill", {"source": "anthropics/skills", "skill": "pdf"}),
+        ("builds", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

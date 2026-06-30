@@ -484,6 +484,23 @@ def act_once(task=None, speak=None, actor=None):
     return rec
 
 
+def branches():
+    """The ops branches the loop built (ops/auto-*), newest first, with subject + relative date.
+    Read-only; these are autonomous changes waiting for Chris to review and merge. [] on error."""
+    try:
+        out = _git(["for-each-ref", "--sort=-committerdate",
+                    "--format=%(refname:short)|%(committerdate:relative)|%(subject)",
+                    "refs/heads/ops/"]).stdout
+        rows = []
+        for line in out.splitlines():
+            p = line.split("|", 2)
+            if len(p) == 3 and p[0].strip():
+                rows.append({"branch": p[0].strip(), "date": p[1].strip(), "subject": p[2].strip()})
+        return rows[:12]
+    except Exception:
+        return []
+
+
 def read_log(n=25):
     if not os.path.exists(LOG):
         return []
