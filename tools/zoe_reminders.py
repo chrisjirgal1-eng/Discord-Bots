@@ -91,6 +91,26 @@ def upcoming():
     return [it for it in _load() if not it.get("fired") and it.get("due", 0) > now]
 
 
+def cancel(which=""):
+    """Cancel an upcoming reminder by 1-based index ('1') or a text substring. Returns {ok, cancelled}."""
+    items = _load()
+    up = [it for it in items if not it.get("fired") and it.get("due", 0) > time.time()]
+    w = str(which or "").strip()
+    target = None
+    if w.isdigit():
+        i = int(w) - 1
+        if 0 <= i < len(up):
+            target = up[i]
+    if target is None and w:
+        target = next((it for it in up if w.lower() in it.get("text", "").lower()), None)
+    if target is None:
+        return {"ok": False, "error": "no matching upcoming reminder",
+                "upcoming": [it.get("text", "") for it in up]}
+    items.remove(target)
+    _save(items)
+    return {"ok": True, "cancelled": target.get("text", "")}
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[1] == "add":
         print(add(sys.argv[2], delay_minutes=(sys.argv[3] if len(sys.argv) > 3 else None)))

@@ -286,6 +286,14 @@ TOOLS = [
          "delay_minutes": {"type": "number", "description": "Fire this many minutes from now."},
          "at": {"type": "string", "description": "Clock time like '5pm', '17:30', or '9:00am'."}},
         "required": ["text"]}},
+    {"type": "function", "name": "reminders",
+     "description": "List or cancel Chris's upcoming reminders. action='list' (default) reads what is "
+                    "set; action='cancel' with 'which' (a number like 1, or words from the reminder) "
+                    "removes one.",
+     "parameters": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "cancel"], "description": "list or cancel."},
+         "which": {"type": "string", "description": "For cancel: a number (1, 2...) or words from the reminder."}},
+        "required": []}},
 ]
 
 
@@ -794,6 +802,26 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "reminders":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "reminders"}
+            try:
+                import zoe_reminders as rem, datetime as _dt
+                if (args.get("action") or "list").lower() == "cancel":
+                    res = rem.cancel(args.get("which", ""))
+                    res["action"] = "reminders"
+                    if res.get("ok"):
+                        res["say"] = f"Cancelled: {res.get('cancelled')}."
+                    return res
+                up = rem.upcoming()
+                items = [{"text": it["text"],
+                          "when": _dt.datetime.fromtimestamp(it["due"]).strftime("%I:%M %p")} for it in up]
+                say = ("You have no reminders set, sir." if not items else
+                       "Coming up: " + "; ".join(f"{i['text']} at {i['when']}" for i in items))
+                return {"ok": True, "action": "reminders", "reminders": items, "say": say}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -839,6 +867,8 @@ def _selftest():
         ("research", {"question": "best resting heart rate for athletes"}),
         ("remember", {"note": "Chris prefers casual replies and hates em dashes"}),
         ("remind", {"text": "call the coach", "delay_minutes": 30}),
+        ("reminders", {"action": "list"}),
+        ("reminders", {"action": "cancel", "which": "1"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
