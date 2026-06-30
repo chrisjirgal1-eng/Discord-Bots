@@ -100,6 +100,13 @@ TOOLS = [
     {"type": "function", "name": "stop_music",
      "description": "Stop the background music.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "set_music",
+     "description": "Change the background music. When he says 'switch to <song or vibe>', "
+                    "download a royalty-free / no-copyright track matching it and make it the "
+                    "track for next time. Confirm the new track by name when done.",
+     "parameters": {"type": "object",
+        "properties": {"query": {"type": "string", "description": "The song or vibe to switch to."}},
+        "required": ["query"]}},
     {"type": "function", "name": "recall_memory",
      "description": "Recall from long-term memory: what was worked on last session, or notes on "
                     "a topic. Empty query = the last session.",
@@ -329,6 +336,15 @@ def dispatch(name, args, ctrl=None, simulate=True):
             r["action"] = "music_stop"
             return r
 
+        if name == "set_music":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "set_music",
+                        "query": args.get("query", "")}
+            import zoe_music
+            r = zoe_music.set_track(args.get("query", ""))
+            r["action"] = "set_music"
+            return r
+
         if name == "recall_memory":
             query = (args.get("query") or "").strip()
             if simulate:
@@ -373,6 +389,7 @@ def _selftest():
         ("open_in_account", {"url_or_query": "https://youtube.com", "account": "zenthra"}),
         ("play_music", {}),
         ("stop_music", {}),
+        ("set_music", {"query": "epic orchestral"}),
         ("start_workspace", {"name": "coding"}),
         ("recall_memory", {"query": ""}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),

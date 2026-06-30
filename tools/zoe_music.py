@@ -31,10 +31,42 @@ def _resolve(track):
         if os.path.exists(env):
             return env
     if os.path.isdir(MUSIC_DIR):
-        for f in sorted(os.listdir(MUSIC_DIR)):
-            if f.lower().endswith(AUDIO_EXT):
-                return os.path.join(MUSIC_DIR, f)
+        files = [f for f in sorted(os.listdir(MUSIC_DIR)) if f.lower().endswith(AUDIO_EXT)]
+        # the "switch to" managed track wins; otherwise the first file he dropped in
+        managed = [f for f in files if os.path.splitext(f)[0].lower() == "zoe_track"]
+        for f in (managed + files):
+            return os.path.join(MUSIC_DIR, f)
     return None
+
+
+def set_track(query):
+    """Download a royalty-free / no-copyright track matching `query` and make it the track for
+    next time. Runs on the local machine (open network); best-effort. Uses yt-dlp (already a
+    dep), scoped to no-copyright music, saved as music/zoe_track.mp3 which _resolve prefers.
+    Does not touch any file he dropped in himself."""
+    q = (query or "").strip()
+    if not q:
+        return {"ok": False, "error": "no song given"}
+    os.makedirs(MUSIC_DIR, exist_ok=True)
+    for f in os.listdir(MUSIC_DIR):                    # clear the previous managed track only
+        if os.path.splitext(f)[0].lower() == "zoe_track":
+            try: os.remove(os.path.join(MUSIC_DIR, f))
+            except OSError: pass
+    search = f"ytsearch1:{q} no copyright royalty free music"
+    out = os.path.join(MUSIC_DIR, "zoe_track.%(ext)s")
+    base = ["-x", "--audio-format", "mp3", "--no-playlist", "-o", out, search]
+    last = ""
+    for cmd in ([sys.executable, "-m", "yt_dlp"] + base, ["yt-dlp"] + base):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=240)
+            if r.returncode == 0 and _resolve(""):
+                return {"ok": True, "track": q}
+            last = (r.stderr or r.stdout or "")[-200:]
+        except FileNotFoundError:
+            continue
+        except Exception as e:
+            last = str(e)[:200]
+    return {"ok": False, "error": (last or "download failed")[:200]}
 
 
 def _gain():
