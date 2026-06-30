@@ -96,3 +96,23 @@ Keep entries short. One idea per line.
   Sonnet review SHIP. Wired into the jarvis router and the JARVIS.md map. Merged and pushed.
 - Left for Chris (credentialed, not touched): 11 Labs + Deepgram voice keys, a 24/7 host, and the
   auto-posting toggle. All flagged in JARVIS.md, none wired blind.
+
+## 2026-06-30
+
+- Built ZOE speech-to-speech voice (PR #37, branch claude/voice-realtime, NOT merged yet).
+- Why: Chris wanted her to feel like the viral demo voices. Research settled it: that feel is a
+  speech-to-speech realtime model, not the stitched STT->LLM->TTS cascade. He chose OpenAI Realtime.
+- Architecture: OpenAI Realtime (gpt-realtime, voice marin) = ears+brain+mouth; her existing powers
+  exposed as 22 function tools through zoe_router. New files zoe_realtime/zoe_tools/zoe_browser/
+  zoe_music/zoe_ops.py. The Electron app spawns zoe_realtime.py as its voice and is the launcher.
+- Wake word runs on OpenAI Whisper, not Deepgram (his Deepgram key was a dead 401). Idle is free.
+- Powers added incrementally per his asks: platform + any-site search, multi-account browsing via
+  Chrome profiles (no stored passwords), a Playwright browser she operates, background music +
+  "switch to <song>", and read_file/run_command so she investigates and fixes instead of deflecting.
+- Safety: confirm-before-irreversible (his pick) on browser submits and destructive commands.
+- Long debug loop on his Windows box: stacked processes, GA session.type field, Spanish (instructions
+  never applied), website-vs-Electron, mic threshold 500, the Deepgram 401 -> Whisper wake. All fixed.
+- Each stage got a fresh code-reviewer pass; findings fixed. Cloud can't hear audio; he smoke-tests.
+- Lesson: the realtime API moved fields across versions (session.type, audio shape). Build defensively,
+  env-configurable model/voice, and read the live error rather than trusting one research snapshot.
+- Next: merge PR #37 after he's happy; he still wants to test music, browsing, and the fix-tools.

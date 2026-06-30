@@ -2,7 +2,33 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
-## Latest: JARVIS kickoff run (2026-06-27, local Windows machine)
+## Latest: ZOE speech-to-speech voice system (2026-06-30, PR #37, branch claude/voice-realtime)
+
+Built ZOE's realtime voice: she talks like the demo videos, runs in the Electron desktop app, and
+can act on the machine. NOT yet merged (PR #37 is draft); test, then merge to default.
+
+- Stack: OpenAI Realtime API (gpt-realtime, voice "marin") is her ears+brain+mouth in one
+  speech-to-speech model. Her powers are wired in as function tools through the existing zoe_router.
+- New files: `tools/zoe_realtime.py` (the agent + wake gate), `tools/zoe_tools.py` (22 tools),
+  `tools/zoe_browser.py` (Playwright browser she operates), `tools/zoe_music.py` (background music),
+  `tools/zoe_ops.py` (read_file + run_command). Launchers: `zoe_silent.vbs`, `zoe_stop.bat`.
+- Electron app (`electron/main.js`) now spawns zoe_realtime.py as its voice (was zoe_assistant.py).
+  Launch = the desktop app (UI) + realtime voice in one. `npm install` then `npm start`, or
+  double-click `zoe_silent.vbs`.
+- Wake word "Hey Zoe" is transcribed by OpenAI Whisper (NO Deepgram, his Deepgram key was dead;
+  her OpenAI key carries it). Idle is free (local RMS gate, ZOE_MIC_THRESHOLD=500); only the wake
+  utterance + the live session cost money. ZOE_REALTIME_GATE=always for hands-free always-on.
+- The 22 tools: launch/close apps, open folders, open_web, search_platform (YT/TikTok/IG/X/Twitch/
+  Spotify/Reddit/Roblox), search_site (any site), open_in_account (Chrome profiles, no passwords
+  stored), browser_open/read/click/type/back/forward/scroll, play/stop/set_music, recall_memory,
+  run_agent (Hermes, needs Hermes installed), read_file, run_command, start_workspace.
+- Safety posture Chris chose: confirm-before-irreversible. browser_click/type and run_command refuse
+  destructive actions (buy/pay/delete/post/send/rm/format/force-push) unless confirmed=true.
+- Reviewed by fresh code-reviewers at each stage; findings fixed. Cloud can't test audio, so Chris
+  smoke-tests on Windows. Confirmed working: app + voice + "Hey Zoe" + English + detailed replies.
+- Still to test: music (needs a track in `music/`), web browsing, the read_file/run_command fixing.
+
+## Earlier: JARVIS kickoff run (2026-06-27, local Windows machine)
 
 Ran JARVIS-KICKOFF.md end to end on Chris's own PC (the persistent runtime host). All merged
 to the default branch and pushed.
