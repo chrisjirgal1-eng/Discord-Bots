@@ -116,3 +116,24 @@ Keep entries short. One idea per line.
 - Lesson: the realtime API moved fields across versions (session.type, audio shape). Build defensively,
   env-configurable model/voice, and read the live error rather than trusting one research snapshot.
 - Next: merge PR #37 after he's happy; he still wants to test music, browsing, and the fix-tools.
+
+- Built the self-evolving system, easiest-first (PR #39, branch claude/zoe-evolve, draft).
+  Phase 1: security agent (free scanners on GitHub Actions: gitleaks/pip-audit/npm audit/bandit/
+  semgrep), the 69-video append to video-urls.txt, and memory-bank/creators.md. CI ran green;
+  found one real CVE (PyNaCl 1.5.0 -> CVE-2025-69277). Phase 2: the evolving loop (zoe-evolve.yml,
+  Claude headless, one verified improvement -> draft PR, never pushes to default; needs the
+  ANTHROPIC_API_KEY repo secret). Phase 3: agents/ framework, security live + content/research/ops
+  scaffolded. Phase 4: the live UI -- zoe_server.py /agents + /workflow endpoints, and index.html
+  now shows real skill names, per-agent status pills, a WORKFLOW panel with a security badge
+  (green/amber/red), and real chip counts. The faked 132/10 counts are gone.
+- Verified Phase 4 end to end: both endpoints return 200 with live data, the module JS parses, a
+  fresh Sonnet code-reviewer pass (one real bug: voltagent over-count, fixed to count only .md
+  whose parent dir is exactly "agents").
+- Also: watch_batch.py now falls back to OpenAI Whisper if no Groq key, watch.bat one-click runner,
+  and cookie exports are gitignored (live session tokens, never commit).
+- Needs Chris: add ANTHROPIC_API_KEY repo secret to arm the loop; run the 69 videos locally
+  (Instagram is proxy-walled in the cloud) then /digest-transcripts; smoke-test the UI on Windows.
+  GitHub MCP needs re-auth before I can open/update PRs from a session.
+- Branch note: Phase 4 went onto claude/zoe-evolve (PR #39) because it depends on the agents/
+  scaffolding there. The session's designated branch claude/kos-setup-rlf1c8 sat at the old default
+  and could not host the dependent UI work; left its remote untouched.
