@@ -229,7 +229,7 @@ function runCommandText(text) {
 function startVoice() {
   if (voiceProc) return;
   const vlog = openLog('zoe-voice.log');
-  voiceProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_assistant.py')],
+  voiceProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_realtime.py')],
     { cwd: ROOT, stdio: ['ignore', vlog, vlog], windowsHide: true,
       env: { ...process.env, ZOE_CONTROL: `http://127.0.0.1:${CONTROL_PORT}` } });
   voiceProc.on('exit', () => { voiceProc = null; sendVoiceState('off'); });

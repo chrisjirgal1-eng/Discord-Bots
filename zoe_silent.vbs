@@ -1,22 +1,23 @@
-' ZOE silent launcher: runs her in the background with NO console window.
-' Double-click this (or drop a shortcut in shell:startup to auto-run at login).
-' Everything she prints goes to zoe.log in this folder, so if she ever goes quiet,
-' open zoe.log in Notepad to see what happened -- no terminal needed.
-'
-' Hidden mode has no window to press Enter in, so she needs a way to wake by voice:
-'   - a DEEPGRAM_API_KEY in .env  -> say "Hey Zoe" to wake her (cheap, idles free), OR
-'   - ZOE_REALTIME_GATE=always in .env -> she listens the moment she starts (costs more).
-
+' ZOE launcher: open the Electron desktop app (the UI) which auto-starts the realtime voice.
+' Double-click this. The app has a single-instance lock, so opening it twice just focuses the
+' existing window. If the Electron build isn't present, falls back to the voice-only script
+' (logged to zoe.log). To auto-run at login, drop a shortcut to this in shell:startup.
 Set fso = CreateObject("Scripting.FileSystemObject")
 Set sh  = CreateObject("WScript.Shell")
+q = Chr(34)
 root = fso.GetParentFolderName(WScript.ScriptFullName)
 sh.CurrentDirectory = root
 
-py = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\Python\pythoncore-3.14-64\python.exe")
-If Not fso.FileExists(py) Then py = "python"
+' clear any stray copy (old direct-run voice or a previous app instance) so nothing stacks
+ps = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' -or ($_.Name -eq 'electron.exe' -and $_.CommandLine -like '*" & root & "*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+sh.Run "powershell -NoProfile -Command " & q & ps & q, 0, True
 
-' kill any copy already running so a re-run never stacks two processes fighting over the mic
-sh.Run "powershell -NoProfile -Command ""Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }""", 0, True
-
-' run hidden (window style 0), don't wait; -u = unbuffered so zoe.log is live
-sh.Run "cmd /c """ & py & """ -u tools\zoe_realtime.py >> zoe.log 2>&1", 0, False
+el = root & "\node_modules\electron\dist\electron.exe"
+If fso.FileExists(el) Then
+  sh.Run q & el & q & " " & q & root & q, 1, False      ' open the app, visible window
+Else
+  ' no Electron build -> run the realtime voice directly, hidden, logged to zoe.log
+  py = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\Python\pythoncore-3.14-64\python.exe")
+  If Not fso.FileExists(py) Then py = "python"
+  sh.Run "cmd /c " & q & py & q & " -u tools\zoe_realtime.py >> zoe.log 2>&1", 0, False
+End If
