@@ -85,6 +85,26 @@ GREETING = {"type": "response.create",
             "response": {"instructions": "Greet Chris in one short, warm line and ask what "
                                          "he needs. Keep it to a single spoken sentence."}}
 
+# Proactive brief: the OPS loop writes a short message here; when idle, Zoe wakes, speaks it, and then
+# listens, so the brief becomes a real back-and-forth instead of a one-way announcement.
+PROACTIVE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "memory", "zoe_proactive.txt")
+
+
+def _take_proactive(max_age=600):
+    """Return a fresh pending brief (and clear it), or '' if none or stale."""
+    try:
+        if not os.path.exists(PROACTIVE):
+            return ""
+        raw = open(PROACTIVE, encoding="utf-8").read().strip()
+        os.remove(PROACTIVE)
+        d = json.loads(raw) if raw else {}
+        if time.time() - float(d.get("ts", 0)) > max_age:
+            return ""
+        return (d.get("text") or "").strip()
+    except Exception:
+        return ""
+
 
 def _recent_context():
     """A short 'what we were doing' note from long-term memory so she opens already knowing
@@ -198,9 +218,10 @@ async def _connect(url, headers):
         return await websockets.connect(url, extra_headers=headers, max_size=None)
 
 
-async def realtime_session(api_key, idle_sec=20, max_min=None):
+async def realtime_session(api_key, idle_sec=20, max_min=None, opening=None):
     """One paid Realtime conversation. Returns when idle/max-time/socket-close. Streams the
-    mic up, plays her audio down, runs tool calls, and cuts her off on barge-in."""
+    mic up, plays her audio down, runs tool calls, and cuts her off on barge-in. If `opening`
+    is set (a proactive ops brief), she opens by speaking it instead of greeting, then listens."""
     import sounddevice as sd
     url = f"{OPENAI_WS}?model={MODEL}"
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -241,9 +262,14 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                 except Exception: continue
                 et = ev.get("type", "")
                 if et == "session.updated":
-                    if not greeted[0]:                          # greet once config is applied
+                    if not greeted[0]:                          # open once config is applied
                         greeted[0] = True
-                        await ws.send(json.dumps(GREETING))
+                        if opening:                             # proactive ops brief: say it, then listen
+                            await ws.send(json.dumps({"type": "response.create", "response": {
+                                "instructions": "Say this to Chris out loud in your own voice, then stop "
+                                "and listen for his reply: " + opening}}))
+                        else:
+                            await ws.send(json.dumps(GREETING))
                 elif et in ("response.audio.delta", "response.output_audio.delta"):
                     last[0] = time.monotonic()
                     if ev.get("item_id"): cur["id"] = ev["item_id"]
@@ -380,6 +406,10 @@ def wait_for_wake():
               flush=True)
         print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).", flush=True)
         while True:
+            brief = _take_proactive()                # a brief from the ops loop to speak + discuss?
+            if brief:
+                print("  proactive brief from the ops loop, waking to speak it.", flush=True)
+                return brief
             audio = zoe_assistant.listen_utterance()
             if audio is None or len(audio) < zoe_assistant.SR * 0.3:
                 continue                     # nothing loud enough to be speech
@@ -441,9 +471,11 @@ def main():
             print("  (HUD not started:", e, ")")
     try:
         while True:
-            if not wait_for_wake():
+            woke = wait_for_wake()
+            if woke is False:
                 break
-            asyncio.run(realtime_session(api_key, idle_sec=idle, max_min=max_min))
+            opening = woke if isinstance(woke, str) else None   # str = a proactive brief to speak
+            asyncio.run(realtime_session(api_key, idle_sec=idle, max_min=max_min, opening=opening))
     except KeyboardInterrupt:
         print("\n  Zoe offline. Goodbye, sir.\n")
 

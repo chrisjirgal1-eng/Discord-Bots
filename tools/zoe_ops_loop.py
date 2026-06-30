@@ -48,7 +48,8 @@ DEFAULTS = {
     "model_openai": "gpt-4o-mini",
     "max_tokens": 700,
     "schedule": "13:00",                   # local HH:MM daily fire
-    "speak": True,                         # speak the brief aloud (ElevenLabs via jarvis_speak)
+    "speak": True,                         # speak the brief aloud
+    "voice_reply": True,                   # route the brief through Zoe's live voice (two-way) vs one-way TTS
     "actor": "edit",                       # "edit" = Groq find/replace (safe, tested); "claude" = claude -p
     "max_turns_act": 12,                   # turn cap for the claude actor
     "last_run_date": "",
@@ -136,6 +137,29 @@ def speak_text(text):
         return False
 
 
+def _queue_voice(text):
+    """Hand the brief to Zoe's live voice (zoe_realtime): she speaks it AND listens for his reply.
+    Writes memory/zoe_proactive.txt; the running voice picks it up when idle. Best-effort."""
+    if not text:
+        return False
+    try:
+        p = os.path.join(ROOT, "memory", "zoe_proactive.txt")
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump({"ts": time.time(), "text": text}, f)
+        return True
+    except Exception:
+        return False
+
+
+def _deliver_brief(text, cfg):
+    """Speak the brief: through Zoe's live voice if voice_reply (two-way), else one-way ElevenLabs."""
+    if cfg.get("voice_reply", True):
+        _queue_voice(text)
+    else:
+        speak_text(text)
+
+
 def run_once(task=None, speak=None):
     """Draft, verify with a fresh pass, build a spoken brief, log it, and optionally speak it."""
     load_env()
@@ -177,7 +201,7 @@ def run_once(task=None, speak=None):
         save_cfg(cfg)
     do_speak = cfg.get("speak", False) if speak is None else speak
     if do_speak and status != "ERROR" and spoken:
-        speak_text(spoken)
+        _deliver_brief(spoken, cfg)
     return rec
 
 
@@ -332,7 +356,7 @@ def _act_claude(task, speak=None):
     save_cfg(cfg)
     do_speak = cfg.get("speak", True) if speak is None else speak
     if do_speak and spoken:
-        speak_text(spoken)
+        _deliver_brief(spoken, cfg)
     return rec
 
 
@@ -420,7 +444,7 @@ def act_once(task=None, speak=None, actor=None):
     save_cfg(cfg)
     do_speak = cfg.get("speak", True) if speak is None else speak
     if do_speak and spoken:
-        speak_text(spoken)
+        _deliver_brief(spoken, cfg)
     return rec
 
 
@@ -443,14 +467,15 @@ def status():
         "paused": cfg.get("paused", False), "task": cfg.get("task"),
         "engine": cfg.get("engine"), "schedule": cfg.get("schedule"),
         "max_tokens": cfg.get("max_tokens"), "last_run_date": cfg.get("last_run_date", ""),
-        "speak": cfg.get("speak", False), "actor": cfg.get("actor", "edit"),
+        "speak": cfg.get("speak", False), "voice_reply": cfg.get("voice_reply", True),
+        "actor": cfg.get("actor", "edit"),
         "next_run": _next_run_str(cfg), "last": last[0] if last else None,
     }
 
 
 def set_config(updates):
     cfg = load_cfg()
-    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak", "actor", "max_turns_act"):
+    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak", "voice_reply", "actor", "max_turns_act"):
         if k in updates and updates[k] is not None:
             cfg[k] = updates[k]
     save_cfg(cfg)

@@ -227,6 +227,13 @@ TOOLS = [
             "confirmed": {"type": "boolean", "description": "Set true only after he says yes to a "
                           "consequential action."}},
         "required": ["action"]}},
+    {"type": "function", "name": "claude_login",
+     "description": "Open the Claude Code sign-in so Chris can log in (needed once for the OPS Build "
+                    "'claude' actor). Use when he says 'log into Claude', 'sign in to Claude', or the "
+                    "Build actor says it needs a login. Opens a terminal running claude; he types "
+                    "/login and finishes the sign-in in his browser. You cannot complete the login "
+                    "yourself, that is his to approve.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -587,6 +594,18 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return zoe_screen.scroll(args.get("direction", "down"), args.get("amount", 500))
             return {"ok": False, "error": f"unknown screen action {action}"}
 
+        if name == "claude_login":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "claude_login"}
+            try:
+                import subprocess
+                subprocess.Popen(["cmd", "/c", "start", "Claude Login", "cmd", "/k", "claude"])
+                return {"ok": True, "action": "claude_login",
+                        "say": "Opening the Claude sign-in window. Type slash login there, finish in "
+                               "your browser, and the Build actor will be ready."}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -624,6 +643,7 @@ def _selftest():
         ("switch_view", {"view": "ops"}),
         ("see_screen", {"query": "what is open"}),
         ("control_screen", {"action": "scroll", "direction": "down"}),
+        ("claude_login", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
