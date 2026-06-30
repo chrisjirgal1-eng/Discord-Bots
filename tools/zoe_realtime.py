@@ -298,11 +298,30 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
         except Exception: pass
 
 
+def _openai_stt(wav_bytes, api_key):
+    """Transcribe a short wav with OpenAI Whisper, so the wake word needs no Deepgram -- it uses
+    the same OpenAI key the voice already runs on. Cheap (only fires on speech). Returns text."""
+    boundary = "----zoewake"
+    body = (
+        ("--%s\r\n" % boundary).encode()
+        + b'Content-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n'
+        + ("--%s\r\n" % boundary).encode()
+        + b'Content-Disposition: form-data; name="file"; filename="a.wav"\r\n'
+        + b"Content-Type: audio/wav\r\n\r\n" + wav_bytes + b"\r\n"
+        + ("--%s--\r\n" % boundary).encode()
+    )
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/audio/transcriptions", data=body,
+        headers={"Authorization": "Bearer " + api_key,
+                 "Content-Type": "multipart/form-data; boundary=" + boundary})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return (json.loads(r.read().decode()).get("text") or "").strip()
+
+
 def wait_for_wake():
-    """Cheap gate so the paid session only opens on demand. Voice wake when Deepgram is
-    set (reuses the cascade's local listen); otherwise press Enter. Keeps cost off while idle."""
+    """Cheap gate so the paid session only opens on demand. The wake word is transcribed by
+    OpenAI Whisper (no Deepgram needed -- same key the voice runs on). Idle stays free."""
     gate = os.environ.get("ZOE_REALTIME_GATE", "").strip().lower()
-    dg = os.environ.get("DEEPGRAM_API_KEY")
     if gate == "always":
         return True
     if gate == "manual":
@@ -311,39 +330,43 @@ def wait_for_wake():
             return True
         except EOFError:
             return False
-    if dg:                                  # cheap voice wake: idle free, "Hey Zoe" opens her
-        try:
-            import zoe_assistant
-            zoe_assistant.RMS_THRESHOLD = zoe_assistant.calibrate_threshold()
-            print(f"  mic threshold: {zoe_assistant.RMS_THRESHOLD} "
-                  "(set ZOE_MIC_THRESHOLD in .env if she can't hear you -- lower = more sensitive)",
-                  flush=True)
-            print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).", flush=True)
-            while True:
-                audio = zoe_assistant.listen_utterance()
-                if audio is None or len(audio) < zoe_assistant.SR * 0.3:
-                    continue                 # nothing loud enough to be speech
-                try:
-                    text = zoe_assistant.stt(zoe_assistant.to_wav(audio), dg)
-                except Exception as e:
-                    print("  (stt error:", e, ")", flush=True); continue
-                if not text:
-                    print("  (heard sound but no words)", flush=True); continue
-                if any(w in text.lower() for w in zoe_assistant.WAKE_WORDS):
-                    print("  heard:", text, flush=True)
-                    try: zoe_assistant.summon_ui(os.environ.get("ZOE_CONTROL"))
-                    except Exception: pass
-                    return True
-                print("  (heard, not a wake word):", text, flush=True)   # she IS hearing you
-        except Exception as e:
-            print("  (voice wake unavailable:", e, ")", flush=True)
-            return False
-    # No Deepgram and no explicit gate: do NOT open a paid session on its own. Always-on is
-    # opt-in only (ZOE_REALTIME_GATE=always), so she can never sit there billing 24/7 by accident.
-    print("  no DEEPGRAM_API_KEY and no gate set -> not starting a session (no 24/7 billing). "
-          "Add a Deepgram key for the 'Hey Zoe' wake, or set ZOE_REALTIME_GATE=always to opt in.",
-          flush=True)
-    return False
+    oai = os.environ.get("OPENAI_API_KEY")
+    dg = os.environ.get("DEEPGRAM_API_KEY")
+    if os.environ.get("ZOE_WAKE_STT", "").lower() == "deepgram" and dg:
+        import zoe_assistant
+        transcribe = lambda wav: zoe_assistant.stt(wav, dg)     # opt-in Deepgram
+    elif oai:
+        transcribe = lambda wav: _openai_stt(wav, oai)          # default: OpenAI Whisper
+    else:
+        print("  no OPENAI_API_KEY for the wake word -> set one, or ZOE_REALTIME_GATE=always.",
+              flush=True)
+        return False
+    try:
+        import zoe_assistant
+        zoe_assistant.RMS_THRESHOLD = zoe_assistant.calibrate_threshold()
+        print(f"  mic threshold: {zoe_assistant.RMS_THRESHOLD} "
+              "(set ZOE_MIC_THRESHOLD in .env if she can't hear you -- lower = more sensitive)",
+              flush=True)
+        print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).", flush=True)
+        while True:
+            audio = zoe_assistant.listen_utterance()
+            if audio is None or len(audio) < zoe_assistant.SR * 0.3:
+                continue                     # nothing loud enough to be speech
+            try:
+                text = transcribe(zoe_assistant.to_wav(audio))
+            except Exception as e:
+                print("  (wake stt error:", e, ")", flush=True); continue
+            if not text:
+                print("  (heard sound but no words)", flush=True); continue
+            if any(w in text.lower() for w in zoe_assistant.WAKE_WORDS):
+                print("  heard:", text, flush=True)
+                try: zoe_assistant.summon_ui(os.environ.get("ZOE_CONTROL"))
+                except Exception: pass
+                return True
+            print("  (heard, not a wake word):", text, flush=True)   # she IS hearing you
+    except Exception as e:
+        print("  (voice wake unavailable:", e, ")", flush=True)
+        return False
 
 
 def main():
