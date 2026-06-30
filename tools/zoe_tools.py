@@ -314,6 +314,12 @@ TOOLS = [
                     "last ops run, builds awaiting review, and system load. Use when he asks 'status', "
                     "'how are you running', 'systems check', or 'are you good'.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "weather",
+     "description": "Get the current weather. Use when Chris asks about weather, temperature, or the "
+                    "forecast. Omit location to use his current location.",
+     "parameters": {"type": "object", "properties": {
+         "location": {"type": "string", "description": "City or place; omit for his current location."}},
+        "required": []}},
 ]
 
 
@@ -849,6 +855,21 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "weather":
+            loc = (args.get("location") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "weather", "location": loc}
+            try:
+                import urllib.request, urllib.parse
+                url = ("https://wttr.in/" + urllib.parse.quote(loc) +
+                       "?format=%l:+%C+%t,+wind+%w,+humidity+%h")
+                req = urllib.request.Request(url, headers={"User-Agent": "curl/8"})
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    txt = r.read().decode("utf-8", "replace").strip()
+                return {"ok": bool(txt), "action": "weather", "say": txt[:200]}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "status":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "status"}
@@ -958,6 +979,7 @@ def _selftest():
         ("import_skill", {"source": "anthropics/skills", "skill": "pdf"}),
         ("builds", {}),
         ("status", {}),
+        ("weather", {"location": "Boston"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
