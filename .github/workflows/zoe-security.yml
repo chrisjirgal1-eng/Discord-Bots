@@ -1,0 +1,90 @@
+name: Zoe Security
+
+# The security agent (agents/security/AGENT.md): free scanners, no API key, runs on GitHub's
+# minutes. Secret leaks FAIL the run (a leaked key is a real breach); dependency + SAST findings
+# are advisory and land in the run summary + artifacts so they never block on existing noise.
+
+on:
+  push:
+    branches: [claude/vibrant-cray-tui7og]
+  pull_request:
+  schedule:
+    - cron: '17 9 * * *'   # daily ~09:17 UTC (off the :00 mark so the fleet doesn't pile up)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full history so a secret committed in the past is caught
+      - name: Install gitleaks
+        run: |
+          url=$(curl -sSL https://api.github.com/repos/gitleaks/gitleaks/releases/latest \
+            | grep -o 'https://[^"]*linux_x64.tar.gz' | head -1)
+          curl -sSL "$url" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+      - name: Scan for secrets
+        run: |
+          gitleaks detect --source . --redact --no-banner \
+            --report-format json --report-path gitleaks.json --exit-code 1
+      - name: Upload secret-scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks.json
+          if-no-files-found: ignore
+
+  deps-and-sast:
+    name: Deps + SAST (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install scanners
+        run: pip install --quiet pip-audit bandit semgrep
+      - name: pip-audit (Python deps)
+        continue-on-error: true
+        run: |
+          echo "## Python deps (pip-audit)" >> "$GITHUB_STEP_SUMMARY"
+          { pip-audit -r requirements.txt || true; } 2>&1 | tee pip-audit.txt >> "$GITHUB_STEP_SUMMARY"
+          if [ -f tools/requirements.txt ]; then
+            { pip-audit -r tools/requirements.txt || true; } 2>&1 | tee -a pip-audit.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: npm audit (Node deps)
+        continue-on-error: true
+        run: |
+          echo "## Node deps (npm audit)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f package.json ]; then
+            { npm audit || true; } 2>&1 | tee npm-audit.txt >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: bandit (Python SAST, medium+)
+        continue-on-error: true
+        run: |
+          echo "## Python SAST (bandit, medium+)" >> "$GITHUB_STEP_SUMMARY"
+          { bandit -r tools/ plugins/ -ll || true; } 2>&1 | tee bandit.txt | tail -25 >> "$GITHUB_STEP_SUMMARY"
+      - name: semgrep (multi-language SAST)
+        continue-on-error: true
+        run: |
+          echo "## Multi-language SAST (semgrep)" >> "$GITHUB_STEP_SUMMARY"
+          { semgrep --config=p/security-audit --quiet . || true; } 2>&1 | tee semgrep.txt | tail -25 >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: |
+            pip-audit.txt
+            npm-audit.txt
+            bandit.txt
+            semgrep.txt
+          if-no-files-found: ignore
