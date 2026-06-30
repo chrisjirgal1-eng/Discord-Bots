@@ -49,6 +49,8 @@ DEFAULTS = {
     "max_tokens": 700,
     "schedule": "13:00",                   # local HH:MM daily fire
     "speak": True,                         # speak the brief aloud (ElevenLabs via jarvis_speak)
+    "actor": "edit",                       # "edit" = Groq find/replace (safe, tested); "claude" = claude -p
+    "max_turns_act": 12,                   # turn cap for the claude actor
     "last_run_date": "",
 }
 
@@ -219,10 +221,125 @@ def _propose_change(task, ctx, cfg):
         return {"no_change": True, "why": "model JSON did not parse"}
 
 
+def _safe_changed(path):
+    """Path-string safety for files a change touched (no main-tree existence needed; new files ok)."""
+    p = str(path).replace("\\", "/").lstrip("/")
+    if not p or ".." in p.split("/"):
+        return False
+    return not any(d in p.lower() for d in DENY)
+
+
+def _act_claude(task, speak=None):
+    """ACT via the claude CLI as a stronger actor, inside the isolated worktree. Safer than raw
+    skip-permissions: acceptEdits + no Bash tool (so no commands/push/network), plus a tamper check
+    that aborts if claude touches anything outside the sandbox. Needs a one-time `claude /login`."""
+    load_env()
+    cfg = load_cfg()
+    task = (task or cfg.get("task") or DEFAULT_TASK).strip()
+    started = time.time()
+    ts = datetime.datetime.now()
+    branch = "ops/auto-" + ts.strftime("%Y%m%d-%H%M%S")
+    wt = os.path.join(ROOT, ".ops-worktrees", ts.strftime("%H%M%S"))
+    status, result, verdict, spoken, keep = "NEEDS-WORK", "", "", "", False
+    main_before = _git(["status", "--porcelain"]).stdout
+    try:
+        add = _git(["worktree", "add", "-b", branch, wt, "HEAD"])
+        if add.returncode != 0:
+            status, result = "ERROR", "worktree add failed: " + add.stderr[:300]
+        else:
+            prompt = ("You are JARVIS in ACT mode, working inside an isolated git worktree. Make ONE small, "
+                      "safe, internal change that advances the task, editing files in THIS directory only. "
+                      "Do not run git, do not push, do not touch .env, secrets, cookies, or .github. Stop when "
+                      f"done.\n\nTASK: {task}")
+            try:
+                cp = subprocess.run(
+                    ["claude", "-p", prompt, "--max-turns", str(cfg.get("max_turns_act", 12)),
+                     "--permission-mode", "acceptEdits", "--allowedTools", "Read Edit Write Grep Glob"],
+                    cwd=wt, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=900)
+                out = (cp.stdout + cp.stderr)
+            except FileNotFoundError:
+                out = "claude CLI not found on PATH"
+            except Exception as e:
+                out = "claude run error: " + str(e)
+            low = out.lower()
+            if "not logged in" in low or "please run /login" in low or "not been trusted" in low or "not found" in low:
+                result = ("Claude actor needs a one-time setup: open a terminal in the repo, run `claude`, do "
+                          "/login, and accept the trust prompt. Then set actor=claude and try again.")
+            else:
+                main_after = _git(["status", "--porcelain"]).stdout
+                if main_after != main_before:
+                    status, result = "ERROR", ("ABORTED: the Claude actor changed files OUTSIDE the sandbox "
+                                               "worktree. Nothing was committed. Check your working tree.")
+                else:
+                    diff = _git(["-C", wt, "diff"]).stdout
+                    porc = _git(["-C", wt, "status", "--porcelain"]).stdout
+                    if not diff.strip() and not porc.strip():
+                        result = "Claude made no change.\n" + out[-400:]
+                    else:
+                        changed = [ln[3:] for ln in porc.splitlines() if ln[3:]]
+                        bad = [p for p in changed if not _safe_changed(p)]
+                        if bad:
+                            result = "Rejected: change touched denylisted paths: " + ", ".join(bad[:5])
+                        else:
+                            try:
+                                tr = subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=wt,
+                                                    capture_output=True, text=True, timeout=900)
+                                tests_ok = tr.returncode == 0
+                                tail = "\n".join((tr.stdout + tr.stderr).strip().splitlines()[-5:])
+                            except Exception as te:
+                                tests_ok, tail = False, "tests could not run: " + str(te)[:150]
+                            verdict = _chat([
+                                {"role": "system", "content": "You are a FRESH reviewer. You did NOT write this diff."},
+                                {"role": "user", "content": f"TASK: {task}\n\nDIFF:\n{diff[:2500]}\n\npytest passed: "
+                                 f"{tests_ok}\n\nIn 3 lines: PASS or NEEDS-WORK and the key risk."}], cfg, max_tokens=180)
+                            review_ok = verdict.upper().lstrip().startswith("PASS")
+                            if tests_ok and review_ok:
+                                _git(["-C", wt, "add", "-A"])
+                                _git(["-C", wt, "commit", "-m",
+                                      f"ops(auto, claude): {task[:60]}\n\nAutonomous Ops Loop change via the Claude "
+                                      "actor on an isolated branch. Review before merging; not pushed.\n\n"
+                                      "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"])
+                                status, keep = "PASS", True
+                                result = (f"Shipped on branch {branch} (Claude actor)\n  files: "
+                                          f"{', '.join(changed[:6])}\n  tests green, review pass\n{tail}")
+                            else:
+                                result = (f"Reverted, not committed. tests={'green' if tests_ok else 'red'} "
+                                          f"review={'pass' if review_ok else 'fail'}\n{tail}")
+        spoken = _spoken_brief(result, cfg) if status != "ERROR" else ""
+    except Exception as e:
+        status, result = "ERROR", str(e)[:400]
+    finally:
+        try:
+            if os.path.isdir(wt):
+                _git(["worktree", "remove", wt, "--force"])
+        except Exception:
+            pass
+        if not keep:
+            try:
+                _git(["branch", "-D", branch])
+            except Exception:
+                pass
+    rec = {"ts": ts.isoformat(timespec="seconds"), "task": task[:240], "mode": "act-claude",
+           "branch": branch if keep else "", "status": status, "result": result, "verdict": verdict,
+           "spoken": spoken, "error": result if status == "ERROR" else "",
+           "engine": "claude", "secs": round(time.time() - started, 1)}
+    os.makedirs(os.path.dirname(LOG), exist_ok=True)
+    with open(LOG, "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec) + "\n")
+    cfg["last_run_date"] = datetime.date.today().isoformat()
+    save_cfg(cfg)
+    do_speak = cfg.get("speak", True) if speak is None else speak
+    if do_speak and spoken:
+        speak_text(spoken)
+    return rec
+
+
 def act_once(task=None, speak=None):
     """Make the change on an isolated worktree branch, test it, commit only if green. Never pushes."""
     load_env()
     cfg = load_cfg()
+    if cfg.get("actor", "edit") == "claude":
+        return _act_claude(task, speak)
     task = (task or cfg.get("task") or DEFAULT_TASK).strip()
     started = time.time()
     ts = datetime.datetime.now()
@@ -324,14 +441,14 @@ def status():
         "paused": cfg.get("paused", False), "task": cfg.get("task"),
         "engine": cfg.get("engine"), "schedule": cfg.get("schedule"),
         "max_tokens": cfg.get("max_tokens"), "last_run_date": cfg.get("last_run_date", ""),
-        "speak": cfg.get("speak", False),
+        "speak": cfg.get("speak", False), "actor": cfg.get("actor", "edit"),
         "next_run": _next_run_str(cfg), "last": last[0] if last else None,
     }
 
 
 def set_config(updates):
     cfg = load_cfg()
-    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak"):
+    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak", "actor", "max_turns_act"):
         if k in updates and updates[k] is not None:
             cfg[k] = updates[k]
     save_cfg(cfg)

@@ -55,6 +55,7 @@
 <div class="bar">
   <button class="primary" id="run">&#9654; Run now</button>
   <button id="build" title="ACT mode: make the change for real on an isolated branch, tested, never pushed">&#128296; Build</button>
+  <button id="actor" title="Build actor: edit (Groq, safe default) or claude (needs a one-time claude /login)">Actor: edit</button>
   <button id="pause">Pause</button>
   <button id="edit">Edit task</button>
   <button id="speak">&#128266; Speak: off</button>
@@ -111,6 +112,8 @@
       $("#pause").textContent = on ? "Pause" : "Resume";
       $("#speak").textContent = (s.speak ? "🔊" : "🔈") + " Speak: " + (s.speak ? "on" : "off");
       $("#speak").classList.toggle("primary", !!s.speak);
+      $("#actor").textContent = "Actor: " + (s.actor||"edit");
+      $("#actor").classList.toggle("primary", s.actor === "claude");
       $("#sub").innerHTML = `next run: ${esc(s.next_run||"")} &middot; ${esc(s.engine||"")} &middot; budget ${s.max_tokens||"?"} tok`;
       $("#curtask").textContent = "Task: " + (s.task||"");
       if(s.last) renderLast(s.last);
@@ -141,6 +144,13 @@
       if(r.branch) alert("Committed on branch:\n" + r.branch + "\n\nReview it, then merge if you like. Nothing was pushed.");
     }catch(e){ alert("Build failed: " + e); }
     b.disabled = false; b.textContent = "🔨 Build";
+  });
+  $("#actor").addEventListener("click", async () => {
+    const s = await (await fetch("/ops/status")).json();
+    const next = s.actor === "claude" ? "edit" : "claude";
+    if(next === "claude" && !confirm("Switch Build actor to CLAUDE?\n\nThis runs the claude CLI autonomously inside an isolated worktree (no Bash, tamper-guarded, never pushed). It needs a one-time `claude /login` in the repo. Edit (Groq) is the safe default.")) return;
+    await fetch("/ops/config", {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({actor: next})});
+    loadStatus();
   });
   $("#pause").addEventListener("click", async () => {
     const s = await (await fetch("/ops/status")).json();
