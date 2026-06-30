@@ -866,6 +866,7 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 req = urllib.request.Request(url, headers={"User-Agent": "curl/8"})
                 with urllib.request.urlopen(req, timeout=15) as r:
                     txt = r.read().decode("utf-8", "replace").strip()
+                txt = txt.encode("ascii", "ignore").decode().strip()   # drop wttr wind-direction arrows
                 return {"ok": bool(txt), "action": "weather", "say": txt[:200]}
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
