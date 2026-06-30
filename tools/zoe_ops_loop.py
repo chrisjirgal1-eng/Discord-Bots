@@ -166,6 +166,23 @@ def _deliver_brief(text, cfg):
         speak_text(text)
 
 
+def _vault_note(rec):
+    """Best-effort: record a shipped autonomous build into Zoe's Obsidian vault so she KNOWS it
+    (recall_memory, the voice, and Obsidian all read the vault). Only real ships; never raises."""
+    try:
+        if rec.get("status") != "PASS":
+            return
+        import zoe_memory as zm
+        title = "Ops build " + str(rec.get("ts", ""))[:16] + " " + str(rec.get("mode") or "act")
+        body = (f"**Task:** {rec.get('task','')}\n\n**Result:**\n{rec.get('result','')}\n\n"
+                f"**Branch:** {rec.get('branch','')}  ::  engine {rec.get('engine','')}\n\n"
+                "Built autonomously by the Ops Loop on an isolated, tested branch (not pushed). "
+                "Review and merge to make it live.")
+        zm.write(title, body, folder="notes", tags=["ops", "self-build"])
+    except Exception:
+        pass
+
+
 def run_once(task=None, speak=None):
     """Draft, verify with a fresh pass, build a spoken brief, log it, and optionally speak it."""
     load_env()
@@ -370,6 +387,7 @@ def _act_claude(task, speak=None):
     do_speak = cfg.get("speak", True) if speak is None else speak
     if do_speak and spoken:
         _deliver_brief(spoken, cfg)
+    _vault_note(rec)
     return rec
 
 
@@ -458,6 +476,7 @@ def act_once(task=None, speak=None, actor=None):
     do_speak = cfg.get("speak", True) if speak is None else speak
     if do_speak and spoken:
         _deliver_brief(spoken, cfg)
+    _vault_note(rec)
     return rec
 
 
