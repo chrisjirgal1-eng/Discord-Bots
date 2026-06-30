@@ -65,29 +65,47 @@ def _openai(messages, max_tokens=700):
     return d["choices"][0]["message"]["content"].strip()
 
 
+def _local(query, n=4):
+    """Best-effort hits from Chris's own research vault (the semantic reel index). [] on any failure."""
+    try:
+        import zoe_research
+        r = zoe_research.search(query)
+        if isinstance(r, list):
+            return [{"title": str(x.get("title", "")), "path": str(x.get("path", ""))}
+                    for x in r[:n] if isinstance(x, dict)]
+    except Exception:
+        pass
+    return []
+
+
 def research(question, n=6):
-    """Search the web and synthesize a cited answer. Returns {ok, answer, sources, live}."""
+    """Search the web AND Chris's own research vault, then synthesize a cited answer.
+    Returns {ok, answer, sources, vault, live}."""
     load_env()
     q = (question or "").strip()
     if not q:
         return {"ok": False, "error": "no question"}
     sources = _ddg(q, n)
+    vault = _local(q)
     try:
-        if sources:
-            src_text = "\n".join(f"[{i+1}] {s['title']} -- {s['url']}\n{s['snippet']}"
-                                 for i, s in enumerate(sources))
+        if sources or vault:
+            parts = [f"[{i+1}] {s['title']} -- {s['url']}\n{s['snippet']}" for i, s in enumerate(sources)]
+            parts += [f"[V{j+1}] (Chris's own research vault) {v['title']} -- {v['path']}"
+                      for j, v in enumerate(vault)]
             ans = _openai([
                 {"role": "system", "content": "You are Zoe's research engine for Chris. Answer using "
-                 "ONLY the numbered sources. Be concrete and honest; if the sources do not cover it, "
-                 "say so. Cite claims inline with [n]. End with a one-line bottom line. Plain "
-                 "spoken-friendly prose, no markdown headers."},
-                {"role": "user", "content": f"QUESTION: {q}\n\nSOURCES:\n{src_text}"}], max_tokens=700)
-            return {"ok": True, "answer": ans, "sources": sources, "live": True}
+                 "the sources below: web sources are numbered [n], and items from his OWN research "
+                 "vault are [Vn] -- weight his own vault highly. Be concrete and honest; if the "
+                 "sources do not cover it, say so. Cite claims inline with [n] or [Vn]. End with a "
+                 "one-line bottom line. Plain spoken-friendly prose, no markdown headers."},
+                {"role": "user", "content": f"QUESTION: {q}\n\nSOURCES:\n" + "\n".join(parts)}],
+                max_tokens=700)
+            return {"ok": True, "answer": ans, "sources": sources, "vault": vault, "live": bool(sources)}
         ans = _openai([
             {"role": "system", "content": "You are Zoe researching for Chris. Live web search was "
              "unavailable, so answer from your own knowledge and say so up front in one short clause."},
             {"role": "user", "content": q}], max_tokens=600)
-        return {"ok": True, "answer": ans, "sources": [], "live": False}
+        return {"ok": True, "answer": ans, "sources": [], "vault": [], "live": False}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
 

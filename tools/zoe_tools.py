@@ -269,6 +269,14 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "question": {"type": "string", "description": "What to research, in plain words."}},
         "required": ["question"]}},
+    {"type": "function", "name": "remember",
+     "description": "Save something to Zoe's long-term memory (her Obsidian vault) so she can recall "
+                    "it later. Use when Chris says 'remember that', 'note this', 'save this', or tells "
+                    "you a fact, preference, or detail he will want back. Confirm in one short line.",
+     "parameters": {"type": "object", "properties": {
+         "note": {"type": "string", "description": "What to remember, in his words."},
+         "title": {"type": "string", "description": "Optional short title; omit to auto-title from the note."}},
+        "required": ["note"]}},
 ]
 
 
@@ -745,10 +753,24 @@ def dispatch(name, args, ctrl=None, simulate=True):
                     srcs = [{"n": i + 1, "title": s["title"], "url": s["url"]}
                             for i, s in enumerate(out.get("sources", [])[:6])]
                     return {"ok": True, "action": "research", "answer": out.get("answer", "")[:1800],
-                            "live": out.get("live"), "sources": srcs}
+                            "live": out.get("live"), "sources": srcs, "vault": out.get("vault", [])}
                 return {"ok": False, "error": out.get("error", "research failed")}
             except Exception as e:
                 return {"ok": False, "error": str(e)[:250]}
+
+        if name == "remember":
+            note = (args.get("note") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "remember"}
+            if not note:
+                return {"ok": False, "error": "nothing to remember"}
+            try:
+                import zoe_memory as zm
+                title = (args.get("title") or "").strip() or " ".join(note.split()[:7])
+                path = zm.write(title, note, folder="notes", tags=["remember", "voice"])
+                return {"ok": True, "action": "remember", "path": path, "say": "Saved that to memory, sir."}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
 
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
@@ -793,6 +815,7 @@ def _selftest():
         ("use_skill", {}),
         ("use_skill", {"skill": "content-pipeline", "context": "new roblox short"}),
         ("research", {"question": "best resting heart rate for athletes"}),
+        ("remember", {"note": "Chris prefers casual replies and hates em dashes"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
