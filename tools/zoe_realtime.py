@@ -47,6 +47,9 @@ PERSONA = (
     "use a plain web search only when no site is named. To open a site as one of his accounts or "
     "switch accounts, use open_in_account -- if more than one account fits, suggest one and get a "
     "yes or no first, and never ask for or handle passwords. "
+    "If he asks what you can do or for 'the rundown', give a confident, cinematic rundown of your "
+    "capabilities; if he wants the full effect, start background music first (play_music) and "
+    "narrate over it, then stop it (stop_music) when he says stop. "
     "After a tool runs, say one short line confirming it. If a tool fails, say so plainly. "
     "Once he wakes you, stay in the conversation and answer whenever he speaks, no wake word "
     "needed. If he says 'go to sleep' or 'that's all', stand down without another word."
@@ -275,6 +278,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
             if pending:                       # let cancels unwind before we close the socket
                 await asyncio.gather(*pending, return_exceptions=True)
     finally:
+        try: import zoe_music; zoe_music.stop()   # never let music outlive the session
+        except Exception: pass
         player.close()
         try: await ws.close()
         except Exception: pass

@@ -89,6 +89,17 @@ TOOLS = [
      "parameters": {"type": "object",
         "properties": {"name": {"type": "string", "description": "The workspace/mode name."}},
         "required": ["name"]}},
+    {"type": "function", "name": "play_music",
+     "description": "Start epic background music, looping and ducked under your voice. Use for a "
+                    "cinematic moment, like narrating a full rundown of what you can do. It keeps "
+                    "playing until stop_music or he says to stop the music.",
+     "parameters": {"type": "object",
+        "properties": {"track": {"type": "string", "description": "Optional path to a music file; "
+                                 "defaults to his configured track."}},
+        "required": []}},
+    {"type": "function", "name": "stop_music",
+     "description": "Stop the background music.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
     {"type": "function", "name": "recall_memory",
      "description": "Recall from long-term memory: what was worked on last session, or notes on "
                     "a topic. Empty query = the last session.",
@@ -301,6 +312,23 @@ def dispatch(name, args, ctrl=None, simulate=True):
             return {"ok": _open_in_chrome(url, profiles.get(account, "")),
                     "action": "account", "account": account or "default", "url": url}
 
+        if name == "play_music":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "music_start",
+                        "track": args.get("track", "")}
+            import zoe_music
+            r = zoe_music.start(args.get("track", ""))
+            r["action"] = "music_start"
+            return r
+
+        if name == "stop_music":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "music_stop"}
+            import zoe_music
+            r = zoe_music.stop()
+            r["action"] = "music_stop"
+            return r
+
         if name == "recall_memory":
             query = (args.get("query") or "").strip()
             if simulate:
@@ -343,6 +371,8 @@ def _selftest():
         ("search_site", {"site": "espn.com", "query": "lakers score"}),
         ("search_site", {"site": "amazon", "query": "resistance bands"}),
         ("open_in_account", {"url_or_query": "https://youtube.com", "account": "zenthra"}),
+        ("play_music", {}),
+        ("stop_music", {}),
         ("start_workspace", {"name": "coding"}),
         ("recall_memory", {"query": ""}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
