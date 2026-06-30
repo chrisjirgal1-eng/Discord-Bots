@@ -315,6 +315,12 @@ TOOLS = [
                     "last ops run, builds awaiting review, and system load. Use when he asks 'status', "
                     "'how are you running', 'systems check', or 'are you good'.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "news",
+     "description": "Get the top news headlines, optionally on a topic. Use when Chris asks for the "
+                    "news, headlines, or what is happening with X.",
+     "parameters": {"type": "object", "properties": {
+         "topic": {"type": "string", "description": "Optional topic; omit for general top headlines."}},
+        "required": []}},
     {"type": "function", "name": "volume",
      "description": "Control the system volume. Use when Chris says turn it up or down, louder, "
                     "quieter, or mute. direction is up, down, or mute.",
@@ -869,6 +875,20 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "news":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "news"}
+            try:
+                import zoe_deep_research as dr
+                out = dr.news(args.get("topic", ""))
+                if out.get("ok"):
+                    hs = out["headlines"][:6]
+                    return {"ok": True, "action": "news", "headlines": hs,
+                            "say": "Top headlines: " + "; ".join(hs)}
+                return {"ok": False, "error": out.get("error", "no news")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "volume":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "volume", "direction": args.get("direction")}
@@ -1018,6 +1038,7 @@ def _selftest():
         ("weather", {"location": "Boston"}),
         ("summarize", {"target": "https://example.com"}),
         ("volume", {"direction": "up"}),
+        ("news", {"topic": "technology"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

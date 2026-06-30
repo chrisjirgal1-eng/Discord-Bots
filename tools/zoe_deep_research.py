@@ -149,6 +149,23 @@ def summarize(target):
         return {"ok": False, "error": str(e)[:200]}
 
 
+def news(topic="", n=6):
+    """Top headlines from Google News RSS (no key). Returns {ok, headlines}."""
+    try:
+        q = urllib.parse.quote((topic or "").strip())
+        url = ("https://news.google.com/rss/search?q=%s&hl=en-US&gl=US&ceid=US:en" % q) if q \
+            else "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            xml = r.read().decode("utf-8", "replace")
+        titles = re.findall(r"<title>(.*?)</title>", xml, re.S)
+        heads = [html.unescape(re.sub(r"<.*?>", "", t)).strip() for t in titles[1:n + 1]]  # [0] is feed name
+        heads = [h for h in heads if h]
+        return {"ok": bool(heads), "headlines": heads}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 if __name__ == "__main__":
     import pprint
     pprint.pprint(research(" ".join(sys.argv[1:]) or "best evidence-based protein intake for muscle gain"))
