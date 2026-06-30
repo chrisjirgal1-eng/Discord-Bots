@@ -101,3 +101,11 @@ See `.claude/rules/learning.md` for the loop.
     clip with no audio stream (ffmpeg "Output file does not contain any stream"). None have speech.
   - Prevent: a `/p/` image post or a no-audio reel is expected attrition. Confirm "No video formats"
     or "no stream" once, mark it failed, and move on instead of retrying.
+
+- yt-dlp now pulls Instagram cookies straight from Chrome on this machine (supersedes the export note above).
+  - Finding: `--cookies-from-browser chrome` authenticates on yt-dlp 2026.06.09, despite the older
+    note that Chrome app-bound encryption blocked it. Firefox is not signed into IG; Edge extraction hung.
+  - Refresh in one command: `yt-dlp --cookies-from-browser chrome --cookies cookies.txt -s <any reel>`
+    pulls a fresh session from Chrome and writes it to cookies.txt (gitignored). No browser extension needed.
+  - Prevent: when auth starts failing, rerun that one command with Chrome signed into Instagram,
+    instead of doing a manual "Get cookies.txt" export.
