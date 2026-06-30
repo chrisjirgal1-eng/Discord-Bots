@@ -11,7 +11,7 @@ dispatch(name, args, ctrl=None, simulate=True) returns a small JSON-able dict th
 sent back as the function_call_output; the model speaks a confirmation from it.
 simulate=True plans the action with no side effects (used by the cloud self-test).
 """
-import os, sys, json, urllib.parse
+import os, sys, json, urllib.parse, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import zoe_router          # the single command router (execute / route / recall / plugins)
@@ -187,6 +187,28 @@ TOOLS = [
         "properties": {"prompt": {"type": "string", "description": "The full request for Hermes."}},
         "required": ["prompt"]}},
 ]
+
+
+def _openai_reason(prompt):
+    """Deep reasoning via a strong OpenAI text model (the same key the voice runs on), so
+    run_agent gives heavier thinking even without a local Hermes install. ZOE_REASON_MODEL
+    overrides the model."""
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return {"ok": False, "error": "no OPENAI_API_KEY for reasoning"}
+    model = os.environ.get("ZOE_REASON_MODEL", "gpt-4o")
+    body = json.dumps({"model": model, "messages": [
+        {"role": "system", "content": "You are Zoe's deep-reasoning engine for Chris. Think it "
+         "through and give a clear, complete, actionable answer."},
+        {"role": "user", "content": prompt}]}).encode()
+    req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=body,
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            d = json.load(r)
+        return {"ok": True, "answer": d["choices"][0]["message"]["content"].strip()[:1500]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
 
 
 def _web_url(query_or_url):
@@ -468,8 +490,12 @@ def dispatch(name, args, ctrl=None, simulate=True):
                                           payload={"prompt": prompt})
             handled, res = zoe_router._run_plugin(cmd)
             ans = res.get("answer") if isinstance(res, dict) else None
-            err = res.get("error") if isinstance(res, dict) else None
-            return {"ok": bool(handled), "answer": (ans or "")[:600], "error": err}
+            if handled and ans:
+                return {"ok": True, "answer": ans[:1500], "action": "agent", "via": "hermes"}
+            # Hermes not installed/configured -> reason with OpenAI (the key already in use)
+            r = _openai_reason(prompt)
+            r["action"] = "agent"; r["via"] = "openai"
+            return r
 
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:

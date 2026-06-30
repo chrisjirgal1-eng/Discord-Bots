@@ -12,5 +12,5 @@ If fso.FileExists(el) Then
 Else
   py = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Python\pythoncore-3.14-64\pythonw.exe"
   If Not fso.FileExists(py) Then py = "pythonw"
-  sh.Run """" & py & """ """ & root & "\tools\zoe_assistant.py""", 0, False
+  sh.Run """" & py & """ -u """ & root & "\tools\zoe_realtime.py""", 0, False
 End If

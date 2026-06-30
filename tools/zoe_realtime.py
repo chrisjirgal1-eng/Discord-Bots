@@ -291,14 +291,28 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                     print(f"  (session cap {max_min}m reached -- closing)")
                     return
 
+        async def wake_music():
+            # cinematic intro: when she wakes, score it, then fade after a few seconds
+            if os.environ.get("ZOE_WAKE_MUSIC", "").lower() not in ("1", "true", "yes"):
+                return
+            try:
+                import zoe_music
+                await loop.run_in_executor(None, zoe_music.start, "")
+                await asyncio.sleep(float(os.environ.get("ZOE_WAKE_MUSIC_SEC", "12")))
+                await loop.run_in_executor(None, zoe_music.stop)
+            except Exception:
+                pass
+
+        music_task = asyncio.ensure_future(wake_music())   # fire-and-forget, not a session-ender
         with sd.RawInputStream(samplerate=SR, channels=1, dtype="int16",
                                blocksize=BLOCK, callback=mic_cb):
             tasks = [asyncio.ensure_future(c) for c in (sender(), receiver(), watchdog())]
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for t in pending:
                 t.cancel()
+            music_task.cancel()
             if pending:                       # let cancels unwind before we close the socket
-                await asyncio.gather(*pending, return_exceptions=True)
+                await asyncio.gather(*pending, music_task, return_exceptions=True)
     finally:
         try: import zoe_music; zoe_music.stop()   # never let music outlive the session
         except Exception: pass
