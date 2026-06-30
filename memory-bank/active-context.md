@@ -2,7 +2,33 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
-## Latest: ZOE speech-to-speech voice system (2026-06-30, PR #37, branch claude/voice-realtime)
+## Latest: self-evolving system + live UI (2026-06-30, PR #39, branch claude/zoe-evolve, draft)
+
+Built Zoey's permanent self-improvement layer, easiest-first, all four phases shipped to one draft PR.
+NOT merged. Needs Chris to test, add one secret, and run the videos locally.
+
+- Phase 1 (free, immediate): security agent on GitHub Actions (zoe-security.yml) running gitleaks +
+  pip-audit + npm audit + bandit + semgrep. CI ran green; found one real CVE (PyNaCl 1.5.0 ->
+  CVE-2025-69277, fix 1.6.2). Plus the 69 new IG reels appended to tools/video-urls.txt and a
+  creator registry at memory-bank/creators.md.
+- Phase 2: the evolving loop (zoe-evolve.yml). Daily + manual. Runs Claude headless to make ONE
+  verified improvement, opens a DRAFT PR, never pushes to default. Token-efficient (Sonnet driver,
+  escalates only when needed). Gated on the ANTHROPIC_API_KEY repo secret -- a no-op until Chris adds it.
+- Phase 3: the agents/ framework. Each agent = a folder with an AGENT.md charter + a blackboard
+  section. Security is live; content/research/ops are scaffolds (charters only, routed to existing
+  skills, turned on later by enabling a workflow). Shared state in agents/blackboard.md (no DB).
+- Phase 4: the live UI. zoe_server.py gained /agents + /workflow endpoints (read agents/*, skills,
+  findings, blackboard). zoe-ui/index.html now shows real skill names, per-agent status pills, a
+  WORKFLOW panel with a green/amber/red security badge, and real chip counts. The faked 132/10 are gone.
+- Rejected as too heavy (kept it lean): CrewAI, LangGraph, Postgres, Supabase, Mem0, n8n. Blackboard
+  is a committed file; agents are skill/subagent prompts + Actions runners; memory stays file-based.
+- Also this session: watch_batch.py OpenAI Whisper fallback + watch.bat one-click; cookie exports
+  gitignored (live session tokens).
+- Needs Chris: add ANTHROPIC_API_KEY secret (arms the loop); run the 69 videos locally then
+  /digest-transcripts (Instagram is proxy-walled in the cloud); smoke-test the UI on Windows.
+  GitHub MCP needs re-auth before a session can open/update PRs.
+
+## Earlier: ZOE speech-to-speech voice system (2026-06-30, PR #37, branch claude/voice-realtime)
 
 Built ZOE's realtime voice: she talks like the demo videos, runs in the Electron desktop app, and
 can act on the machine. NOT yet merged (PR #37 is draft); test, then merge to default.

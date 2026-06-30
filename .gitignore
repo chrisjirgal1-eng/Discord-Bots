@@ -47,6 +47,12 @@ vault/log/
 .env
 .env.local
 
+# Browser cookie exports (live session tokens -- never commit these)
+cookies.txt
+*cookies*.txt
+ig_cookies*
+*.cookies
+
 # Local-only Claude notes
 CLAUDE.local.md
 

@@ -23,7 +23,105 @@ HUD = os.path.join(ROOT, "zoe-ui", "index.html")
 HUD3D = os.path.join(ROOT, "zoe-ui", "os3d.html")
 HUDVAULT = os.path.join(ROOT, "zoe-ui", "vault.html")
 HUDSHELL = os.path.join(ROOT, "zoe-ui", "shell.html")
+AGENTS_DIR = os.path.join(ROOT, "agents")
+SKILLS_DIR = os.path.join(ROOT, ".claude", "skills")
 PORT = 7717
+
+
+def _read(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return ""
+
+def skills_list():
+    """Real custom skills: a .claude/skills/<name>/ dir with a SKILL.md inside."""
+    out = []
+    try:
+        for name in sorted(os.listdir(SKILLS_DIR)):
+            d = os.path.join(SKILLS_DIR, name)
+            if os.path.isdir(d) and os.path.exists(os.path.join(d, "SKILL.md")):
+                out.append(name)
+    except Exception:
+        pass
+    return out
+
+def voltagents_count():
+    """VoltAgent subagents live in the user's ~/.claude (installed locally, not in this repo).
+    Count them where they exist; returns 0 in a cloud session, which keeps the UI honest."""
+    n = 0
+    home = os.path.expanduser("~")
+    for base in (os.path.join(home, ".claude", "agents"),
+                 os.path.join(home, ".claude", "plugins", "marketplaces")):
+        if not os.path.isdir(base):
+            continue
+        for root, _dirs, files in os.walk(base):
+            if os.path.basename(root) == "agents":   # an agent spec dir in either layout
+                n += sum(1 for f in files if f.endswith(".md") and f.lower() != "readme.md")
+    return n
+
+def agents_list():
+    """Zoey's own domain agents: each agents/<name>/AGENT.md. Status is read from the charter
+    (a scaffold says so), so the UI shows live state instead of a hardcoded count."""
+    out = []
+    try:
+        names = sorted(os.listdir(AGENTS_DIR))
+    except Exception:
+        names = []
+    for name in names:
+        md = os.path.join(AGENTS_DIR, name, "AGENT.md")
+        if not os.path.isfile(md):
+            continue
+        text = _read(md)
+        low = text.lower()
+        title = name
+        for line in text.splitlines():
+            if line.startswith("# "):
+                title = line[2:].strip()
+                break
+        scaffold = "scaffold" in low or "not running" in low
+        out.append({"name": name, "title": title,
+                    "status": "scaffold" if scaffold else "active"})
+    return out
+
+def agents_info():
+    a = agents_list()
+    sk = skills_list()
+    return {"agents": a, "count": len(a),
+            "active": sum(1 for x in a if x["status"] == "active"),
+            "skills": sk, "skills_count": len(sk),
+            "voltagents": voltagents_count()}
+
+def _security_level():
+    """Read from the structured `- [open] ...` markers in findings.md (not prose), so wording
+    in the report never flips the badge. red: an open secret/critical finding; amber: any other
+    open finding; green: none open."""
+    findings = _read(os.path.join(AGENTS_DIR, "security", "findings.md"))
+    open_lines = [ln for ln in findings.splitlines() if ln.lstrip().startswith("- [open]")]
+    if not findings.strip():
+        return "unknown", "No security report yet.", 0
+    if not open_lines:
+        return "green", "No open findings.", 0
+    for ln in open_lines:
+        low = ln.lower()
+        if "secret" in low or "critical" in low or "leak" in low:
+            return "red", f"{len(open_lines)} open; a secret/critical needs attention.", len(open_lines)
+    return "amber", f"{len(open_lines)} open finding(s); no leaked secrets.", len(open_lines)
+
+def workflow_info():
+    """Latest state of the evolving loop + security, for the WORKFLOW panel."""
+    board = _read(os.path.join(AGENTS_DIR, "blackboard.md"))
+    focus = ""
+    if "## Current focus" in board:
+        focus = board.split("## Current focus", 1)[1].split("##", 1)[0].strip()
+    lvl, summary, open_count = _security_level()
+    loop_txt = board.split("## Evolving loop", 1)[-1].lower() if "## Evolving loop" in board else ""
+    loop_on = bool(loop_txt) and "not enabled" not in loop_txt
+    return {"focus": focus[:400],
+            "security": {"level": lvl, "summary": summary, "open": open_count},
+            "loop": {"enabled": loop_on,
+                     "status": "armed" if loop_on else "waiting for ANTHROPIC_API_KEY secret"}}
 
 _n = psutil.net_io_counters()
 _prev = {"t": time.time(), "sent": _n.bytes_sent, "recv": _n.bytes_recv}
@@ -74,6 +172,10 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/stats"):
             self._json(stats())
+        elif self.path.startswith("/agents"):
+            self._json(agents_info())
+        elif self.path.startswith("/workflow"):
+            self._json(workflow_info())
         elif self.path.startswith("/memory/read"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [None])[0]
             self._json(zoe_memory.read(q) if zoe_memory else {"error": "memory unavailable"})
