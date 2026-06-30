@@ -305,11 +305,17 @@ def wait_for_wake():
     dg = os.environ.get("DEEPGRAM_API_KEY")
     if gate == "always":
         return True
-    if gate != "manual" and dg:
+    if gate == "manual":
+        try:
+            input("  press Enter to talk to Zoe (Ctrl+C to quit): ")
+            return True
+        except EOFError:
+            return False
+    if dg:                                  # cheap voice wake: idle free, "Hey Zoe" opens her
         try:
             import zoe_assistant
             zoe_assistant.RMS_THRESHOLD = zoe_assistant.calibrate_threshold()
-            print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).")
+            print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).", flush=True)
             while True:
                 audio = zoe_assistant.listen_utterance()
                 if audio is None or len(audio) < zoe_assistant.SR * 0.3:
@@ -319,17 +325,17 @@ def wait_for_wake():
                 except Exception:
                     continue
                 if text and any(w in text.lower() for w in zoe_assistant.WAKE_WORDS):
-                    print("  heard:", text)
-                    try: zoe_assistant.summon_ui(os.environ.get("ZOE_CONTROL"))  # pop her window
+                    print("  heard:", text, flush=True)
+                    try: zoe_assistant.summon_ui(os.environ.get("ZOE_CONTROL"))
                     except Exception: pass
                     return True
         except Exception as e:
-            print("  (voice wake unavailable:", e, "-- press Enter instead)")
-    try:
-        input("  press Enter to talk to Zoe (Ctrl+C to quit): ")
-        return True
-    except EOFError:
-        return False
+            print("  (voice wake unavailable:", e, ") -> running always-on", flush=True)
+            return True
+    # No Deepgram and no console to press Enter in: keep her usable by just listening.
+    print("  no DEEPGRAM_API_KEY -> always-on mode (just talk). Add a Deepgram key for a cheap "
+          "'Hey Zoe' wake that idles for free.", flush=True)
+    return True
 
 
 def main():
