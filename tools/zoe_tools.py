@@ -46,6 +46,21 @@ TOOLS = [
         "properties": {"query_or_url": {"type": "string",
             "description": "An https URL, or a search query."}},
         "required": ["query_or_url"]}},
+    {"type": "function", "name": "search_platform",
+     "description": "Search a content platform for a profile, video, or topic and open the "
+                    "result. Use for 'find X on YouTube/TikTok/Instagram/X/Twitch/Spotify/"
+                    "Reddit/Roblox', pulling up a creator's profile, or searching a platform's "
+                    "videos. Prefer this over open_web whenever a platform is named.",
+     "parameters": {"type": "object",
+        "properties": {
+            "platform": {"type": "string", "description": "youtube, tiktok, instagram, twitter "
+                         "(x), twitch, spotify, reddit, roblox, or google."},
+            "query": {"type": "string", "description": "Search terms, or a username/handle for "
+                      "a profile (with or without @)."},
+            "kind": {"type": "string", "enum": ["search", "profile", "videos"],
+                     "description": "profile = a creator's page; search/videos = search the "
+                     "platform. Default search."}},
+        "required": ["platform", "query"]}},
     {"type": "function", "name": "start_workspace",
      "description": "Start a named workspace or mode (coding, school, gaming, editing) which "
                     "launches its apps and sites.",
@@ -73,6 +88,44 @@ def _web_url(query_or_url):
     if s.startswith(("http://", "https://")):
         return s
     return "https://www.google.com/search?q=" + urllib.parse.quote(s)
+
+
+def _platform_url(platform, query, kind="search"):
+    """Build a search/profile URL for a content platform. profile -> a creator's page;
+    search/videos -> search the platform. Unknown platforms fall back to a scoped Google
+    search so she always opens something useful."""
+    p = (platform or "").strip().lower()
+    p = {"x": "twitter", "yt": "youtube", "ig": "instagram", "insta": "instagram",
+         "tik tok": "tiktok", "tik-tok": "tiktok"}.get(p, p)
+    q = (query or "").strip()
+    kind = (kind or "search").strip().lower()
+    handle = urllib.parse.quote(q.lstrip("@").strip())
+    enc = urllib.parse.quote(q)
+    if p == "youtube":
+        return (f"https://www.youtube.com/@{handle}" if kind == "profile"
+                else f"https://www.youtube.com/results?search_query={enc}")
+    if p == "tiktok":
+        return (f"https://www.tiktok.com/@{handle}" if kind == "profile"
+                else f"https://www.tiktok.com/search?q={enc}")
+    if p == "instagram":
+        return (f"https://www.instagram.com/{handle}/" if kind == "profile"
+                else f"https://www.instagram.com/explore/search/keyword/?q={enc}")
+    if p == "twitter":
+        return (f"https://x.com/{handle}" if kind == "profile"
+                else f"https://x.com/search?q={enc}&src=typed_query")
+    if p == "twitch":
+        return (f"https://www.twitch.tv/{handle}" if kind == "profile"
+                else f"https://www.twitch.tv/search?term={enc}")
+    if p == "spotify":
+        return f"https://open.spotify.com/search/{enc}"
+    if p == "reddit":
+        return (f"https://www.reddit.com/user/{handle}" if kind == "profile"
+                else f"https://www.reddit.com/search/?q={enc}")
+    if p == "roblox":
+        return f"https://www.roblox.com/search/users?keyword={enc}"
+    if p:                                       # unknown platform: scope a Google search to it
+        return "https://www.google.com/search?q=" + urllib.parse.quote(f"{q} {p}")
+    return "https://www.google.com/search?q=" + enc
 
 
 def _open_url(url):
@@ -127,6 +180,12 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return {"ok": True, "simulated": True, "action": "web", "url": url}
             return {"ok": _open_url(url), "action": "web", "url": url}
 
+        if name == "search_platform":
+            url = _platform_url(args.get("platform"), args.get("query"), args.get("kind", "search"))
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "search", "url": url}
+            return {"ok": _open_url(url), "action": "search", "url": url}
+
         if name == "recall_memory":
             query = (args.get("query") or "").strip()
             if simulate:
@@ -162,6 +221,10 @@ def _selftest():
         ("open_folder", {"path": "Downloads"}),
         ("open_web", {"query_or_url": "best protein for mass"}),
         ("open_web", {"query_or_url": "https://news.google.com"}),
+        ("search_platform", {"platform": "youtube", "query": "mrbeast", "kind": "profile"}),
+        ("search_platform", {"platform": "tiktok", "query": "zen_cj", "kind": "profile"}),
+        ("search_platform", {"platform": "spotify", "query": "lofi beats"}),
+        ("search_platform", {"platform": "x", "query": "@cj_goat09", "kind": "profile"}),
         ("start_workspace", {"name": "coding"}),
         ("recall_memory", {"query": ""}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
