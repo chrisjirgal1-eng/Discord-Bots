@@ -27,7 +27,11 @@ except Exception:
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
                     k, v = line.split("=", 1)
-                    os.environ.setdefault(k.strip(), v.strip())
+                    k, v = k.strip(), v.strip()
+                    if k.endswith(("_KEY", "_TOKEN", "_VOICE_ID", "_SECRET")):
+                        os.environ[k] = v          # .env wins for secrets (no stale-key shadowing)
+                    else:
+                        os.environ.setdefault(k, v)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG = os.path.join(ROOT, "memory-bank", "ops-log.jsonl")

@@ -23,7 +23,13 @@ def load_env():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
+                k, v = k.strip(), v.strip()
+                # .env is authoritative for secrets, so a stale env var can never shadow a real
+                # key (the wake-word 401 bug). Config vars keep setdefault so intended overrides win.
+                if k.endswith(("_KEY", "_TOKEN", "_VOICE_ID", "_SECRET")):
+                    os.environ[k] = v
+                else:
+                    os.environ.setdefault(k, v)
 
 
 def _ddg(query, n=6):
