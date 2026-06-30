@@ -211,7 +211,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
     started = time.monotonic()
     cur = {"id": None, "ms": 0.0}     # current response item + audio ms played (for truncate)
     greeted = [False]                 # send the opening line once the session config is applied
-    player = Player()
+    spk = {"until": 0.0}              # while now < until she is speaking: gate the mic so she does
+    player = Player()                 # not hear herself (no self-talk, no wasted wake/whisper cost)
 
     def mic_cb(indata, frames, t, status):
         loop.call_soon_threadsafe(mic_q.put_nowait, bytes(indata))
@@ -226,6 +227,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
         async def sender():
             while True:
                 pcm = await mic_q.get()
+                if time.monotonic() < spk["until"]:
+                    continue            # she is speaking: drop her own voice instead of sending it
                 try:
                     await ws.send(json.dumps({"type": "input_audio_buffer.append",
                                               "audio": base64.b64encode(pcm).decode()}))
@@ -246,6 +249,9 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                     if ev.get("item_id"): cur["id"] = ev["item_id"]
                     pcm = base64.b64decode(ev.get("delta", ""))
                     cur["ms"] += len(pcm) / (2 * SR) * 1000.0   # 16-bit mono -> ms played
+                    # keep the mic gated through this chunk plus a short tail, while her audio is on
+                    # the speakers, so the model never hears her own voice
+                    spk["until"] = time.monotonic() + len(pcm) / (2 * SR) + 0.8
                     await loop.run_in_executor(None, player.write, pcm)
                 elif et == "response.created":
                     cur["id"], cur["ms"] = None, 0.0            # new turn, reset truncate state

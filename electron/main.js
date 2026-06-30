@@ -123,10 +123,10 @@ function createWindow() {
   });
 
   win.once('ready-to-show', () => { if (!START_HIDDEN) win.show(); });
-  // minimize to tray instead of quitting
-  win.on('close', (e) => {
-    if (!app.isQuitting) { e.preventDefault(); win.hide(); }
-  });
+  // Closing the window now QUITS Zoe fully (will-quit kills the voice + telemetry), so she is never
+  // left talking in the tray. To keep her listening in the background instead, use the tray menu's
+  // "Hide to tray" or Ctrl+Shift+Z. Login auto-start still launches her hidden and listening.
+  win.on('close', () => { app.isQuitting = true; app.quit(); });
 }
 
 // ---- tray + menu ----
