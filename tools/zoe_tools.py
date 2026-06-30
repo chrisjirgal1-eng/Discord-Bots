@@ -61,6 +61,17 @@ TOOLS = [
                      "description": "profile = a creator's page; search/videos = search the "
                      "platform. Default search."}},
         "required": ["platform", "query"]}},
+    {"type": "function", "name": "search_site",
+     "description": "Find a specific thing within a particular website. Use for 'find X on "
+                    "<site>' or 'search <site> for X' when the site is a regular website "
+                    "(espn.com, amazon, a news site) rather than a known content platform. "
+                    "Does a site-scoped search that works on any website.",
+     "parameters": {"type": "object",
+        "properties": {
+            "site": {"type": "string", "description": "Website domain or name (espn.com, amazon, "
+                     "reddit.com)."},
+            "query": {"type": "string", "description": "What to find on that site."}},
+        "required": ["site", "query"]}},
     {"type": "function", "name": "start_workspace",
      "description": "Start a named workspace or mode (coding, school, gaming, editing) which "
                     "launches its apps and sites.",
@@ -128,6 +139,23 @@ def _platform_url(platform, query, kind="search"):
     return "https://www.google.com/search?q=" + enc
 
 
+def _site_search_url(site, query):
+    """Find something within ANY website via a site-scoped Google search. A real domain
+    (espn.com) gets `site:espn.com`; a bare name just scopes the query to it. Works on every
+    site, no per-site search syntax needed."""
+    s = (site or "").strip().lower()
+    for pre in ("https://", "http://"):
+        if s.startswith(pre): s = s[len(pre):]
+    if s.startswith("www."): s = s[4:]
+    s = s.strip("/").split("/")[0]
+    q = (query or "").strip()
+    if "." in s:
+        return "https://www.google.com/search?q=" + urllib.parse.quote(f"{q} site:{s}")
+    if s:
+        return "https://www.google.com/search?q=" + urllib.parse.quote(f"{q} {s}")
+    return "https://www.google.com/search?q=" + urllib.parse.quote(q)
+
+
 def _open_url(url):
     """Open a URL in the default browser, the reliable Windows way. webbrowser.open often
     reports success but opens nothing on Windows, so go straight to os.startfile / `start` --
@@ -186,6 +214,12 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return {"ok": True, "simulated": True, "action": "search", "url": url}
             return {"ok": _open_url(url), "action": "search", "url": url}
 
+        if name == "search_site":
+            url = _site_search_url(args.get("site"), args.get("query"))
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "site_search", "url": url}
+            return {"ok": _open_url(url), "action": "site_search", "url": url}
+
         if name == "recall_memory":
             query = (args.get("query") or "").strip()
             if simulate:
@@ -225,6 +259,8 @@ def _selftest():
         ("search_platform", {"platform": "tiktok", "query": "zen_cj", "kind": "profile"}),
         ("search_platform", {"platform": "spotify", "query": "lofi beats"}),
         ("search_platform", {"platform": "x", "query": "@cj_goat09", "kind": "profile"}),
+        ("search_site", {"site": "espn.com", "query": "lakers score"}),
+        ("search_site", {"site": "amazon", "query": "resistance bands"}),
         ("start_workspace", {"name": "coding"}),
         ("recall_memory", {"query": ""}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
