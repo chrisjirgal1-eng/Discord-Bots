@@ -261,6 +261,14 @@ TOOLS = [
          "skill": {"type": "string", "description": "The skill name, e.g. 'content-pipeline'. Omit to list all."},
          "context": {"type": "string", "description": "Optional detail to run it with, e.g. the topic or target."}},
         "required": []}},
+    {"type": "function", "name": "research",
+     "description": "Do real web research with citations: search the web and synthesize a grounded "
+                    "answer with sources. Use when Chris asks you to research, look up, find out, or "
+                    "get the latest on something, or wants facts or evidence beyond your own memory. "
+                    "Give him the bottom line out loud and offer the sources.",
+     "parameters": {"type": "object", "properties": {
+         "question": {"type": "string", "description": "What to research, in plain words."}},
+        "required": ["question"]}},
 ]
 
 
@@ -724,6 +732,24 @@ def dispatch(name, args, ctrl=None, simulate=True):
             return {"ok": True, "action": "use_skill", "skill": resolved, "playbook": body,
                     "context": args.get("context", ""), "say": f"Running the {resolved} skill."}
 
+        if name == "research":
+            q = (args.get("question") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "research", "question": q}
+            if not q:
+                return {"ok": False, "error": "no question"}
+            try:
+                import zoe_deep_research as dr
+                out = dr.research(q)
+                if out.get("ok"):
+                    srcs = [{"n": i + 1, "title": s["title"], "url": s["url"]}
+                            for i, s in enumerate(out.get("sources", [])[:6])]
+                    return {"ok": True, "action": "research", "answer": out.get("answer", "")[:1800],
+                            "live": out.get("live"), "sources": srcs}
+                return {"ok": False, "error": out.get("error", "research failed")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:250]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -766,6 +792,7 @@ def _selftest():
         ("improve_self", {"task": "add a status line to the ops view", "act": True, "use_claude": True}),
         ("use_skill", {}),
         ("use_skill", {"skill": "content-pipeline", "context": "new roblox short"}),
+        ("research", {"question": "best resting heart rate for athletes"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
