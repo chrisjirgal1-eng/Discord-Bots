@@ -109,3 +109,12 @@ See `.claude/rules/learning.md` for the loop.
     pulls a fresh session from Chrome and writes it to cookies.txt (gitignored). No browser extension needed.
   - Prevent: when auth starts failing, rerun that one command with Chrome signed into Instagram,
     instead of doing a manual "Get cookies.txt" export.
+
+- Electron "app won't open / opens the old website" after a crash or force-kill.
+  - Mistake: assumed launch was working; it exited instantly (clean, no stderr). Spent time on
+    single-instance theories. Real cause: a stale `lockfile` in `%APPDATA%\zoe-desktop` from a
+    force-killed instance, so `app.requestSingleInstanceLock()` returns false and `app.quit()` fires
+    before any logging. Symptom looks like a browser/local-site UI because only the Python server runs.
+  - Fix: `Remove-Item "$env:APPDATA\zoe-desktop\lockfile" -Force` then relaunch. Patched zoe_silent.vbs
+    to clear it on every launch so a crash self-heals.
+  - Prevent: when an Electron app exits with no output, check the userData `lockfile` first, not the code.
