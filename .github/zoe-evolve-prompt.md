@@ -25,6 +25,7 @@ do, update the blackboard saying so and stop: that is a valid run.
 
 ## Record + stop
 - Update `agents/blackboard.md`: what you did, what is now open/closed.
-- Scan your diff for the banned words (`delve`, `leverage`, `fantastic`, em dashes) and remove them.
+- Scan your diff for the banned words listed in `memory-bank/instructions.md` (and em dashes) and
+  remove any. Match Chris's terse style.
 - Do NOT push to the default branch and do NOT merge anything. The workflow opens a draft PR with
   your changes for a human to review. One item per run: stop after one.
