@@ -58,14 +58,17 @@ def parse_when(delay_minutes=None, at=None):
     return None
 
 
-def add(text, delay_minutes=None, at=None):
+def add(text, delay_minutes=None, at=None, repeat=None):
     due_ts = parse_when(delay_minutes, at)
     if not text or not due_ts:
         return {"ok": False, "error": "need a reminder and a valid time (delay_minutes or at)"}
+    rep = repeat if repeat in ("hourly", "daily", "weekly") else None
     items = _load()
-    items.append({"text": str(text)[:300], "due": due_ts, "fired": False, "created": time.time()})
+    items.append({"text": str(text)[:300], "due": due_ts, "fired": False,
+                  "repeat": rep, "created": time.time()})
     _save(items)
-    return {"ok": True, "when": datetime.datetime.fromtimestamp(due_ts).strftime("%I:%M %p"), "due": due_ts}
+    w = datetime.datetime.fromtimestamp(due_ts).strftime("%I:%M %p")
+    return {"ok": True, "when": w + (f" ({rep})" if rep else ""), "due": due_ts}
 
 
 def due(grace=3600):
@@ -76,11 +79,20 @@ def due(grace=3600):
     changed, out = False, ""
     for it in items:
         if not it.get("fired") and it.get("due", 0) <= now:
-            it["fired"] = True
+            overdue = now - it["due"]
+            rep = it.get("repeat")
+            if rep in ("hourly", "daily", "weekly"):
+                step = {"hourly": 3600, "daily": 86400, "weekly": 604800}[rep]
+                nd = it["due"]
+                while nd <= now:
+                    nd += step                       # reschedule to next future occurrence; stays active
+                it["due"] = nd
+            else:
+                it["fired"] = True
             changed = True
-            if now - it["due"] <= grace:
+            if overdue <= grace:
                 out = it.get("text", "")
-                break
+            break
     if changed:
         _save(items)
     return out

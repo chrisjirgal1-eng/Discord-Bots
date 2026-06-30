@@ -284,7 +284,8 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "text": {"type": "string", "description": "What to remind him about."},
          "delay_minutes": {"type": "number", "description": "Fire this many minutes from now."},
-         "at": {"type": "string", "description": "Clock time like '5pm', '17:30', or '9:00am'."}},
+         "at": {"type": "string", "description": "Clock time like '5pm', '17:30', or '9:00am'."},
+         "repeat": {"type": "string", "enum": ["hourly", "daily", "weekly"], "description": "Make it recurring."}},
         "required": ["text"]}},
     {"type": "function", "name": "reminders",
      "description": "List or cancel Chris's upcoming reminders. action='list' (default) reads what is "
@@ -820,7 +821,7 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return {"ok": True, "simulated": True, "action": "remind"}
             try:
                 import zoe_reminders as rem
-                r = rem.add(args.get("text", ""), args.get("delay_minutes"), args.get("at"))
+                r = rem.add(args.get("text", ""), args.get("delay_minutes"), args.get("at"), args.get("repeat"))
                 if r.get("ok"):
                     return {"ok": True, "action": "remind", "when": r.get("when"),
                             "say": f"Got it, I'll remind you at {r.get('when')}."}
