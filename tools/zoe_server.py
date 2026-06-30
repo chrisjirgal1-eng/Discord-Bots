@@ -181,14 +181,39 @@ class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+def _free_port(port):
+    """Best-effort: kill any process already listening on the port (a stale Zoe server) so we can
+    bind. This is the fix for 'Backend offline' on relaunch: a leftover server held 7717 and the
+    new one could not bind, so the UI fell back to simulated stats."""
+    try:
+        for c in psutil.net_connections(kind="inet"):
+            if c.laddr and c.laddr.port == port and c.status == psutil.CONN_LISTEN and c.pid:
+                try:
+                    psutil.Process(c.pid).kill()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
+    # threaded so a slow /command (Groq ~1s) never blocks /stats polling or the UI
+    server = None
+    for attempt in range(4):
+        try:
+            server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H)
+            break
+        except OSError as e:
+            print(f"port {PORT} busy ({e}); clearing a stale server and retrying...")
+            _free_port(PORT)
+            time.sleep(0.6)
+    if not server:
+        print(f"ZOE telemetry could not bind port {PORT} after retries.")
+        sys.exit(1)
     print(f"ZOE online. Open http://localhost:{PORT}  (Ctrl+C to stop)")
     if zoe_ops_loop:
         threading.Thread(target=zoe_ops_loop.serve_scheduler, daemon=True).start()
     try:
-        # threaded so a slow /command (Groq ~1s) never blocks /stats polling or the UI
-        http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
-    except OSError as e:
-        print(f"ZOE telemetry could not bind port {PORT} (already in use?): {e}")
+        server.serve_forever()
     except KeyboardInterrupt:
         print("\nZOE offline.")
