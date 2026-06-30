@@ -104,6 +104,12 @@ def read_context(limit=4000):
         p = os.path.join(ROOT, "memory-bank", name)
         if os.path.exists(p):
             parts.append(f"### {name}\n" + open(p, encoding="utf-8").read()[:limit])
+    # The digested reel techniques + hard-won lessons, so drafts and edits actually USE what we
+    # gathered instead of running blind. Bounded per file so the prompt stays sane.
+    for rel in ("memory-bank/lessons.md", "transcripts/TECHNIQUES.md"):
+        p = os.path.join(ROOT, *rel.split("/"))
+        if os.path.exists(p):
+            parts.append(f"### {rel}\n" + open(p, encoding="utf-8").read()[:limit])
     return "\n\n".join(parts) or "(no memory-bank context found)"
 
 
@@ -273,13 +279,20 @@ def _act_claude(task, speak=None):
         if add.returncode != 0:
             status, result = "ERROR", "worktree add failed: " + add.stderr[:300]
         else:
-            prompt = ("You are JARVIS in ACT mode, working inside an isolated git worktree. Make ONE small, "
-                      "safe, internal change that advances the task, editing files in THIS directory only. "
-                      "Do not run git, do not push, do not touch .env, secrets, cookies, or .github. Stop when "
-                      f"done.\n\nTASK: {task}")
+            prompt = (
+                "You are Claude Code acting as JARVIS, coding inside Zoe's OWN repo on an isolated git "
+                "worktree -- a safe throwaway branch, so build with real confidence. Implement the task as "
+                "a focused, COMPLETE, working change the way a careful senior engineer would, not a token "
+                "tweak. First read and USE the knowledge already in this repo: CLAUDE.md, "
+                "transcripts/TECHNIQUES.md, memory-bank/lessons.md and active-context.md, the .claude/rules/, "
+                "the .claude/skills/ that fit, and the relevant source. Match the surrounding code style and "
+                "keep it self-consistent. Edit only files in THIS directory; do NOT touch .env, secrets, "
+                "cookies, or .github. Never use an em dash; never use the words leverage, delve, fantastic, "
+                "or seamless. Keep working until the change is genuinely done, then stop.\n\n"
+                f"TASK: {task}\n\nMEMORY-BANK + TECHNIQUES CONTEXT:\n{read_context(2000)}")
             try:
                 cp = subprocess.run(
-                    ["claude", "-p", prompt, "--max-turns", str(cfg.get("max_turns_act", 12)),
+                    ["claude", "-p", prompt, "--max-turns", str(cfg.get("max_turns_act", 16)),
                      "--permission-mode", "acceptEdits", "--allowedTools", "Read Edit Write Grep Glob"],
                     cwd=wt, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=900)
                 out = (cp.stdout + cp.stderr)
