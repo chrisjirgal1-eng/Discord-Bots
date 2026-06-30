@@ -48,7 +48,7 @@ DEFAULTS = {
     "model_openai": "gpt-4o-mini",
     "max_tokens": 700,
     "schedule": "13:00",                   # local HH:MM daily fire
-    "speak": False,                        # speak the brief aloud (ElevenLabs via jarvis_speak)
+    "speak": True,                         # speak the brief aloud (ElevenLabs via jarvis_speak)
     "last_run_date": "",
 }
 

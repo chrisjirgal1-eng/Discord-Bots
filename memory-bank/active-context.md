@@ -28,6 +28,26 @@ can act on the machine. NOT yet merged (PR #37 is draft); test, then merge to de
   smoke-tests on Windows. Confirmed working: app + voice + "Hey Zoe" + English + detailed replies.
 - Still to test: music (needs a track in `music/`), web browsing, the read_file/run_command fixing.
 
+## Build: Zoe Ops Loop, the autonomous arm of JARVIS (2026-06-30, OPS workspace)
+
+What it is: JARVIS on a clock. Not a separate system; it shares the same memory bank, skills, and
+north star as the /jarvis skill. The /jarvis skill is the REACTIVE brain (Chris asks, it routes and
+acts). The Ops Loop is the PROACTIVE arm: on a schedule it reads the memory bank, drafts ONE task,
+a fresh pass verifies it (verifier never the writer), logs it, and speaks a "Wide awake, sir" brief
+that recommends the next move and asks what to handle first. Files: tools/zoe_ops_loop.py (engine),
+zoe-ui/ops.html (OPS workspace, Ctrl+5), /ops routes in tools/zoe_server.py. Local, on Zoe's
+Groq/OpenAI keys, no cloud secrets.
+
+Scope: the task is configurable (Edit task in the UI), so it does double duty. Default task is
+self-evolution (work one item from the handoff backlog), but it can be pointed at any recurring task
+(a metrics brief, outreach drafts, the content pipeline). DRAFT-ONLY today: it thinks, drafts,
+verifies, and briefs, then Chris executes. Real write/execute power (true "build itself") is the
+deliberate next step, gated behind the same four exits.
+
+Always-on: Windows task "Zoe Ops Loop" (daily 9am, speaks) fires even with the app closed; the
+in-app scheduler (13:00) is the fallback, coordinated via last_run_date so they never double-fire.
+A disabled GitHub Actions version (.github/workflows/jarvis-ops.yml.disabled) is the cloud alternative.
+
 ## Build: JARVIS 24/7 ops loop scaffold (2026-06-30, .github/workflows/jarvis-ops.yml.disabled)
 
 The "always-on loop" host the roadmap kept flagging as "needs Chris". A GitHub Actions cron
