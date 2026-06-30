@@ -309,6 +309,11 @@ TOOLS = [
                     "/ the ops loop) that are waiting for Chris to review and merge. Use when he asks "
                     "what you have built, what is on your branches, or what is ready to review.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "status",
+     "description": "Give Chris a quick health report on Zoe herself: tools online, pending reminders, "
+                    "last ops run, builds awaiting review, and system load. Use when he asks 'status', "
+                    "'how are you running', 'systems check', or 'are you good'.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -844,6 +849,34 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "status":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "status"}
+            bits = [f"{len(TOOLS)} tools online"]
+            try:
+                import zoe_reminders
+                up = zoe_reminders.upcoming()
+                if up:
+                    bits.append(f"{len(up)} reminder(s) pending")
+            except Exception:
+                pass
+            try:
+                import zoe_ops_loop as ol
+                last = (ol.status().get("last") or {})
+                if last.get("status"):
+                    bits.append(f"last ops run {last.get('status')}")
+                bs = ol.branches()
+                if bs:
+                    bits.append(f"{len(bs)} build(s) awaiting review")
+            except Exception:
+                pass
+            try:
+                import psutil
+                bits.append(f"CPU {int(psutil.cpu_percent(0.2))} percent, memory {int(psutil.virtual_memory().percent)} percent")
+            except Exception:
+                pass
+            return {"ok": True, "action": "status", "say": "All systems nominal, sir. " + ", ".join(bits) + "."}
+
         if name == "builds":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "builds"}
@@ -924,6 +957,7 @@ def _selftest():
         ("reminders", {"action": "snooze", "delay_minutes": 15}),
         ("import_skill", {"source": "anthropics/skills", "skill": "pdf"}),
         ("builds", {}),
+        ("status", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
