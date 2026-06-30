@@ -15,5 +15,8 @@ sh.CurrentDirectory = root
 py = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\Python\pythoncore-3.14-64\python.exe")
 If Not fso.FileExists(py) Then py = "python"
 
+' kill any copy already running so a re-run never stacks two processes fighting over the mic
+sh.Run "powershell -NoProfile -Command ""Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }""", 0, True
+
 ' run hidden (window style 0), don't wait; -u = unbuffered so zoe.log is live
 sh.Run "cmd /c """ & py & """ -u tools\zoe_realtime.py >> zoe.log 2>&1", 0, False
