@@ -45,7 +45,9 @@ PERSONA = (
     "website (search_site), start a workspace, recall memory, or hand a hard task to Hermes. "
     "When he names a known platform use search_platform; for any other named site use search_site; "
     "use a plain web search only when no site is named. "
-    "After a tool runs, say one short line confirming it. If a tool fails, say so plainly."
+    "After a tool runs, say one short line confirming it. If a tool fails, say so plainly. "
+    "Once he wakes you, stay in the conversation and answer whenever he speaks, no wake word "
+    "needed. If he says 'go to sleep' or 'that's all', stand down without another word."
 )
 
 
@@ -72,6 +74,17 @@ def _recent_context():
         return ("Recent context: " + "; ".join(bits) + ".") if bits else ""
     except Exception:
         return ""
+
+
+_SLEEP_PHRASES = ("go to sleep", "thats all", "that's all", "that'll be all", "thatll be all",
+                  "stand down", "stop listening", "go to bed", "dismissed", "never mind zoe",
+                  "nevermind zoe", "you can go", "go away zoe")
+
+def _is_sleep(text):
+    """True if he told her to stand down, so she closes the session (stops cost) and goes
+    back to waiting for the wake word."""
+    t = (text or "").lower()
+    return any(p in t for p in _SLEEP_PHRASES)
 
 
 def _log_turn(text, action="voice", handled=True, summary=None):
@@ -231,6 +244,9 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                     if t:
                         print("  you:", t)
                         _log_turn(t, action="voice", handled=True)
+                        if _is_sleep(t):                       # "go to sleep" -> stand down
+                            print("  (standing down -- say 'Hey Zoe' to wake her again)")
+                            return
                 elif et in ("response.audio_transcript.done",
                             "response.output_audio_transcript.done"):
                     if ev.get("transcript"): print("  ZOE:", ev["transcript"])
@@ -323,7 +339,7 @@ def main():
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         sys.exit("set OPENAI_API_KEY in .env (the Realtime voice runs on it)")
-    idle = int(os.environ.get("ZOE_REALTIME_IDLE_SEC", "20"))
+    idle = int(os.environ.get("ZOE_REALTIME_IDLE_SEC", "120"))
     mx = os.environ.get("ZOE_REALTIME_MAX_MIN")
     max_min = float(mx) if mx else None
     print(f"\n  ZOE realtime ready. model={MODEL} voice={VOICE} idle={idle}s\n")
