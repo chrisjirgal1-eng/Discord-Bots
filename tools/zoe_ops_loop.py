@@ -334,11 +334,11 @@ def _act_claude(task, speak=None):
     return rec
 
 
-def act_once(task=None, speak=None):
+def act_once(task=None, speak=None, actor=None):
     """Make the change on an isolated worktree branch, test it, commit only if green. Never pushes."""
     load_env()
     cfg = load_cfg()
-    if cfg.get("actor", "edit") == "claude":
+    if (actor or cfg.get("actor", "edit")) == "claude":
         return _act_claude(task, speak)
     task = (task or cfg.get("task") or DEFAULT_TASK).strip()
     started = time.time()
@@ -492,12 +492,15 @@ if __name__ == "__main__":
     do_act = "--act" in args
     if do_act:
         args.remove("--act")
+    force_actor = None
+    if "--claude" in args:                 # force the claude actor for this run (implies --act)
+        force_actor = "claude"; do_act = True; args.remove("--claude")
     if "--speak" in args:
         force = True; args.remove("--speak")
     if "--quiet" in args:
         force = False; args.remove("--quiet")
     _task = " ".join(args).strip() or None
-    rec = act_once(_task, speak=force) if do_act else run_once(_task, speak=force)
+    rec = act_once(_task, speak=force, actor=force_actor) if do_act else run_once(_task, speak=force)
     print(f"[{rec['status']}] {rec['ts']}  ({rec['secs']}s)")
     print(rec["result"][:1500] or rec["error"])
     if rec.get("spoken"):
