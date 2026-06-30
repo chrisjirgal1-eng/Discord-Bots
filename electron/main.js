@@ -238,6 +238,33 @@ function runCommandText(text) {
   });
 }
 
+// Image + question from the command bar -> OpenAI vision (tools/zoe_vision.py). Writes the pasted or
+// attached image to a temp file, runs the helper, returns its JSON answer, then removes the temp file.
+function runImageCommand(text, dataUrl) {
+  return new Promise((resolve) => {
+    try {
+      const m = /^data:(image\/[\w.+-]+);base64,(.+)$/s.exec(dataUrl || '');
+      if (!m) return resolve({ handled: false, parsed: 'Image', error: 'no image attached' });
+      const ext = (m[1].split('/')[1] || 'png').replace(/[^\w]/g, '') || 'png';
+      const tmp = path.join(app.getPath('temp'), 'zoe-img-' + Date.now() + '.' + ext);
+      fs.writeFileSync(tmp, Buffer.from(m[2], 'base64'));
+      let out = '', p;
+      const done = (r) => { try { fs.unlinkSync(tmp); } catch (e) {} resolve(r); };
+      try {
+        p = spawn(pythonExe(), [path.join(ROOT, 'tools', 'zoe_vision.py'), tmp, String(text || '')],
+          { cwd: ROOT, windowsHide: true });
+      } catch (e) { return done({ handled: false, parsed: 'Image', error: String(e) }); }
+      p.stdout.on('data', d => out += d);
+      p.on('error', e => done({ handled: false, parsed: 'Image', error: String(e) }));
+      p.on('close', () => {
+        let r; try { r = JSON.parse(out.trim().split(/\r?\n/).pop()); } catch (e) { r = { ok: false, error: 'could not read vision result' }; }
+        done(r.ok ? { handled: true, parsed: 'Image', answer: r.answer }
+                  : { handled: false, parsed: 'Image', error: r.error || 'vision failed' });
+      });
+    } catch (e) { resolve({ handled: false, parsed: 'Image', error: String(e) }); }
+  });
+}
+
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
   if (voiceProc) return;
@@ -304,6 +331,7 @@ function registerIpc() {
   ipcMain.handle('state:get', () => readState());
   // command bar -> shared pipeline (same engine as voice)
   ipcMain.handle('command:run', async (_e, text) => runCommandText(text));
+  ipcMain.handle('command:image', async (_e, { text, dataUrl }) => runImageCommand(text, dataUrl));
   ipcMain.handle('command:history', () => {
     const s = readState();
     return (s.history && s.history.last_commands) || s.last_commands || [];
