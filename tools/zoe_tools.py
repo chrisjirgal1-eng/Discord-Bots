@@ -61,6 +61,17 @@ TOOLS = [
                      "description": "profile = a creator's page; search/videos = search the "
                      "platform. Default search."}},
         "required": ["platform", "query"]}},
+    {"type": "function", "name": "open_in_account",
+     "description": "Open a website signed in as a specific account by using that Chrome profile. "
+                    "Use to switch accounts or open something as a particular account he has. Does "
+                    "NOT store or type passwords -- it uses the account he is already signed into "
+                    "in Chrome. If he has multiple accounts, suggest one and confirm before using.",
+     "parameters": {"type": "object",
+        "properties": {
+            "url_or_query": {"type": "string", "description": "A URL or a site/search to open."},
+            "account": {"type": "string", "description": "Which account/profile (e.g. personal, "
+                        "zenthra, clearcoat)."}},
+        "required": ["url_or_query", "account"]}},
     {"type": "function", "name": "search_site",
      "description": "Find a specific thing within a particular website. Use for 'find X on "
                     "<site>' or 'search <site> for X' when the site is a regular website "
@@ -178,6 +189,62 @@ def _open_url(url):
         return False
 
 
+def _profiles():
+    """His account label -> Chrome profile directory, from ZOE_BROWSER_PROFILES.
+    Format: 'personal=Default; zenthra=Profile 1; clearcoat=Profile 2'."""
+    out = {}
+    for part in os.environ.get("ZOE_BROWSER_PROFILES", "").replace(";", ",").split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            if k.strip():
+                out[k.strip().lower()] = v.strip()
+    return out
+
+
+def accounts_note():
+    """A line for the session persona so she can suggest an account and confirm yes/no."""
+    p = _profiles()
+    if not p:
+        return ""
+    return ("Browser accounts he is signed into: " + ", ".join(sorted(p)) + ". When he opens or "
+            "searches a site and more than one account could fit, suggest which account to use and "
+            "wait for a yes or no before switching. Use open_in_account to open as that account. "
+            "Never ask for or handle passwords; the browser holds the login.")
+
+
+def _find_chrome():
+    c = os.environ.get("ZOE_CHROME")
+    if c and os.path.exists(c):
+        return c
+    for p in (r"%ProgramFiles%\Google\Chrome\Application\chrome.exe",
+              r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe",
+              r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"):
+        p = os.path.expandvars(p)
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def _open_in_chrome(url, profile_dir):
+    """Open a URL in a specific Chrome profile (a signed-in account). No passwords involved --
+    Chrome supplies the login for whatever profile is named."""
+    import subprocess
+    chrome = _find_chrome()
+    args = ([f"--profile-directory={profile_dir}"] if profile_dir else [])
+    try:
+        if chrome:
+            subprocess.Popen([chrome] + args + [url])
+        else:                                   # Chrome not found at the usual paths
+            subprocess.Popen(["cmd", "/c", "start", "", "chrome"] + args + [url])
+        return True
+    except Exception:
+        try:
+            os.startfile(url)                   # last resort: default browser, no profile
+            return True
+        except Exception:
+            return False
+
+
 def dispatch(name, args, ctrl=None, simulate=True):
     """Run one tool call through the existing router. Returns a JSON-able result dict.
 
@@ -220,6 +287,20 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return {"ok": True, "simulated": True, "action": "site_search", "url": url}
             return {"ok": _open_url(url), "action": "site_search", "url": url}
 
+        if name == "open_in_account":
+            url = _web_url(args.get("url_or_query"))
+            account = (args.get("account") or "").strip().lower()
+            profiles = _profiles()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "account", "url": url,
+                        "account": account, "available": sorted(profiles)}
+            if not profiles:
+                return {"ok": False, "error": "no accounts configured (set ZOE_BROWSER_PROFILES)"}
+            if account and account not in profiles:
+                return {"ok": False, "error": "unknown account", "available": sorted(profiles)}
+            return {"ok": _open_in_chrome(url, profiles.get(account, "")),
+                    "action": "account", "account": account or "default", "url": url}
+
         if name == "recall_memory":
             query = (args.get("query") or "").strip()
             if simulate:
@@ -261,6 +342,7 @@ def _selftest():
         ("search_platform", {"platform": "x", "query": "@cj_goat09", "kind": "profile"}),
         ("search_site", {"site": "espn.com", "query": "lakers score"}),
         ("search_site", {"site": "amazon", "query": "resistance bands"}),
+        ("open_in_account", {"url_or_query": "https://youtube.com", "account": "zenthra"}),
         ("start_workspace", {"name": "coding"}),
         ("recall_memory", {"query": ""}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),

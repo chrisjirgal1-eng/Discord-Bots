@@ -44,7 +44,9 @@ PERSONA = (
     "Instagram, X, Twitch, Spotify, Reddit, Roblox), find something within any other specific "
     "website (search_site), start a workspace, recall memory, or hand a hard task to Hermes. "
     "When he names a known platform use search_platform; for any other named site use search_site; "
-    "use a plain web search only when no site is named. "
+    "use a plain web search only when no site is named. To open a site as one of his accounts or "
+    "switch accounts, use open_in_account -- if more than one account fits, suggest one and get a "
+    "yes or no first, and never ask for or handle passwords. "
     "After a tool runs, say one short line confirming it. If a tool fails, say so plainly. "
     "Once he wakes you, stay in the conversation and answer whenever he speaks, no wake word "
     "needed. If he says 'go to sleep' or 'that's all', stand down without another word."
@@ -192,7 +194,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
 
     ws = await _connect(url, headers)
     try:
-        await ws.send(json.dumps(session_config(_recent_context())))
+        ctx = "\n\n".join(x for x in (_recent_context(), zoe_tools.accounts_note()) if x)
+        await ws.send(json.dumps(session_config(ctx)))
         # the opening line is sent on session.updated (below), not eagerly, so it never
         # runs against a half-applied config (wrong voice / missing instructions).
 
