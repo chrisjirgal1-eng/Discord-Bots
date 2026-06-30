@@ -39,6 +39,20 @@
   .cores span i{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg,var(--p),var(--p2));box-shadow:0 0 8px var(--p)}
   .center{position:relative;display:flex;flex-direction:column;align-items:center;min-height:0}
   #core{position:absolute;inset:0;width:100%;height:100%}
+  #core.reactor{display:grid;place-items:center}
+  .rsvg{width:min(80%,500px);aspect-ratio:1;will-change:transform;
+    transform:perspective(1000px) rotateX(14deg) scale(var(--pulse,1));
+    filter:drop-shadow(0 0 34px rgba(147,51,234,.45)) drop-shadow(0 0 8px rgba(233,213,255,.5))}
+  .ring{transform-origin:200px 200px}
+  .r1{animation:cspin 30s linear infinite}
+  .r2{animation:cspin 18s linear infinite reverse}
+  .r3{animation:cspin 10s linear infinite}
+  .halo{opacity:calc(.45 + var(--lvl,0)*.55)}
+  .iris{animation:cbreathe 4.5s ease-in-out infinite}
+  .bright{opacity:calc(.5 + var(--lvl,0)*.5)}
+  @keyframes cspin{to{transform:rotate(360deg)}}
+  @keyframes cbreathe{0%,100%{opacity:.9}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){.r1,.r2,.r3,.iris{animation:none}}
   .cstate{position:absolute;bottom:78px;left:0;right:0;text-align:center;letter-spacing:6px;font-size:16px;color:#cdb9f5;z-index:2}
   .chips{position:absolute;bottom:40px;left:0;right:0;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;z-index:2}
   .chip{font-size:9px;letter-spacing:1px;color:var(--dm);background:rgba(147,51,234,.1);border:1px solid var(--ln);border-radius:20px;padding:3px 10px}
@@ -89,7 +103,27 @@
   </div>
 
   <div class="center">
-    <canvas id="core"></canvas>
+    <div id="core" class="reactor">
+      <svg class="rsvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="rcore" cx="50%" cy="44%" r="56%">
+            <stop offset="0%" stop-color="#ffffff"/><stop offset="20%" stop-color="#f0e3ff"/>
+            <stop offset="52%" stop-color="#a855f7"/><stop offset="100%" stop-color="#3b0d6b" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="rhalo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#a855f7" stop-opacity=".45"/><stop offset="70%" stop-color="#7c3aed" stop-opacity=".12"/>
+            <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle class="halo" cx="200" cy="200" r="198" fill="url(#rhalo)"/>
+        <g class="ring r1"><circle cx="200" cy="200" r="158" fill="none" stroke="#7c3aed" stroke-opacity=".4" stroke-width="1.5" stroke-dasharray="2 11"/></g>
+        <g class="ring r2"><circle cx="200" cy="200" r="126" fill="none" stroke="#c084fc" stroke-opacity=".55" stroke-width="2" stroke-dasharray="34 16"/></g>
+        <g class="ring r3"><circle cx="200" cy="200" r="96" fill="none" stroke="#a855f7" stroke-opacity=".6" stroke-width="2.5" stroke-dasharray="1 8"/></g>
+        <circle class="iris" cx="200" cy="200" r="72" fill="url(#rcore)"/>
+        <circle cx="200" cy="200" r="72" fill="none" stroke="#e9d5ff" stroke-opacity=".35" stroke-width="1.5"/>
+        <circle class="bright" cx="200" cy="200" r="34" fill="#fff" opacity=".7"/>
+      </svg>
+    </div>
     <div class="cstate"><span id="cstate">Idle _</span></div>
     <div class="chips">
       <span class="chip"><span class="d">●</span> CORE</span><span class="chip"><span class="d">●</span> MEMORY</span>
@@ -106,8 +140,8 @@
 
 <div id="low">
   <div class="pan"><div class="ph">VOICE <b>LILY</b></div><canvas id="voice" class="graph" style="height:70px"></canvas></div>
-  <div class="pan"><div class="ph">SKILLS <b>10</b></div><div class="skills" id="skills"></div></div>
-  <div class="pan"><div class="ph">AGENTS <b style="color:var(--ok)">ACTIVE</b></div><span class="agnum">132</span><div class="grid" id="agrid"></div></div>
+  <div class="pan"><div class="ph">SKILLS <b id="skill-count">--</b></div><div class="skills" id="skills"></div></div>
+  <div class="pan"><div class="ph">AGENTS <b style="color:var(--ok)">ACTIVE</b></div><span class="agnum" id="agent-count">--</span><div class="grid" id="agrid"></div></div>
   <div class="pan" style="cursor:pointer" id="netpan"><div class="ph">NETWORK - OBSIDIAN <b id="netv">--</b></div><canvas id="gNet" class="graph" style="height:74px"></canvas></div>
 </div>
 
@@ -132,43 +166,14 @@ setInterval(()=>{ const d=new Date(); $('#clock').textContent=d.toLocaleTimeStri
 // ---------- purple/white voice-reactive core ----------
 let coreLevel = v => {};
 try {
-  const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
-  const canvas=$('#core'); const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  const box=()=>canvas.getBoundingClientRect(); const W=()=>box().width||600, H=()=>box().height||600;
-  renderer.setSize(W(),H(),false);
-  const scene=new THREE.Scene(); const camera=new THREE.PerspectiveCamera(50,W()/H(),0.1,100); camera.position.set(0,0,4.4);
-  const core=new THREE.Group(); scene.add(core);
-  const PURPLES=[0x9333ea,0xa855f7,0xc084fc,0x7c3aed,0xb46bff];
-  const N=14000,pos=new Float32Array(N*3),ph=new Float32Array(N),bs=new Float32Array(N),pc=new Float32Array(N*3),_c=new THREE.Color();
-  for(let i=0;i<N;i++){ const y=1-(i/(N-1))*2,rad=Math.sqrt(1-y*y),th=i*2.399963; let r=1; if(Math.random()<0.42) r=0.16+Math.random()*0.84;
-    pos[i*3]=Math.cos(th)*rad*r; pos[i*3+1]=y*r; pos[i*3+2]=Math.sin(th)*rad*r; ph[i]=Math.random(); bs[i]=Math.random()<0.035?4+Math.random()*5:0.8+Math.random()*2;
-    _c.setHex(Math.random()<0.26?0xffffff:PURPLES[Math.floor(Math.random()*PURPLES.length)]); pc[i*3]=_c.r; pc[i*3+1]=_c.g; pc[i*3+2]=_c.b; }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('phase',new THREE.BufferAttribute(ph,1));
-  g.setAttribute('bsize',new THREE.BufferAttribute(bs,1)); g.setAttribute('pcolor',new THREE.BufferAttribute(pc,3));
-  const U={uTime:{value:0},uAudio:{value:0}};
-  core.add(new THREE.Points(g,new THREE.ShaderMaterial({uniforms:U,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
-    vertexShader:`uniform float uTime,uAudio; attribute float phase,bsize; attribute vec3 pcolor; varying float vG; varying vec3 vC;
-      void main(){ vC=pcolor; vec3 d=normalize(position+0.0001); float sh=sin(uTime*1.6+phase*6.2831)*(0.032+uAudio*0.3);
-        vec3 p=(position+d*sh)*(1.0+uAudio*0.3); vG=0.26+uAudio*0.55+abs(sh)*1.6;
-        vec4 mv=modelViewMatrix*vec4(p,1.0); gl_PointSize=bsize*(1.0+uAudio*0.8)*(95.0/-mv.z); gl_Position=projectionMatrix*mv; }`,
-    fragmentShader:`varying float vG; varying vec3 vC; void main(){ float r=length(gl_PointCoord-vec2(0.5)); if(r>0.5) discard;
-      float a=pow(smoothstep(0.5,0.0,r),2.3)*0.82; gl_FragColor=vec4(vC*vG,a); }`})));
-  for(let k=0;k<16;k++){ const seg=170,p=new Float32Array(seg*3); for(let i=0;i<seg;i++){ const a=i/seg*6.2831; p[i*3]=Math.cos(a); p[i*3+1]=Math.sin(a); }
-    const lg=new THREE.BufferGeometry(); lg.setAttribute('position',new THREE.BufferAttribute(p,3));
-    const lp=new THREE.LineLoop(lg,new THREE.LineBasicMaterial({color:k%4===0?0xffffff:0xa855f7,transparent:true,opacity:0.055,blending:THREE.AdditiveBlending,depthWrite:false}));
-    lp.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3); lp.scale.setScalar(0.5+Math.random()*0.52); core.add(lp); }
-  const gcv=document.createElement('canvas'); gcv.width=gcv.height=128; const gx=gcv.getContext('2d');
-  const rg=gx.createRadialGradient(64,64,0,64,64,64); rg.addColorStop(0,'rgba(245,238,255,.75)'); rg.addColorStop(.22,'rgba(168,85,247,.42)'); rg.addColorStop(1,'rgba(124,58,237,0)');
-  gx.fillStyle=rg; gx.fillRect(0,0,128,128);
-  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(gcv),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true})); glow.scale.setScalar(1.0); core.add(glow);
-  new ResizeObserver(()=>{ renderer.setSize(W(),H(),false); camera.aspect=W()/H(); camera.updateProjectionMatrix(); }).observe(canvas);
-  let lvl=0; coreLevel = v => { lvl += (v-lvl)*0.18; };
-  renderer.setAnimationLoop(ms=>{ const a=lvl; U.uTime.value=ms*0.001; U.uAudio.value=a;
-    core.rotation.y+=0.0012+a*0.004; core.rotation.x=Math.sin(ms*0.0002)*0.13; core.scale.setScalar(1+a*0.16+Math.sin(ms*0.001)*0.02);
-    glow.scale.setScalar(0.95+a*0.8); renderer.render(scene,camera);
-    $('#cstate').textContent = a>0.22 ? 'Engaged _' : 'Idle _'; });
-} catch(e){ console.error('core', e); }
+  const svg = $('#core .rsvg'); let lvl = 0;
+  coreLevel = v => {                       // CSS/SVG arc-reactor: cheap, GPU-friendly, voice-reactive
+    lvl += (v - lvl) * 0.18; const a = Math.min(lvl, 1.3);
+    if (svg) { svg.style.setProperty('--pulse', (1 + a * 0.11).toFixed(3));
+               svg.style.setProperty('--lvl', Math.min(a, 1).toFixed(2)); }
+    $('#cstate').textContent = a > 0.22 ? 'Engaged _' : 'Idle _';
+  };
+} catch (e) { console.error('core', e); }
 
 // ---------- mic -> level (core + voice eq) ----------
 let readMic=null;
@@ -238,6 +243,16 @@ $('#skills').innerHTML = ['VISION','SEARCH','CODE','SHELL','MEMORY','VOICE','SCH
   + '<span class="sk" style="color:#ffb24d;border-color:rgba(255,178,77,.35)"><span class="d" style="color:#ffb24d">◆</span> HERMES</span>';
 const agrid=$('#agrid'); agrid.innerHTML=Array.from({length:55},()=>'<i></i>').join('');
 setInterval(()=>{ [...agrid.children].forEach(c=>c.classList.toggle('on',Math.random()<0.45)); },700);
+
+// ---------- live config: skill + agent counts from /config ----------
+(async()=>{ try{
+  const cfg=await (await fetch('/config',{cache:'no-store'})).json();
+  if(typeof cfg.skills==='number') $('#skill-count').textContent=cfg.skills;
+  if(typeof cfg.agents==='number') {
+    const n=cfg.agents>0?cfg.agents:cfg.skills+cfg.plugins+cfg.tools;
+    $('#agent-count').textContent=n;
+  }
+}catch(_){} })();
 
 // ---------- command bar ----------
 const cmd=$('#cmd'), cmdout=$('#cmdout');

@@ -1,0 +1,157 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZOE // RESEARCH LAB</title>
+<style>
+:root{--bg:#0a0a0f;--bg2:#11111a;--panel:rgba(26,24,38,.55);--bd:#2a2740;--tx:#e8e8f2;--mut:#8a8a9e;
+--ac:#a99bff;--ac2:#7c63ff;--glow:rgba(124,99,255,.25);--ok:#27c08a;--info:#6fa8ff;--warn:#e0b44f;--err:#e0794f}
+*{box-sizing:border-box}
+body{margin:0;color:var(--tx);font:13px/1.5 ui-sans-serif,system-ui,sans-serif;
+background:radial-gradient(1100px 500px at 85% -10%,var(--glow),transparent 60%),
+ radial-gradient(800px 400px at -5% 110%,var(--glow),transparent 55%),var(--bg);min-height:100vh}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+header{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--bd);
+background:linear-gradient(180deg,var(--bg2),transparent)}
+.z{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:800;color:#fff;
+background:linear-gradient(135deg,var(--ac2),#5a3fd0);box-shadow:0 0 18px var(--glow)}
+h1{font-size:15px;margin:0;letter-spacing:.22em;font-weight:700}
+.sub{color:var(--mut);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.sum{margin-left:auto;display:flex;gap:16px;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.sum b{color:var(--ac);font-size:15px;display:block;letter-spacing:0}
+.back{color:var(--mut);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.wrap{padding:18px 20px;max-width:1200px;margin:0 auto;display:grid;gap:14px;grid-template-columns:1fr 1fr}
+.full{grid-column:1/3}
+.card{background:var(--panel);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;
+backdrop-filter:blur(10px);box-shadow:0 8px 28px rgba(0,0,0,.3)}
+.card h2{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--ac);margin:0 0 11px;font-weight:700}
+.searchrow{display:flex;gap:9px}
+input{flex:1;padding:10px 13px;border:1px solid var(--bd);border-radius:9px;background:var(--bg2);color:var(--tx);font:inherit}
+input:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--glow)}
+button{padding:9px 15px;border:1px solid var(--ac);border-radius:9px;background:var(--glow);color:var(--ac);
+font:inherit;font-weight:600;cursor:pointer}button:hover{background:var(--ac);color:#0a0a0f}
+.agrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.agent{background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:11px 12px}
+.agent .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.agent .nm{font-weight:600}.agent .role{color:var(--mut);font-size:11px;margin:4px 0 6px;line-height:1.35}
+.agent .task{font-size:12px;color:#cfcfdc}.agent .meta{color:var(--mut);font-size:10px;margin-top:5px}
+.badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:20px;border:1px solid;white-space:nowrap}
+.b-running{color:var(--ok);border-color:var(--ok);background:rgba(39,192,138,.12);animation:p 1.4s ease-in-out infinite}
+.b-done{color:var(--info);border-color:#3a5a8a;background:rgba(111,168,255,.1)}
+.b-error{color:var(--err);border-color:var(--err);background:rgba(224,121,79,.12)}
+.b-idle{color:var(--mut);border-color:var(--bd)}
+.b-ok{color:var(--ok);border-color:var(--ok);background:rgba(39,192,138,.1)}
+.b-warn{color:var(--warn);border-color:var(--warn);background:rgba(224,180,79,.12)}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){.b-running{animation:none}}
+.cap{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid rgba(42,39,64,.5);font-size:12px}
+.cap .cn{min-width:150px;font-weight:600}.cap .cv{color:var(--mut);font-family:ui-monospace,monospace;font-size:11px}
+.cap .cp{color:var(--mut);margin-left:auto;text-align:right;font-size:11px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.catlabel{color:var(--ac);font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin:10px 0 2px;font-weight:700}
+.row2{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px solid rgba(42,39,64,.5);font-size:12px}
+.row2 .r{color:var(--mut);width:22px}.row2 .lv{color:var(--ac);font-weight:700;margin-left:auto}
+.scroll{max-height:340px;overflow:auto}
+.wl{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px}
+.wl a{background:var(--bg2);border:1px solid var(--bd);border-radius:7px;padding:6px 9px;font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wl a:hover{border-color:var(--ac);text-decoration:none}
+.hit{padding:8px 10px;border:1px solid var(--bd);border-radius:8px;margin:5px 0;background:var(--bg2)}
+.hit .t{font-weight:600}.hit .p{color:var(--mut);font-size:11px}
+.muted{color:var(--mut)}.err{color:var(--err)}
+</style></head><body>
+<header>
+  <div class=z>Z</div>
+  <div><h1>ZOE</h1><div class=sub>Research Lab</div></div>
+  <div class=sum id=sum></div>
+  <a class=back href="/" onclick="if(window.parent!==window){window.parent.postMessage({zoeSwitch:'zoey'},'*');return false}">&larr; HUD</a>
+</header>
+<div class=wrap>
+  <div class="card full">
+    <h2>Search the vault — by meaning</h2>
+    <div class=searchrow>
+      <input id=q placeholder="e.g. best hook structure for reels" onkeydown="if(event.key==='Enter')doSearch()">
+      <button onclick=doSearch()>Search</button>
+    </div>
+    <div id=searchres></div>
+  </div>
+  <div class="card full">
+    <h2>Voice Intelligence</h2>
+    <div id=voice class=muted>Loading&hellip;</div>
+  </div>
+  <div class="card full">
+    <h2>Agents <span class=muted style="text-transform:none;letter-spacing:0;font-weight:400" id=agstamp></span></h2>
+    <div id=agents class=muted>Loading…</div>
+  </div>
+  <div class=card>
+    <h2>Capabilities</h2>
+    <div id=caps class="muted scroll">Loading…</div>
+  </div>
+  <div class=card>
+    <h2>Top Creators</h2>
+    <div id=creators class="muted scroll">Loading…</div>
+  </div>
+  <div class="card full">
+    <h2>Instagram Watchlist</h2>
+    <div id=watchlist class=muted>Loading…</div>
+  </div>
+</div>
+<script>
+const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function ago(ts){if(!ts)return'no activity';const s=(Date.now()-new Date(ts).getTime())/1000;
+ if(s<60)return Math.floor(s)+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';
+ if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago'}
+const J=async p=>(await fetch(p)).json();
+
+async function loadSummary(){try{const s=await J('/research/summary');
+ document.getElementById('sum').innerHTML=
+  '<div><b>'+s.agents+'</b>agents</div><div><b>'+s.creators+'</b>creators</div>'+
+  '<div><b>'+s.watchlist+'</b>IG watch</div><div><b>'+s.healthy+'/'+s.capabilities+'</b>healthy</div>';
+ }catch(e){}}
+async function loadAgents(){const r=document.getElementById('agents');try{const a=await J('/research/agents');
+ if(!Array.isArray(a)){r.innerHTML='<span class=err>'+esc(JSON.stringify(a))+'</span>';return}
+ const B={running:'b-running',done:'b-done',error:'b-error',idle:'b-idle'};
+ r.innerHTML='<div class=agrid>'+a.map(x=>'<div class=agent><div class=top><span class=nm>'+esc(x.name)+
+  '</span><span class="badge '+(B[x.status]||'b-idle')+'">'+esc(x.status)+'</span></div>'+
+  '<div class=role>'+esc(x.role)+'</div><div class=task>'+esc(x.last_task)+'</div>'+
+  '<div class=meta>'+ago(x.last_update)+' · '+x.event_count+' events</div></div>').join('')+'</div>';
+ document.getElementById('agstamp').textContent='· '+new Date().toLocaleTimeString();
+ }catch(e){r.innerHTML='<span class=err>'+e+'</span>'}}
+async function loadCaps(){const r=document.getElementById('caps');try{const d=await J('/research/capabilities');
+ if(d.empty||d.error){r.innerHTML='<span class=muted>'+esc(d.hint||d.error||'no data')+'</span>';return}
+ const order=['runtime','node-pkg','api','model','data','zoe','claude'];const cats={};
+ (d.capabilities||[]).forEach(c=>{(cats[c.category]=cats[c.category]||[]).push(c)});
+ const bad=h=>['missing','unreachable','error','absent'].includes(h);
+ const bcl=h=>h==='ok'?'b-ok':(bad(h)?'b-error':'b-warn');
+ let h='';order.filter(k=>cats[k]).concat(Object.keys(cats).filter(k=>!order.includes(k))).forEach(k=>{
+  h+='<div class=catlabel>'+esc(k)+'</div>';
+  cats[k].forEach(c=>h+='<div class=cap><span class="badge '+bcl(c.health)+'">'+esc(c.health)+'</span>'+
+   '<span class=cn>'+esc(c.name)+'</span><span class=cv>'+esc(c.version||'')+'</span>'+
+   '<span class=cp title="'+esc(c.detail||'')+'">'+esc(c.purpose||'')+'</span></div>')});
+ r.innerHTML=h;}catch(e){r.innerHTML='<span class=err>'+e+'</span>'}}
+async function loadCreators(){const r=document.getElementById('creators');try{const a=await J('/research/creators');
+ if(!Array.isArray(a)){r.innerHTML='<span class=err>no data</span>';return}
+ r.innerHTML=a.slice(0,25).map((c,i)=>'<div class=row2><span class=r>'+(i+1)+'</span><span>'+esc(c.name)+
+  ' <span class=muted>('+(c.platforms||[]).join(', ')+' ·x'+c.content_count+')</span></span>'+
+  '<span class=lv>'+c.learning_value+'</span></div>').join('');
+ }catch(e){r.innerHTML='<span class=err>'+e+'</span>'}}
+async function loadWatchlist(){const r=document.getElementById('watchlist');try{const a=await J('/research/watchlist');
+ if(!Array.isArray(a)||!a.length){r.innerHTML='<span class=muted>watch-list empty — run resolve-ig-profiles.py</span>';return}
+ r.innerHTML='<div class=wl>'+a.map(c=>{const h=(c.url||'').replace(/\/+$/,'').split('/').pop();
+  return '<a href="'+esc(c.url)+'" target="_blank" title="'+esc(c.name)+'">@'+esc(h)+'</a>'}).join('')+'</div>';
+ }catch(e){r.innerHTML='<span class=err>'+e+'</span>'}}
+async function doSearch(){const q=document.getElementById('q').value.trim();const r=document.getElementById('searchres');
+ if(!q)return;r.innerHTML='<div class=muted style="margin-top:8px">Searching…</div>';
+ try{const a=await J('/research/search?q='+encodeURIComponent(q));
+  if(!Array.isArray(a)){r.innerHTML='<span class=err>'+esc(JSON.stringify(a))+'</span>';return}
+  r.innerHTML='<div style="margin-top:8px">'+a.slice(0,8).map(h=>'<div class=hit><div class=t>'+esc(h.title)+
+   '</div><div class=p>'+(h.score||0).toFixed(3)+' · '+esc(h.path)+'</div></div>').join('')+'</div>';
+ }catch(e){r.innerHTML='<span class=err>'+e+'</span>'}}
+
+async function loadVoice(){const r=document.getElementById('voice');try{const v=await J('/research/voice');
+ const c=v.capabilities||{},m=v.metrics||{};
+ const cap=(k,on)=>'<span class="badge '+(on?'b-ok':'b-idle')+'">'+k+'</span>';
+ let h='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">'+cap('streaming',c.streaming)+cap('mic',c.mic)+cap('VAD',c.vad)+cap('wake-word',c.wakeword)+cap('offline STT',c.offline_stt)+'</div>';
+ h+='<div class="muted small">turns: '+(m.turns||0)+' &middot; avg reply: '+(m.avg_reply_ms!=null?m.avg_reply_ms+'ms':'—')+' &middot; learned routes: '+(v.learned_routes||0)+' &middot; vocab: '+((v.keyterms||[]).length)+' terms</div>';
+ if((v.keyterms||[]).length)h+='<div class=wl style="margin-top:6px">'+v.keyterms.slice(0,30).map(t=>'<a>'+esc(t)+'</a>').join('')+'</div>';
+ if((m.recent||[]).length){h+='<div class=muted style="margin-top:8px;font-size:11px">recent turns</div>'+m.recent.slice().reverse().map(t=>'<div class=caprow><b class=cn>'+esc(t.text||'')+'</b><span class="muted right">'+(t.reply_ms!=null?t.reply_ms+'ms':'')+'</span></div>').join('');}
+ r.innerHTML=h;}catch(e){r.innerHTML='<span class=err>'+e+'</span>'}}
+loadSummary();loadAgents();loadCaps();loadCreators();loadWatchlist();loadVoice();
+setInterval(()=>{loadAgents();loadSummary()},5000);
+</script></body></html>

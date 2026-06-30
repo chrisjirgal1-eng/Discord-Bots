@@ -68,3 +68,8 @@ vault/docs/
 vault/project/
 vault/skills/
 vault/plugins/
+
+# Zoe voice-extras runtime artifacts (regenerated at run)
+zoe.log
+memory/voice_metrics.jsonl
+zoe-ui/config.json

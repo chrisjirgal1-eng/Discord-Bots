@@ -18,7 +18,7 @@ workspaceManager.js), reached over the localhost control endpoint (env ZOE_CONTR
 http://127.0.0.1:7766). When Electron is not running, folder and launch fall back to Python
 (os.startfile / start); workspace and close need the desktop app.
 """
-import os, sys, json, time, uuid, subprocess, webbrowser, urllib.request
+import os, sys, json, time, uuid, re, subprocess, webbrowser, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import zoe_state          # persistent continuity; optional, never blocks routing
@@ -28,6 +28,10 @@ try:
     import zoe_memory         # Obsidian long-term memory; optional, best-effort
 except Exception:
     zoe_memory = None
+try:
+    import zoe_learn          # learned-corrections store (memory/learned_routes.json); best-effort
+except Exception:
+    zoe_learn = None
 try:
     import zoe_versions
     COMMAND_SCHEMA_VERSION = zoe_versions.SYSTEM["command_schema_version"]
@@ -40,17 +44,23 @@ except Exception:                # versions module optional; degrade, never fail
         return str(a).split(".")[0] == str(b).split(".")[0]
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "llama-3.1-8b-instant"   # fast classifier (~3-5x quicker than 70b; classification is simple)
 DEFAULT_CONTROL = "http://127.0.0.1:7766"
 
 INTENT_SYS = (
     "You are Zoe's command router on Chris's Windows PC. Reply with ONLY a JSON object: "
-    '{"action": "workspace|launch|close|folder|web|memory|agent|chat", "target": "", "url": "", "say": ""}. '
-    "- memory: recall, show memory, what did I say/do last session, what did we work on. "
-    "target = the thing to recall, or empty for the last session. "
+    '{"action": "workspace|launch|close|folder|web|memory|agent|research|chat", "target": "", "url": "", "say": ""}. '
+    "- memory: recall from Chris's saved notes / knowledge vault. Use for 'what do I know about X', "
+    "'what do I have on X', 'what did I learn/save about X', 'recall X', 'look up X in my notes', "
+    "'show my notes/research on X', 'who are my creators', as well as 'what did I say/do last session' "
+    "and 'what did we work on'. Prefer memory over chat whenever he asks what HE knows/saved/researched. "
+    "target = the topic to recall (e.g. 'instagram creators', 'reels', 'hooks'), or empty for the last session. "
     "- agent: hand a hard reasoning, research, or multi-step coding task to the Hermes agent. Use "
     "when he says 'ask hermes', 'have hermes', or for a complex task beyond a simple command. "
     "target = the full request. "
+    "- research: break down a specific VIDEO or REEL for viral hooks, structure, pacing, and why "
+    "it worked, using VaultOS. Use for 'research this video', 'break down this reel/short', "
+    "'analyze this youtube video' when a video/reel URL is present. url = the video URL. "
     "- workspace: start a named workspace or mode (coding, school, gaming, editing). "
     "target = the workspace name or his exact phrase. "
     "- launch: open a desktop app. target = the app name (Discord, Spotify, VS Code, Notepad). "
@@ -85,11 +95,130 @@ def _post(ctrl, route, payload):
     except Exception:
         return None
 
-def classify(text, groq_key, history=None):
-    """Phrase -> action dict. The only place a command's meaning is decided."""
-    msgs = [{"role": "system", "content": INTENT_SYS}] + (history or [])[-4:] + [{"role": "user", "content": text}]
+# --- local fast-path: unambiguous commands skip the LLM entirely (instant). Only HIGH-confidence
+# patterns belong here; anything not matched falls through to the (now fast) Groq classifier.
+_FAST_MEM = re.compile(r"(?:what do i know about|what did i (?:learn|save|research|note) about|"
+                       r"recall|look up|pull up my notes on|show my (?:notes|research) on)\s+(.+)", re.I)
+_FAST_WS = re.compile(r"\b(coding|developer|dev|gaming|editing|video|school|study)\s+(?:mode|workspace|setup)\b"
+                      r"|\bstart\s+(coding|gaming|editing|school|study)\b", re.I)
+_FAST_CLOSE = re.compile(r"^\s*(?:hey\s+)?(?:zoe[,!.]?\s+)?(?:close|quit|kill|shut\s+down|exit)\s+(.+?)[.?!]*\s*$", re.I)
+_FAST_LAUNCH = re.compile(r"^\s*(?:hey\s+)?(?:zoe[,!.]?\s+)?(?:launch|fire\s+up|boot\s+up)\s+(.+?)[.?!]*\s*$", re.I)
+
+
+def _fast_classify(text):
+    t = (text or "").strip()
+    if not t:
+        return None
+    m = _FAST_MEM.search(t)
+    if m:
+        return {"action": "memory", "target": m.group(1).strip(" ?.!"), "say": ""}
+    m = _FAST_WS.search(t)
+    if m:
+        name = (m.group(1) or m.group(2) or "that").lower()
+        return {"action": "workspace", "target": t, "say": f"Starting {name} mode, sir."}
+    m = _FAST_CLOSE.match(t)
+    if m:
+        tgt = m.group(1).strip()
+        return {"action": "close", "target": tgt, "say": f"Closing {tgt}, sir."}
+    m = _FAST_LAUNCH.match(t)
+    if m:
+        tgt = m.group(1).strip()
+        return {"action": "launch", "target": tgt, "say": f"Opening {tgt}, sir."}
+    return None
+
+
+# --- conversation context resolution (Phase 1) ----------------------------------------------
+_REVERSIBLE = {"launch": "close", "close": "launch"}
+_RE_ACTUALLY = re.compile(r"^\s*(?:actually|no[, ]+|wait[, ]+|make it|instead|change it to|rather)\s+(.+)$", re.I)
+_RE_AGAIN    = re.compile(r"\b(?:do (?:that|it) again|again|same(?: thing)?|repeat that|once more)\b", re.I)
+_RE_UNDO     = re.compile(r"\b(?:undo(?: that| it)?|never ?mind that|reverse that|cancel that|take that back)\b", re.I)
+_RE_CONTINUE = re.compile(r"^\s*(?:continue|keep going|resume|go on|carry on|tell me more|more on (?:that|it)|and then)\b", re.I)
+_RE_WRONG    = re.compile(r"(?:that'?s not what i meant|that'?s wrong|not what i (?:said|wanted|meant)|you misunderstood)", re.I)
+
+
+def _resolve_context(text, conv):
+    """Resolve a referential follow-up ('again', 'actually X', 'undo it', 'continue', 'wrong')
+    against the live conversation state. Returns an action dict to short-circuit classify, or
+    None to pass through. Best-effort, never raises."""
     try:
-        raw = _groq(msgs, groq_key)
+        t = (text or "").strip(); low = t.lower()
+        last = (conv or {}).get("last_action") or {}
+        la, ltgt = last.get("action"), last.get("target")
+        if _RE_WRONG.search(low):
+            return {"action": "chat", "say": "My apologies, sir. What did you mean?",
+                    "_correction": last.get("text"), "_ctx": "wrong"}
+        m = _RE_ACTUALLY.match(t)
+        if m and la in ("launch", "close", "folder", "workspace"):
+            newt = m.group(1).strip(" .?!")
+            return {"action": la, "target": newt, "say": f"Switching to {newt}, sir.", "_ctx": "swap"}
+        if _RE_AGAIN.search(low) and la and ltgt:
+            return {"action": la, "target": ltgt, "url": last.get("url"),
+                    "say": "On it again, sir.", "_ctx": "repeat"}
+        if _RE_UNDO.search(low) and last.get("reversible") and ltgt and _REVERSIBLE.get(la):
+            return {"action": _REVERSIBLE[la], "target": ltgt, "say": "Undoing that, sir.", "_ctx": "undo"}
+        if _RE_CONTINUE.match(t):
+            topic = (conv or {}).get("current_topic")
+            if topic:
+                return {"action": "memory", "target": topic, "say": "", "_ctx": "continue"}
+        return None
+    except Exception:
+        return None
+
+
+def _conv_summary(conv):
+    """One-line context hint fed to the classifier so incomplete requests fill from context."""
+    if not conv:
+        return ""
+    bits = []
+    if conv.get("current_topic"):   bits.append(f"current topic: {conv['current_topic']}")
+    if conv.get("last_target"):     bits.append(f"last referenced: {conv['last_target']}")
+    if conv.get("current_project"): bits.append(f"current project: {conv['current_project']}")
+    return ("Conversation context (use to fill in vague/incomplete requests): "
+            + "; ".join(bits) + ".") if bits else ""
+
+
+_RE_TEACH = re.compile(
+    r"^\s*(?:when(?:ever)? i say|if i say|remember (?:that )?)\s*['\"]?(.+?)['\"]?\s*"
+    r"(?:,|then|it means|means|do|open|run|launch|that'?s)\s+(.+)$", re.I)
+
+
+def _teach(text, groq_key=None, history=None, conv=None):
+    """Explicit teaching: 'when I say X, do Y' -> learn X -> classify(Y). Returns a confirmation
+    chat action, or None if not a teaching phrase. Best-effort, never raises."""
+    if not zoe_learn:
+        return None
+    try:
+        m = _RE_TEACH.match((text or "").strip())
+        if not m:
+            return None
+        phrase, target = m.group(1).strip(" .?!'\""), m.group(2).strip(" .?!'\"")
+        if not phrase or not target:
+            return None
+        learned = classify(target, groq_key, history, conv)
+        if learned.get("action") in (None, "", "chat"):
+            return {"action": "chat", "_taught": None,
+                    "say": f"I'm not sure how to '{target}', sir — give me a clear command to map it to."}
+        zoe_learn.learn(phrase, learned, source="taught")
+        what = (learned.get("target") or learned.get("url") or "").strip()
+        return {"action": "chat", "_taught": phrase,
+                "say": f"Got it, sir. From now on '{phrase}' will {learned['action']} {what}.".strip()}
+    except Exception:
+        return None
+
+
+def classify(text, groq_key, history=None, conv=None):
+    """Phrase -> action dict. Common, unambiguous commands are matched locally (instant, no LLM
+    round-trip); everything else goes to a fast Groq model, enriched with conversation context."""
+    fast = _fast_classify(text)
+    if fast:
+        return fast
+    sysmsgs = [{"role": "system", "content": INTENT_SYS}]
+    ctx = _conv_summary(conv)
+    if ctx:
+        sysmsgs.append({"role": "system", "content": ctx})
+    msgs = sysmsgs + (history or [])[-4:] + [{"role": "user", "content": text}]
+    try:
+        raw = _groq(msgs, groq_key, max_tokens=120)
         return json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
     except Exception:
         return {"action": "chat", "say": "Sorry sir, I didn't catch that."}
@@ -151,6 +280,9 @@ def _explain(action):
         return "Recall from long-term memory", ["Search the Obsidian vault", "Return what was found"]
     if a == "agent":
         return "Hand off to the Hermes agent", ["Send the request to Hermes", "Return its answer"]
+    if a == "research":
+        return (f"Research the video {url or target}",
+                ["Download + transcribe", "Extract hook / structure / score", "Save to the vault"])
     return "Answer in conversation", ["Understand the request", "Compose a reply"]
 
 def _recall(text, action):
@@ -188,10 +320,17 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
         trace.append({"label": label, "status": status,
                       "ms": round((time.perf_counter() - since) * 1000) if since else 0})
     try:
+        conv = zoe_state.get_conversation() if zoe_state else {}
+    except Exception:
+        conv = {}
+    try:
         ts = time.perf_counter()
-        action = classify(text, groq_key, history)
+        taught = _teach(text, groq_key, history, conv)                       # "when I say X, do Y" -> learn it
+        learned = None if taught else (zoe_learn.lookup(text) if zoe_learn else None)
+        action = taught or learned or _resolve_context(text, conv) or classify(text, groq_key, history, conv)
         a = action.get("action", "chat")
-        step("Understanding the request", "done", ts)
+        step(("Taught a new rule" if taught else "Applied a learned correction" if learned
+              else "Resolved from context" if action.get("_ctx") else "Understanding the request"), "done", ts)
         parsed, steps = _explain(action)
         step("Parsed intent: " + parsed, "done")
         if a == "memory" and zoe_memory:
@@ -210,6 +349,16 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
             say = (ans[:240] if ans else (err or "Hermes had no answer, sir."))
             for s in steps: step(s, "done" if handled else "fail")
             step("Hermes responded" if handled else "Hermes unavailable", "done" if handled else "fail", ts)
+        elif a == "research":
+            ts = time.perf_counter()
+            vurl = action.get("url") or action.get("target") or text
+            cmd = make_command(intent="plugin_action", target="vaultos", payload={"url": vurl})
+            handled, res = _run_plugin(cmd)
+            say = (res.get("say") if isinstance(res, dict) else None) or (
+                "Saved a breakdown to the vault, sir." if handled else "I couldn't research that, sir.")
+            for s in steps: step(s, "done" if handled else "fail")
+            step("VaultOS breakdown saved" if handled else "VaultOS could not process it",
+                 "done" if handled else "fail", ts)
         elif simulate:
             handled, say = True, action.get("say", "On it, sir.")
             for s in steps: step(s, "done")
@@ -228,8 +377,17 @@ def process(text, source="ui", groq_key=None, ctrl=None, history=None, simulate=
         step("Error - " + str(e)[:50], "fail", t0)
     if zoe_state:
         try:
+            topic = action.get("target") if a in ("memory", "research", "web") else None
             zoe_state.record_command(text, a, handled, trace_id=tid, summary=parsed,
-                                     workspace=action.get("target") if a == "workspace" else None)
+                                     workspace=action.get("target") if a == "workspace" else None,
+                                     target=action.get("target"), url=action.get("url"), topic=topic)
+            if action.get("_correction"):                       # "that's not what I meant"
+                zoe_state.add_correction(text, action.get("_correction"))
+                zoe_state.update_conversation(pending_correction=action.get("_correction"))
+            elif (handled and zoe_learn and conv.get("pending_correction")
+                  and not action.get("_taught") and not action.get("_learned") and a != "chat"):
+                zoe_learn.learn(conv["pending_correction"], action, source="correction")  # implicit learn
+                zoe_state.update_conversation(pending_correction=None)
         except Exception:
             pass
     if zoe_memory:                                          # log every command to the vault
