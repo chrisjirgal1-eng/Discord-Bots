@@ -305,6 +305,14 @@ TOOLS = [
          "source": {"type": "string", "description": "owner/repo, or a GitHub link to a SKILL.md."},
          "skill": {"type": "string", "description": "The skill name/folder (needed when source is owner/repo)."}},
         "required": ["source"]}},
+    {"type": "function", "name": "sync_skills",
+     "description": "Bulk-import skills from a public GitHub repo's skills folder so use_skill can run "
+                    "them. Use when Chris says import all the skills from <repo>, or sync a skill catalog. "
+                    "Only the markdown playbooks are downloaded (no scripts run).",
+     "parameters": {"type": "object", "properties": {
+         "repo": {"type": "string", "description": "owner/repo to import skills from."},
+         "limit": {"type": "number", "description": "Max skills to import (default 10)."}},
+        "required": ["repo"]}},
     {"type": "function", "name": "builds",
      "description": "List the changes Zoe has autonomously built on isolated branches (via improve_self "
                     "/ the ops loop) that are waiting for Chris to review and merge. Use when he asks "
@@ -1070,6 +1078,19 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "sync_skills":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "sync_skills"}
+            try:
+                import zoe_skill_import as si
+                r = si.sync_skills(args.get("repo", ""), limit=args.get("limit", 10))
+                if r.get("ok"):
+                    return {"ok": True, "action": "sync_skills", "imported": r["imported"],
+                            "say": f"Imported {r['count']} skill(s): " + ", ".join(r["imported"][:8]) + "."}
+                return {"ok": False, "error": r.get("error", "sync failed")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "import_skill":
             src = (args.get("source") or "").strip()
             if simulate:
@@ -1135,6 +1156,7 @@ def _selftest():
         ("reminders", {"action": "cancel", "which": "1"}),
         ("reminders", {"action": "snooze", "delay_minutes": 15}),
         ("import_skill", {"source": "anthropics/skills", "skill": "pdf"}),
+        ("sync_skills", {"repo": "anthropics/skills"}),
         ("builds", {}),
         ("merge_build", {"which": "1"}),
         ("merge_build", {"which": "ops/auto-x", "confirmed": True}),
