@@ -40,7 +40,6 @@
     "deny": [
       "Bash(rm -rf /:*)",
       "Bash(rm -rf ~:*)",
-      "Bash(:(){:|:&};::*)",
       "Bash(mkfs:*)",
       "Bash(dd:*)"
     ]
