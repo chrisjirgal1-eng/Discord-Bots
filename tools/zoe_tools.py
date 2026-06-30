@@ -160,6 +160,26 @@ TOOLS = [
         "properties": {"query": {"type": "string",
             "description": "What to recall, or empty for the last session."}},
         "required": []}},
+    {"type": "function", "name": "read_file",
+     "description": "Read a file or log on his machine so you can see what actually happened "
+                    "(e.g. read 'zoe-voice.log' to find why something failed). Repo-relative or "
+                    "absolute path. Read-only and safe. Use this to investigate before answering "
+                    "'why did that fail' instead of guessing.",
+     "parameters": {"type": "object",
+        "properties": {"path": {"type": "string", "description": "File or folder path to read."}},
+        "required": ["path"]}},
+    {"type": "function", "name": "run_command",
+     "description": "Run a shell command in the project to check or fix something (git, npm, "
+                    "python, tests, etc.) and read its output. Destructive commands (delete, "
+                    "format, force-push, ...) are REFUSED unless confirmed is true, so confirm "
+                    "yes/no with him first for those. Use this to actually fix things, not just "
+                    "describe them.",
+     "parameters": {"type": "object",
+        "properties": {
+            "command": {"type": "string", "description": "The shell command to run."},
+            "confirmed": {"type": "boolean", "description": "Set true only after he says yes to a "
+                          "destructive command."}},
+        "required": ["command"]}},
     {"type": "function", "name": "run_agent",
      "description": "Hand a hard reasoning, research, or multi-step coding task to the Hermes "
                     "agent. Use for anything beyond a simple command.",
@@ -422,6 +442,24 @@ def dispatch(name, args, ctrl=None, simulate=True):
                                                     {"action": "memory", "target": query})
             return {"ok": bool(handled), "say": say}
 
+        if name == "read_file":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "read_file",
+                        "path": args.get("path", "")}
+            import zoe_ops
+            r = zoe_ops.read_file(args.get("path", ""))
+            r["action"] = "read_file"
+            return r
+
+        if name == "run_command":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "run_command",
+                        "command": args.get("command", "")}
+            import zoe_ops
+            r = zoe_ops.run_command(args.get("command", ""), bool(args.get("confirmed", False)))
+            r["action"] = "run_command"
+            return r
+
         if name == "run_agent":
             prompt = (args.get("prompt") or "").strip()
             if simulate:
@@ -463,6 +501,9 @@ def _selftest():
         ("set_music", {"query": "epic orchestral"}),
         ("start_workspace", {"name": "coding"}),
         ("recall_memory", {"query": ""}),
+        ("read_file", {"path": "zoe-voice.log"}),
+        ("run_command", {"command": "git status"}),
+        ("run_command", {"command": "rm -rf /"}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
         ("bogus_tool", {}),
     ]
