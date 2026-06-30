@@ -310,6 +310,15 @@ TOOLS = [
                     "/ the ops loop) that are waiting for Chris to review and merge. Use when he asks "
                     "what you have built, what is on your branches, or what is ready to review.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "merge_build",
+     "description": "Merge one of Zoe's autonomous build branches into the LIVE code, after Chris "
+                    "approves. Use when he says merge that build, apply it, or ship it for real. ALWAYS "
+                    "confirm with a yes first, then call again with confirmed true. He must relaunch to "
+                    "run the merged change.",
+     "parameters": {"type": "object", "properties": {
+         "which": {"type": "string", "description": "The branch name (ops/auto-...) or a number from the builds list."},
+         "confirmed": {"type": "boolean", "description": "Set true only after he says yes."}},
+        "required": ["which"]}},
     {"type": "function", "name": "status",
      "description": "Give Chris a quick health report on Zoe herself: tools online, pending reminders, "
                     "last ops run, builds awaiting review, and system load. Use when he asks 'status', "
@@ -1026,6 +1035,27 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 pass
             return {"ok": True, "action": "status", "say": "All systems nominal, sir. " + ", ".join(bits) + "."}
 
+        if name == "merge_build":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "merge_build"}
+            if not args.get("confirmed"):
+                return {"ok": False, "needs_confirm": True,
+                        "say": "Merging a build changes your live code. Want me to merge it? Say yes to confirm."}
+            try:
+                import zoe_ops_loop as ol
+                which = (args.get("which") or "").strip()
+                if which.isdigit():
+                    bs = ol.branches()
+                    i = int(which) - 1
+                    which = bs[i]["branch"] if 0 <= i < len(bs) else which
+                r = ol.merge_branch(which)
+                if r.get("ok"):
+                    return {"ok": True, "action": "merge_build",
+                            "say": f"Merged {r['merged']} into your live code, sir. Relaunch me to run it."}
+                return {"ok": False, "error": r.get("error", "merge failed"), "say": r.get("error", "")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "builds":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "builds"}
@@ -1106,6 +1136,8 @@ def _selftest():
         ("reminders", {"action": "snooze", "delay_minutes": 15}),
         ("import_skill", {"source": "anthropics/skills", "skill": "pdf"}),
         ("builds", {}),
+        ("merge_build", {"which": "1"}),
+        ("merge_build", {"which": "ops/auto-x", "confirmed": True}),
         ("status", {}),
         ("weather", {"location": "Boston"}),
         ("summarize", {"target": "https://example.com"}),

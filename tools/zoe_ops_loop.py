@@ -501,6 +501,25 @@ def branches():
         return []
 
 
+def merge_branch(branch):
+    """Merge an autonomous ops branch into the current working branch. Guard-railed: only ops/* branches,
+    refuses if the working tree is dirty, aborts cleanly on conflict, never force, never push. After a
+    successful merge Chris must relaunch to run the change. Returns {ok, merged, into} or {ok:False, error}."""
+    b = (branch or "").strip()
+    if not b.startswith("ops/"):
+        return {"ok": False, "error": "only autonomous ops/ branches can be merged by voice"}
+    if _git(["rev-parse", "--verify", b]).returncode != 0:
+        return {"ok": False, "error": f"branch {b} not found"}
+    if _git(["status", "--porcelain"]).stdout.strip():
+        return {"ok": False, "error": "working tree has uncommitted changes, so a merge is not safe right now"}
+    cur = _git(["rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
+    m = _git(["merge", "--no-ff", "-m", f"Merge autonomous build {b} (approved by Chris)", b])
+    if m.returncode != 0:
+        _git(["merge", "--abort"])
+        return {"ok": False, "error": "the merge hit conflicts, so I aborted it; nothing changed"}
+    return {"ok": True, "merged": b, "into": cur}
+
+
 def read_log(n=25):
     if not os.path.exists(LOG):
         return []
