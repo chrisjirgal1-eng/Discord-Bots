@@ -75,6 +75,28 @@ def _web_url(query_or_url):
     return "https://www.google.com/search?q=" + urllib.parse.quote(s)
 
 
+def _open_url(url):
+    """Open a URL in the default browser, the reliable Windows way. webbrowser.open often
+    reports success but opens nothing on Windows, so go straight to os.startfile / `start` --
+    the same shell mechanism that already works for launching apps. Returns True if launched."""
+    try:
+        os.startfile(url)          # Windows: hands the URL to the default browser
+        return True
+    except Exception:
+        pass
+    try:
+        import subprocess
+        subprocess.Popen(["cmd", "/c", "start", "", url])
+        return True
+    except Exception:
+        pass
+    try:
+        import webbrowser
+        return bool(webbrowser.open(url))   # last resort (non-Windows / odd setups)
+    except Exception:
+        return False
+
+
 def dispatch(name, args, ctrl=None, simulate=True):
     """Run one tool call through the existing router. Returns a JSON-able result dict.
 
@@ -103,8 +125,7 @@ def dispatch(name, args, ctrl=None, simulate=True):
             url = _web_url(args.get("query_or_url"))
             if simulate:
                 return {"ok": True, "simulated": True, "action": "web", "url": url}
-            a, handled = zoe_router.execute({"action": "web", "url": url}, url, ctrl)
-            return {"ok": bool(handled), "action": a, "url": url}
+            return {"ok": _open_url(url), "action": "web", "url": url}
 
         if name == "recall_memory":
             query = (args.get("query") or "").strip()
