@@ -321,6 +321,19 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "topic": {"type": "string", "description": "Optional topic; omit for general top headlines."}},
         "required": []}},
+    {"type": "function", "name": "media",
+     "description": "Control media playback with the keyboard media keys. Use when Chris says pause, "
+                    "play, skip, next, or previous song.",
+     "parameters": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["playpause", "next", "previous"], "description": "playpause, next, or previous."}},
+        "required": ["action"]}},
+    {"type": "function", "name": "lock",
+     "description": "Lock the Windows screen. Use when Chris says lock my computer or lock the screen.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "screenshot",
+     "description": "Take a screenshot and save it to his Pictures folder. Use when Chris says take a "
+                    "screenshot or capture the screen.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
     {"type": "function", "name": "now",
      "description": "Get the exact current local date and time. Use when Chris asks what time it is, "
                     "what day it is, or the date.",
@@ -886,6 +899,31 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "media":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "media", "do": args.get("action")}
+            import zoe_screen
+            return zoe_screen.media(args.get("action", "playpause"))
+
+        if name == "lock":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "lock"}
+            import subprocess
+            try:
+                subprocess.run(["rundll32.exe", "user32.dll,LockWorkStation"], timeout=10)
+                return {"ok": True, "action": "lock", "say": "Locking up, sir."}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
+        if name == "screenshot":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "screenshot"}
+            import zoe_screen
+            r = zoe_screen.save_screenshot()
+            if r.get("ok"):
+                r["say"] = "Saved a screenshot to your Pictures, sir."
+            return r
+
         if name == "now":
             if simulate:
                 return {"ok": True, "simulated": True, "action": "now"}
@@ -1075,6 +1113,9 @@ def _selftest():
         ("news", {"topic": "technology"}),
         ("now", {}),
         ("clipboard", {"action": "read"}),
+        ("media", {"action": "playpause"}),
+        ("lock", {}),
+        ("screenshot", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

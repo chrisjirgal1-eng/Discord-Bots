@@ -119,6 +119,33 @@ def volume(direction="up", steps=3):
         return {"ok": False, "error": str(e)[:200]}
 
 
+def media(action="playpause"):
+    """Media transport via keyboard media keys. play/pause, next, previous."""
+    keys = {"playpause": "playpause", "play": "playpause", "pause": "playpause",
+            "next": "nexttrack", "skip": "nexttrack", "previous": "prevtrack", "prev": "prevtrack"}
+    try:
+        _gui().press(keys.get(str(action).lower(), "playpause"))
+        return {"ok": True, "action": "media", "did": action}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
+def save_screenshot():
+    """Capture the screen and move it into the user's Pictures folder. Returns {ok, path}."""
+    p = capture()
+    if not p:
+        return {"ok": False, "error": "could not capture the screen"}
+    try:
+        import shutil, datetime
+        dest_dir = os.path.join(os.path.expanduser("~"), "Pictures")
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, "zoe-shot-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".png")
+        shutil.move(p, dest)
+        return {"ok": True, "action": "screenshot", "path": dest}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "see":
         print(see(" ".join(sys.argv[2:])))
