@@ -10,12 +10,17 @@ or pass a path to start(). ZOE_MUSIC_GAIN (default 0.25) sets how loud the music
 """
 import os, sys, threading, subprocess
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MUSIC_DIR = os.path.join(ROOT, "music")
+AUDIO_EXT = (".mp3", ".m4a", ".wav", ".ogg", ".flac")
 SR = 24000                      # match her voice stream (pcm16 mono 24k)
 _thread = None
 _stop = threading.Event()
 
 
 def _resolve(track):
+    """Find the track to play: an explicit path, else ZOE_MUSIC, else the first audio file
+    dropped in the repo music/ folder. So she works the moment a track is in music/."""
     if track:
         t = os.path.expanduser(os.path.expandvars(str(track).strip().strip('"')))
         if os.path.exists(t):
@@ -25,6 +30,10 @@ def _resolve(track):
         env = os.path.expanduser(os.path.expandvars(env))
         if os.path.exists(env):
             return env
+    if os.path.isdir(MUSIC_DIR):
+        for f in sorted(os.listdir(MUSIC_DIR)):
+            if f.lower().endswith(AUDIO_EXT):
+                return os.path.join(MUSIC_DIR, f)
     return None
 
 

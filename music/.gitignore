@@ -1,0 +1,6 @@
+# Keep audio files local (light repo, no accidental copyrighted audio). README stays tracked.
+*.mp3
+*.m4a
+*.wav
+*.ogg
+*.flac
