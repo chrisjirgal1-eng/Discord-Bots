@@ -251,6 +251,16 @@ TOOLS = [
          "use_claude": {"type": "boolean", "description": "true = use the Claude coding actor (deeper, "
                         "needs claude_login). Default false uses the lighter built-in editor."}},
         "required": ["task"]}},
+    {"type": "function", "name": "use_skill",
+     "description": "Run one of Zoe's installed skills -- a saved expert workflow (for example "
+                    "content-pipeline, clearcoat-post, caption, coach-email, zen-announce, "
+                    "digest-transcripts, memory-update). Use it when his ask matches a skill's job; the "
+                    "skill's playbook loads and you follow it with your other tools. Call with no skill "
+                    "(or an unknown one) to hear the catalog of what is available.",
+     "parameters": {"type": "object", "properties": {
+         "skill": {"type": "string", "description": "The skill name, e.g. 'content-pipeline'. Omit to list all."},
+         "context": {"type": "string", "description": "Optional detail to run it with, e.g. the topic or target."}},
+        "required": []}},
 ]
 
 
@@ -425,6 +435,60 @@ def _open_in_chrome(url, profile_dir):
             return True
         except Exception:
             return False
+
+
+_SKILLS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".claude", "skills")
+
+
+def _skill_list():
+    """(name, one-line description) for every .claude/skills/<name>/SKILL.md. Read-only, best-effort."""
+    out = []
+    try:
+        for nm in sorted(os.listdir(_SKILLS_DIR)):
+            sm = os.path.join(_SKILLS_DIR, nm, "SKILL.md")
+            if not os.path.isfile(sm):
+                continue
+            desc = ""
+            with open(sm, encoding="utf-8") as f:
+                for i, line in enumerate(f):
+                    if i > 15:
+                        break
+                    ls = line.strip()
+                    if ls.lower().startswith("description:"):
+                        desc = ls.split(":", 1)[1].strip().strip('"').strip()[:90]
+                        break
+            out.append((nm, desc))
+    except Exception:
+        pass
+    return out
+
+
+def skill_catalog_text():
+    """A compact catalog line for the persona so the voice knows which skills it can run."""
+    items = _skill_list()
+    if not items:
+        return ""
+    lines = "; ".join(f"{n} ({d})" if d else n for n, d in items[:24])
+    return "Your installed skills (run one with use_skill when its workflow fits the ask): " + lines
+
+
+def _read_skill(name):
+    """Return (resolved_name, SKILL.md text) tolerating case/partial names; ('', '') if not found."""
+    cands = []
+    try:
+        cands = [d for d in os.listdir(_SKILLS_DIR)
+                 if os.path.isfile(os.path.join(_SKILLS_DIR, d, "SKILL.md"))]
+    except Exception:
+        return "", ""
+    nl = (name or "").lower()
+    match = next((d for d in cands if d.lower() == nl), None) \
+        or next((d for d in cands if nl and nl in d.lower()), None)
+    if not match:
+        return "", ""
+    try:
+        return match, open(os.path.join(_SKILLS_DIR, match, "SKILL.md"), encoding="utf-8").read()[:6000]
+    except Exception:
+        return match, ""
 
 
 def dispatch(name, args, ctrl=None, simulate=True):
@@ -645,6 +709,21 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:250]}
 
+        if name == "use_skill":
+            sk = (args.get("skill") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "use_skill", "skill": sk}
+            if not sk:
+                names = [n for n, _ in _skill_list()]
+                return {"ok": True, "action": "use_skill", "skills": names,
+                        "say": "Skills I can run: " + ", ".join(names)}
+            resolved, body = _read_skill(sk)
+            if not body:
+                return {"ok": False, "error": f"no skill named {sk}",
+                        "skills": [n for n, _ in _skill_list()]}
+            return {"ok": True, "action": "use_skill", "skill": resolved, "playbook": body,
+                    "context": args.get("context", ""), "say": f"Running the {resolved} skill."}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -685,6 +764,8 @@ def _selftest():
         ("claude_login", {}),
         ("improve_self", {"task": "review the voice commands and fix any broken one"}),
         ("improve_self", {"task": "add a status line to the ops view", "act": True, "use_claude": True}),
+        ("use_skill", {}),
+        ("use_skill", {"skill": "content-pipeline", "context": "new roblox short"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

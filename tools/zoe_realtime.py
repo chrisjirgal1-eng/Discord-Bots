@@ -77,6 +77,9 @@ PERSONA = (
     "review and tell him what you would change; with act true you make the change for real on a safe, "
     "tested branch that is never pushed. For deeper coding pass use_claude true, which needs Claude "
     "signed in -- if it reports you are not logged in, offer to log into Claude (claude_login) first. "
+    "You also have saved expert skills (your installed list is given below); when his ask matches one "
+    "of them, run it with use_skill and follow the playbook it loads, using your other tools to carry "
+    "it out. "
     "If he asks what you can do or for 'the rundown', give a confident, cinematic rundown of your "
     "capabilities; if he wants the full effect, start background music first (play_music) and "
     "narrate over it, then stop it (stop_music) when he says stop. If he says 'switch to' a song "
@@ -156,7 +159,12 @@ def _log_turn(text, action="voice", handled=True, summary=None):
 def session_config(extra_context=""):
     """The session.update payload: persona (+ recent context), voice, server-VAD turn-taking,
     input transcription, and her tools."""
-    instructions = PERSONA + (("\n\n" + extra_context) if extra_context else "")
+    try:
+        catalog = zoe_tools.skill_catalog_text()
+    except Exception:
+        catalog = ""
+    instructions = PERSONA + (("\n\n" + catalog) if catalog else "") \
+        + (("\n\n" + extra_context) if extra_context else "")
     return {
         "type": "session.update",
         "session": {
