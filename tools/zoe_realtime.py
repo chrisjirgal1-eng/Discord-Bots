@@ -33,7 +33,8 @@ SR = 24000                  # Realtime audio: pcm16, 24kHz, mono
 BLOCK = 480                 # 20ms mic frames
 
 PERSONA = (
-    "You are Zoe, Chris's AI operator and right hand. Address him as sir or Chris. "
+    "You are Zoe, Chris's AI operator and right hand. Always speak in English. Address him as "
+    "sir or Chris. "
     "You run his world: Zenthra (his Roblox guild), Clearcoat Co. (his detailing business), "
     "his content, his coding, and his D1 track goals. "
     "You are on his team, a sharp teammate, not a help desk. Be warm, direct, and a little "
@@ -117,6 +118,7 @@ def session_config(extra_context=""):
     return {
         "type": "session.update",
         "session": {
+            "type": "realtime",          # required by the GA Realtime API
             "modalities": ["audio", "text"],
             "instructions": instructions,
             "voice": VOICE,
@@ -344,7 +346,8 @@ def main():
         assert msg["item"]["type"] == "function_call_output" and msg["item"]["call_id"] == "call_1"
         assert json.loads(msg["item"]["output"]) == res
         cfg = session_config("Recent context: last session he ran 3 command(s).")["session"]
-        assert cfg["voice"] == VOICE and cfg["tools"] and cfg["turn_detection"]["type"] == "server_vad"
+        assert cfg["type"] == "realtime" and cfg["voice"] == VOICE and cfg["tools"]
+        assert cfg["turn_detection"]["type"] == "server_vad"
         assert cfg["input_audio_transcription"]["model"] == "whisper-1"
         assert "Recent context:" in cfg["instructions"]    # continuity injected into persona
         assert GREETING["type"] == "response.create" and GREETING["response"]["instructions"]
@@ -362,6 +365,12 @@ def main():
     mx = os.environ.get("ZOE_REALTIME_MAX_MIN")
     max_min = float(mx) if mx else None
     print(f"\n  ZOE realtime ready. model={MODEL} voice={VOICE} idle={idle}s\n")
+    if not os.environ.get("ZOE_CONTROL") and os.environ.get("ZOE_NO_HUD", "").lower() not in ("1", "true"):
+        try:
+            import zoe_assistant
+            zoe_assistant.boot_hud()      # bring up the visual HUD (localhost:7717)
+        except Exception as e:
+            print("  (HUD not started:", e, ")")
     try:
         while True:
             if not wait_for_wake():
