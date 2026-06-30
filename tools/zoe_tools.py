@@ -186,6 +186,17 @@ TOOLS = [
      "parameters": {"type": "object",
         "properties": {"prompt": {"type": "string", "description": "The full request for Hermes."}},
         "required": ["prompt"]}},
+    {"type": "function", "name": "switch_view",
+     "description": "Switch the Zoe app to one of its screens and bring the window up: zoey (the "
+                    "assistant chat), vault (Obsidian notes), graph (the memory graph), lab "
+                    "(research), or ops (the Ops Loop, her autonomous runs). Use when he says 'go "
+                    "to', 'pull up', or 'show me' one of those tabs or bars. For ops it also returns "
+                    "the latest run status so you can tell him what is on it.",
+     "parameters": {"type": "object",
+        "properties": {"view": {"type": "string",
+            "enum": ["zoey", "vault", "graph", "lab", "ops"],
+            "description": "Which screen to show."}},
+        "required": ["view"]}},
 ]
 
 
@@ -497,6 +508,32 @@ def dispatch(name, args, ctrl=None, simulate=True):
             r["action"] = "agent"; r["via"] = "openai"
             return r
 
+        if name == "switch_view":
+            view = (args.get("view") or "").strip().lower()
+            view = {"zoe": "zoey", "assistant": "zoey", "home": "zoey", "chat": "zoey",
+                    "obsidian": "vault", "notes": "vault", "memory": "graph", "research": "lab",
+                    "ops loop": "ops", "loop": "ops"}.get(view, view)
+            if view not in ("zoey", "vault", "graph", "lab", "ops"):
+                return {"ok": False, "error": f"unknown view {view}",
+                        "available": ["zoey", "vault", "graph", "lab", "ops"]}
+            shows = {"zoey": "the assistant chat", "vault": "the Obsidian vault",
+                     "graph": "the memory graph", "lab": "the research lab",
+                     "ops": "the Ops Loop and her autonomous runs"}[view]
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "view", "view": view, "shows": shows}
+            res = zoe_router._post(ctrl, "/view", {"view": view}) if ctrl else None
+            out = {"ok": bool(res), "action": "view", "view": view, "shows": shows}
+            if view == "ops":
+                try:
+                    import zoe_ops_loop
+                    s = zoe_ops_loop.status()
+                    last = s.get("last") or {}
+                    out["ops"] = {"next_run": s.get("next_run"), "last_status": last.get("status"),
+                                  "last_summary": (last.get("result") or "")[:200]}
+                except Exception:
+                    pass
+            return out
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -531,6 +568,7 @@ def _selftest():
         ("run_command", {"command": "git status"}),
         ("run_command", {"command": "rm -rf /"}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
+        ("switch_view", {"view": "ops"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

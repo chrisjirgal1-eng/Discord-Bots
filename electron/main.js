@@ -275,6 +275,10 @@ function startControlServer() {
           // the voice assistant heard "hey zoe" -> bring the window to the front
           showWindow();
           result = { handled: true, shown: true };
+        } else if (req.url === '/view' && data.view) {
+          // the voice asked to navigate to a screen (zoey/vault/graph/lab/ops)
+          switchWorkspace(String(data.view));
+          result = { handled: true, view: String(data.view) };
         }
       } catch (e) { result = { handled: false, error: String(e) }; }
       res.writeHead(200, { 'Content-Type': 'application/json' });
