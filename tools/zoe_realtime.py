@@ -20,7 +20,7 @@ Note: the Realtime API schema and event names have shifted across versions. The 
 and voice are env-overridable, and the receive loop tolerates both audio-delta names. If
 OpenAI changes the session schema, adjust session.update against the live docs.
 """
-import os, sys, json, time, base64, asyncio, argparse
+import os, sys, json, time, base64, asyncio, argparse, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jarvis_speak import load_env
