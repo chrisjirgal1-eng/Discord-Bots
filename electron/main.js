@@ -28,7 +28,7 @@ const CONTROL_PORT = 7766;
 // Hidden/background start: launched with --hidden (the login auto-start), the window stays in the
 // tray and Zoe just listens; say "hey zoe" to open it. A manual launch (npm start) shows normally.
 const START_HIDDEN = process.argv.includes('--hidden') || process.env.ZOE_START_HIDDEN === '1';
-let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
+let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null, watcherProc = null;
 let paletteHotkey = null, cc = null;
 
 // ---- python resolution (the bare `python` on PATH is the Windows Store stub) ----
@@ -76,7 +76,8 @@ function killStrayServices() {
   try {
     spawn('powershell', ['-NoProfile', '-Command',
       "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' " +
-      "-or $_.CommandLine -like '*zoe_assistant.py*' -or $_.CommandLine -like '*zoe_server.py*' } | " +
+      "-or $_.CommandLine -like '*zoe_assistant.py*' -or $_.CommandLine -like '*zoe_server.py*' " +
+      "-or $_.CommandLine -like '*os\\watch.py*' } | " +
       "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
       { windowsHide: true, stdio: 'ignore' });
   } catch (e) { /* best-effort */ }
@@ -95,6 +96,15 @@ function startTelemetry() {
     telemetryProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_server.py')],
       { cwd: ROOT, stdio: ['ignore', log, log], windowsHide: true });
   } catch (e) { console.error('telemetry start failed', e); }
+  // Zoe OS watcher: keeps the ecosystem registry/graph re-indexed as files change (best-effort).
+  try {
+    const oswatch = 'C:\\Users\\chris\\Zoe\\os\\watch.py';
+    if (fs.existsSync(oswatch)) {
+      const wlog = openLog('zoe-os-watch.log');
+      watcherProc = spawn(pythonwExe(), ['-u', oswatch],
+        { cwd: 'C:\\Users\\chris\\Zoe', stdio: ['ignore', wlog, wlog], windowsHide: true });
+    }
+  } catch (e) { console.error('os watcher start failed', e); }
 }
 
 // ---- the Zoe window ----
@@ -399,6 +409,7 @@ else {
     globalShortcut.unregisterAll();
     if (telemetryProc) telemetryProc.kill();
     if (voiceProc) voiceProc.kill();
+    if (watcherProc) watcherProc.kill();
     if (controlServer) controlServer.close();
   });
 }
