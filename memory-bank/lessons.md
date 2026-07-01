@@ -82,3 +82,39 @@ See `.claude/rules/learning.md` for the loop.
     or pipe data via stdin, or just use the Read tool which handles the path.
   - Prevent: when handing a path from the Bash tool to native Python, convert `/c/` to `C:/` first, or
     avoid the intermediate file and pipe through stdin.
+
+## 2026-06-30
+
+- The live Instagram cookie file was the small IG-only export, not the big multi-site one.
+  - Mistake: copied `research/Automation/ig_cookies.txt` (539KB, all sites, newer) to `cookies.txt`;
+    it failed auth with "empty media response". The 12KB Instagram-only export authenticated fine.
+  - Fix: smoke-test with `yt-dlp -s --cookies <file> <reel>` and pick the file that prints OK before
+    a batch. Also `.gitignore` had no cookies rule (despite "keep it out of the repo"), and
+    `watch-batch.sh` was not passing `--cookies` at all. Added cookie patterns to `.gitignore` and
+    wired `--cookies cookies.txt` into `watch-batch.sh`.
+  - Prevent: validate the cookie file with a one-reel simulate first; never assume newer or bigger
+    means valid. Confirm `git check-ignore cookies.txt` before copying any secret into the repo root.
+
+- Image carousels and silent reels cannot be transcribed; that is not a pipeline failure.
+  - Mistake: treated 4 "download FAILED" reels as something to fix and retried them twice.
+  - Fix: diagnosed each. 3 were `/p/` image posts ("No video formats found"); 1 reel pulled a 132KB
+    clip with no audio stream (ffmpeg "Output file does not contain any stream"). None have speech.
+  - Prevent: a `/p/` image post or a no-audio reel is expected attrition. Confirm "No video formats"
+    or "no stream" once, mark it failed, and move on instead of retrying.
+
+- yt-dlp now pulls Instagram cookies straight from Chrome on this machine (supersedes the export note above).
+  - Finding: `--cookies-from-browser chrome` authenticates on yt-dlp 2026.06.09, despite the older
+    note that Chrome app-bound encryption blocked it. Firefox is not signed into IG; Edge extraction hung.
+  - Refresh in one command: `yt-dlp --cookies-from-browser chrome --cookies cookies.txt -s <any reel>`
+    pulls a fresh session from Chrome and writes it to cookies.txt (gitignored). No browser extension needed.
+  - Prevent: when auth starts failing, rerun that one command with Chrome signed into Instagram,
+    instead of doing a manual "Get cookies.txt" export.
+
+- Electron "app won't open / opens the old website" after a crash or force-kill.
+  - Mistake: assumed launch was working; it exited instantly (clean, no stderr). Spent time on
+    single-instance theories. Real cause: a stale `lockfile` in `%APPDATA%\zoe-desktop` from a
+    force-killed instance, so `app.requestSingleInstanceLock()` returns false and `app.quit()` fires
+    before any logging. Symptom looks like a browser/local-site UI because only the Python server runs.
+  - Fix: `Remove-Item "$env:APPDATA\zoe-desktop\lockfile" -Force` then relaunch. Patched zoe_silent.vbs
+    to clear it on every launch so a crash self-heals.
+  - Prevent: when an Electron app exits with no output, check the userData `lockfile` first, not the code.

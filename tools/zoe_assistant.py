@@ -151,7 +151,28 @@ def main():
     print(f"  mic wake threshold: {RMS_THRESHOLD}  (set ZOE_MIC_THRESHOLD in .env to override)")
     print("\n  ZOE is listening. Say 'Hey Zoe' then your request. Ctrl+C to quit.\n")
     speak("Zoe online, sir. Say hey Zoe whenever you need me.")
+    try:                                            # Voice 2.0 streaming engine (opt-in: ZOE_VOICE_2=1)
+        import zoe_voice
+        if zoe_voice.available():
+            print("  voice engine: streaming 2.0", zoe_voice.capabilities())
+            try:
+                zoe_voice.run(groq_key, dg, ctrl, speak)
+            finally:                                # preserve continuity + self-review/evolve on exit
+                try: zoe_state.save(zoe_state.load())
+                except Exception: pass
+                try: zoe_memory.sync()
+                except Exception: pass
+                try: import zoe_review; zoe_review.review()
+                except Exception: pass
+                try: import zoe_evolve; zoe_evolve.run()
+                except Exception: pass
+            return
+    except Exception as e:
+        print("  (streaming engine off, using legacy loop:", e, ")")
     history = []
+    follow_window = float(os.environ.get("ZOE_FOLLOW_SECONDS", "12") or 12)  # talk back w/o re-waking
+    follow_until = 0.0
+    turns = 0
     try:
         while True:
             audio = listen_utterance()
@@ -163,18 +184,25 @@ def main():
                 print("  stt error:", e); continue
             if not text:
                 continue
-            if not any(w in text.lower() for w in WAKE_WORDS):
-                continue  # not addressed to Zoe
-            print("  heard:  ", text)
-            summon_ui(ctrl)   # "hey zoe" -> pop the window to the front
-            command = strip_wake(text)
-            if not command:
-                speak("Yes, sir?")
-                audio = listen_utterance(max_wait=6)
-                if audio is None:
-                    continue
-                try: command = stt(to_wav(audio), dg)
-                except Exception: continue
+            woke = any(w in text.lower() for w in WAKE_WORDS)
+            in_window = time.time() < follow_until        # mid-conversation: follow-ups need no wake word
+            if not woke and not in_window:
+                continue  # not addressed to Zoe, and not mid-conversation
+            if woke:
+                print("  heard:  ", text)
+                summon_ui(ctrl)   # "hey zoe" -> pop the window to the front
+                command = strip_wake(text)
+                if not command:
+                    speak("Yes, sir?")
+                    audio = listen_utterance(max_wait=6)
+                    if audio is None:
+                        follow_until = time.time() + follow_window
+                        continue
+                    try: command = stt(to_wav(audio), dg)
+                    except Exception: continue
+            else:
+                command = text.strip()                    # follow-up within the window
+                print("  (follow-up):", command)
             if not command:
                 continue
             print("  command:", command)
@@ -187,9 +215,24 @@ def main():
                         {"role": "assistant", "content": say}]
             history = history[-8:]
             speak(say)
+            follow_until = time.time() + follow_window   # keep listening for a follow-up, no re-wake
+            turns += 1
+            if turns % 4 == 0:                           # Phase 2: roll up topic/summary every few turns
+                try:
+                    tp = zoe_memory.summarize_context(history, groq_key)
+                    if tp:
+                        zoe_state.update_conversation(current_topic=tp)
+                except Exception:
+                    pass
     except KeyboardInterrupt:
         zoe_state.save(zoe_state.load())   # preserve continuity on shutdown
         try: zoe_memory.sync()             # snapshot this session into the Obsidian vault
+        except Exception: pass
+        try:
+            import zoe_review; zoe_review.review()   # Phase 4: self-review at session end
+        except Exception: pass
+        try:
+            import zoe_evolve; zoe_evolve.run()       # Evolution: generalize via Hermes (Groq fallback)
         except Exception: pass
         print("\n  Zoe offline. Goodbye, sir.\n")
 

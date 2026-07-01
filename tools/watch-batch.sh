@@ -23,6 +23,12 @@ command -v yt-dlp >/dev/null || { echo "install yt-dlp first"; exit 1; }
 command -v ffmpeg >/dev/null || { echo "install ffmpeg first"; exit 1; }
 mkdir -p "$OUT"
 
+# Instagram login wall: pass a Netscape-format cookies file if present.
+# Override path with COOKIES=... ; default is ./cookies.txt (gitignored).
+COOKIES="${COOKIES:-cookies.txt}"
+COOKIE_ARGS=()
+if [ -f "$COOKIES" ]; then COOKIE_ARGS=(--cookies "$COOKIES"); echo "using cookies: $COOKIES"; fi
+
 i=0; ok=0; fail=0
 while IFS= read -r url || [ -n "$url" ]; do
   url="$(echo "$url" | tr -d '[:space:]')"
@@ -35,7 +41,7 @@ while IFS= read -r url || [ -n "$url" ]; do
     echo "[$i] $id already transcribed, skip"; ok=$((ok+1)); continue
   fi
   echo "[$i] $id downloading audio..."
-  if ! yt-dlp -q --no-warnings -f 'bestaudio/best' -x --audio-format mp3 \
+  if ! yt-dlp -q --no-warnings ${COOKIE_ARGS[@]+"${COOKIE_ARGS[@]}"} -f 'bestaudio/best' -x --audio-format mp3 \
         -o "$base.%(ext)s" "$url" 2>/dev/null; then
     echo "[$i] $id download FAILED (login/blocked/removed)"; echo "__FAILED__ download" > "$base.txt"; fail=$((fail+1)); continue
   fi

@@ -75,22 +75,37 @@ def read(query=None):
     if not query:
         idx = _read(os.path.join(VAULT, "index.md")) or _build_index()
         return {"path": "index.md", "content": idx}
-    for folder in ("notes", "sessions", "log", ""):
+    for folder in ("notes", "research", "docs", "sessions", "log", ""):
         p = os.path.join(VAULT, folder, _slug(query) + ".md")
         if os.path.exists(p):
             return {"path": os.path.relpath(p, VAULT).replace("\\", "/"), "content": _read(p)}
     return {"query": query, "matches": search(query)}
 
 def search(term):
-    term = (term or "").lower()
-    out = []
+    """Rank notes by relevance to the query. The full phrase scores highest; individual words
+    also count (title hits weigh more), so multi-word topics like 'instagram creators' match
+    notes that contain either word -- not only the exact phrase. Backward compatible."""
+    term = (term or "").lower().strip()
+    if not term:
+        return []
+    words = [w for w in re.split(r"[^a-z0-9]+", term) if len(w) > 2]
+    scored = []
     for p in glob.glob(os.path.join(VAULT, "**", "*.md"), recursive=True):
         txt = _read(p)
-        if term in txt.lower() or term in os.path.basename(p).lower():
-            i = txt.lower().find(term)
+        low = txt.lower()
+        base = os.path.basename(p).lower()
+        score = 0
+        if term in low or term in base:
+            score += 10                                   # exact phrase = strong signal
+        score += sum(2 for w in words if w in base)       # query word in the title
+        score += sum(1 for w in words if w in low)        # query word in the body
+        if score:
+            i = low.find(words[0]) if words else low.find(term)
             snip = (txt[max(0, i - 60):i + 100] if i >= 0 else txt[:140]).replace("\n", " ")
-            out.append({"path": os.path.relpath(p, VAULT).replace("\\", "/"), "snippet": snip.strip()})
-    return out[:20]
+            scored.append((score, {"path": os.path.relpath(p, VAULT).replace("\\", "/"),
+                                   "snippet": snip.strip()}))
+    scored.sort(key=lambda x: -x[0])
+    return [s[1] for s in scored[:20]]
 
 def sync():
     """Push the current runtime state into a dated session note + refresh the index. Returns path."""
@@ -191,7 +206,7 @@ def _load_state():
         except Exception:
             return {}
 
-VAULT_FOLDERS = ["system", "docs", "project", "skills", "plugins", "sessions", "notes"]
+VAULT_FOLDERS = ["system", "docs", "project", "research", "skills", "plugins", "sessions", "notes"]
 
 def _build_index():
     """Rebuild a categorized index (vault/index.md) with [[wikilinks]] into every folder."""
@@ -249,6 +264,37 @@ def sync_knowledge():
         pass
     _build_index()
     return n
+
+def summarize_context(history, groq_key=None, model="llama-3.1-8b-instant"):
+    """Phase 2 — layered memory: compress recent conversation turns into {topic, one-line summary}
+    via Groq and write/overwrite a rolling 'Live Session' note in the vault. Returns the topic (or
+    '' on failure). Lets long conversations stay coherent without unbounded context. Best-effort;
+    never raises (so it can't break the voice/command loop)."""
+    groq_key = groq_key or os.environ.get("GROQ_API_KEY")
+    if not (history and groq_key):
+        return ""
+    import urllib.request
+    convo = "\n".join(f"{m.get('role', 'user')}: {m.get('content', '')}" for m in history[-10:])
+    sys_p = ("Summarize this assistant conversation for continuity. Reply with ONLY JSON: "
+             '{"topic":"<2-4 word current topic>","summary":"<one sentence of what is going on>"}')
+    try:
+        body = json.dumps({"model": model, "temperature": 0.3, "max_tokens": 120,
+                           "messages": [{"role": "system", "content": sys_p},
+                                        {"role": "user", "content": convo}]}).encode()
+        req = urllib.request.Request("https://api.groq.com/openai/v1/chat/completions", data=body,
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json",
+                     "User-Agent": "curl/8"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            raw = json.load(r)["choices"][0]["message"]["content"]
+        d = json.loads(raw[raw.find("{"): raw.rfind("}") + 1])
+        topic, summary = (d.get("topic") or "").strip(), (d.get("summary") or "").strip()
+        if topic or summary:
+            write("Live Session", f"**Topic:** {topic}\n\n{summary}\n\n_Auto-summary; updates as you talk._",
+                  folder="sessions", tags=["session", "live", "auto"])
+        return topic
+    except Exception:
+        return ""
+
 
 def list_notes():
     """Folder -> [note names] map of the whole vault, for the in-app Obsidian browser. Best-effort."""

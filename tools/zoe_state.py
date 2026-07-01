@@ -36,6 +36,15 @@ DEFAULTS = {
     "workspace_state": {"last": None},        # legacy
     "preferences": {"voice_id": None, "wake_words": ["zoe", "hey zoe"]},
     "plugins": {"active": [], "registry": {}},
+    # conversation awareness (additive; ignored by legacy readers/HUD) — see zoe_router._resolve_context
+    "conversation": {
+        "current_topic": None, "previous_topic": None,
+        "last_action": None,            # {action, target, url, handled, reversible, ts, text}
+        "last_target": None,
+        "active_goals": [], "tasks": {"running": [], "pending": [], "done": []},
+        "current_project": None, "open_apps": [], "corrections": [],
+        "pending_correction": None, "updated": None,
+    },
 }
 
 def _merge(base, over):
@@ -76,10 +85,12 @@ def start_session(context=""):
     save(st)
     return st
 
-def record_command(text, action, handled=None, workspace=None, trace_id=None, summary=None):
+def record_command(text, action, handled=None, workspace=None, trace_id=None, summary=None,
+                   target=None, url=None, topic=None):
     """The 'state updated' step of the pipeline. Append to history (FIFO, capped at max_entries)
     and update workspace/last_active. Keeps the legacy last_commands list populated too.
-    summary is the human-readable parsed intent, shown in the command-bar history panel."""
+    summary is the human-readable parsed intent, shown in the command-bar history panel.
+    target/url/topic (additive, optional) feed the conversation block for context resolution."""
     try:
         st = load()
         entry = {"ts": time.strftime("%H:%M:%S"), "text": text, "action": action,
@@ -92,6 +103,50 @@ def record_command(text, action, handled=None, workspace=None, trace_id=None, su
             st.setdefault("workspace_state", {})["last"] = workspace
             st.setdefault("session", {}).setdefault("workspace", {})["last"] = workspace
         st.setdefault("session", {})["last_active"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        # conversation awareness: remember the last action + roll the topic (same write, additive)
+        conv = st.setdefault("conversation", {})
+        conv["last_action"] = {"action": action, "target": target, "url": url, "handled": handled,
+                               "reversible": action in REVERSIBLE, "ts": entry["ts"], "text": text}
+        if target:
+            conv["last_target"] = target
+        if topic and topic != conv.get("current_topic"):
+            if conv.get("current_topic"):
+                conv["previous_topic"] = conv["current_topic"]
+            conv["current_topic"] = topic
+        conv["updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        save(st)
+    except Exception:
+        pass
+
+# --- conversation awareness (Phase 1) -------------------------------------------------------
+REVERSIBLE = {"launch": "close", "close": "launch"}   # for "undo that"; best-effort
+
+def get_conversation():
+    """The live conversation block (topic, last action, tasks). Safe {} on error."""
+    try:
+        return load().get("conversation", {}) or {}
+    except Exception:
+        return {}
+
+def update_conversation(**fields):
+    """Merge fields into the conversation block. Best-effort; never raises."""
+    try:
+        st = load()
+        conv = st.setdefault("conversation", {})
+        for k, v in fields.items():
+            conv[k] = v
+        conv["updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        save(st)
+    except Exception:
+        pass
+
+def add_correction(text, was=None):
+    """Log a 'that's not what I meant' correction (capped at 20). Best-effort."""
+    try:
+        st = load()
+        conv = st.setdefault("conversation", {})
+        conv["corrections"] = ((conv.get("corrections") or [])
+                               + [{"ts": time.strftime("%H:%M:%S"), "text": text, "was": was}])[-20:]
         save(st)
     except Exception:
         pass

@@ -28,7 +28,7 @@ const CONTROL_PORT = 7766;
 // Hidden/background start: launched with --hidden (the login auto-start), the window stays in the
 // tray and Zoe just listens; say "hey zoe" to open it. A manual launch (npm start) shows normally.
 const START_HIDDEN = process.argv.includes('--hidden') || process.env.ZOE_START_HIDDEN === '1';
-let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null;
+let win = null, paletteWin = null, tray = null, telemetryProc = null, voiceProc = null, controlServer = null, watcherProc = null;
 let paletteHotkey = null, cc = null;
 
 // ---- python resolution (the bare `python` on PATH is the Windows Store stub) ----
@@ -57,14 +57,28 @@ function openLog(name) {
   try { return fs.openSync(path.join(app.getPath('userData'), name), 'a'); }
   catch (e) { return 'ignore'; }
 }
-// Kill any leftover Zoe Python services from a previous crashed/force-killed run, so we never end
-// up with several voice listeners fighting over the microphone. Runs once at startup.
+// Kill ONLY orphaned voice listeners (zoe_realtime + legacy zoe_assistant), synchronously, so the
+// new voice never starts while an old one is still on the mic. Runs before each startVoice. This is
+// the fix for "Zoe talks to herself / repeats": two listeners were running at once.
+function killStrayVoiceSync() {
+  if (process.platform !== 'win32') return;
+  try {
+    require('child_process').spawnSync('powershell', ['-NoProfile', '-Command',
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' " +
+      "-or $_.CommandLine -like '*zoe_assistant.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
+      { windowsHide: true, stdio: 'ignore' });
+  } catch (e) { /* best-effort */ }
+}
+// Kill any leftover Zoe Python services (voice + telemetry) from a previous crashed/force-killed run,
+// so we never accumulate duplicate listeners. Runs once at startup.
 function killStrayServices() {
   if (process.platform !== 'win32') return;
   try {
     spawn('powershell', ['-NoProfile', '-Command',
-      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_assistant.py*' " +
-      "-or $_.CommandLine -like '*zoe_server.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
+      "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*zoe_realtime.py*' " +
+      "-or $_.CommandLine -like '*zoe_assistant.py*' -or $_.CommandLine -like '*zoe_server.py*' " +
+      "-or $_.CommandLine -like '*os\\watch.py*' } | " +
+      "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"],
       { windowsHide: true, stdio: 'ignore' });
   } catch (e) { /* best-effort */ }
 }
@@ -82,6 +96,15 @@ function startTelemetry() {
     telemetryProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_server.py')],
       { cwd: ROOT, stdio: ['ignore', log, log], windowsHide: true });
   } catch (e) { console.error('telemetry start failed', e); }
+  // Zoe OS watcher: keeps the ecosystem registry/graph re-indexed as files change (best-effort).
+  try {
+    const oswatch = 'C:\\Users\\chris\\Zoe\\os\\watch.py';
+    if (fs.existsSync(oswatch)) {
+      const wlog = openLog('zoe-os-watch.log');
+      watcherProc = spawn(pythonwExe(), ['-u', oswatch],
+        { cwd: 'C:\\Users\\chris\\Zoe', stdio: ['ignore', wlog, wlog], windowsHide: true });
+    }
+  } catch (e) { console.error('os watcher start failed', e); }
 }
 
 // ---- the Zoe window ----
@@ -110,7 +133,9 @@ function createWindow() {
   });
 
   win.once('ready-to-show', () => { if (!START_HIDDEN) win.show(); });
-  // minimize to tray instead of quitting
+  // Closing the window hides Zoe to the tray (she keeps listening for "hey zoe"). Fully quit her
+  // from the tray menu's "Quit Zoe" or zoe_stop.bat. (Making the X quit outright was killing the app
+  // on launch, so this stays the safe hide-to-tray behavior.)
   win.on('close', (e) => {
     if (!app.isQuitting) { e.preventDefault(); win.hide(); }
   });
@@ -225,9 +250,37 @@ function runCommandText(text) {
   });
 }
 
+// Image + question from the command bar -> OpenAI vision (tools/zoe_vision.py). Writes the pasted or
+// attached image to a temp file, runs the helper, returns its JSON answer, then removes the temp file.
+function runImageCommand(text, dataUrl) {
+  return new Promise((resolve) => {
+    try {
+      const m = /^data:(image\/[\w.+-]+);base64,(.+)$/s.exec(dataUrl || '');
+      if (!m) return resolve({ handled: false, parsed: 'Image', error: 'no image attached' });
+      const ext = (m[1].split('/')[1] || 'png').replace(/[^\w]/g, '') || 'png';
+      const tmp = path.join(app.getPath('temp'), 'zoe-img-' + Date.now() + '.' + ext);
+      fs.writeFileSync(tmp, Buffer.from(m[2], 'base64'));
+      let out = '', p;
+      const done = (r) => { try { fs.unlinkSync(tmp); } catch (e) {} resolve(r); };
+      try {
+        p = spawn(pythonExe(), [path.join(ROOT, 'tools', 'zoe_vision.py'), tmp, String(text || '')],
+          { cwd: ROOT, windowsHide: true });
+      } catch (e) { return done({ handled: false, parsed: 'Image', error: String(e) }); }
+      p.stdout.on('data', d => out += d);
+      p.on('error', e => done({ handled: false, parsed: 'Image', error: String(e) }));
+      p.on('close', () => {
+        let r; try { r = JSON.parse(out.trim().split(/\r?\n/).pop()); } catch (e) { r = { ok: false, error: 'could not read vision result' }; }
+        done(r.ok ? { handled: true, parsed: 'Image', answer: r.answer }
+                  : { handled: false, parsed: 'Image', error: r.error || 'vision failed' });
+      });
+    } catch (e) { resolve({ handled: false, parsed: 'Image', error: String(e) }); }
+  });
+}
+
 // ---- voice engine: the existing python assistant, managed by Electron ----
 function startVoice() {
   if (voiceProc) return;
+  killStrayVoiceSync();   // never run two voices: clear any orphaned listener first
   const vlog = openLog('zoe-voice.log');
   voiceProc = spawn(pythonwExe(), ['-u', path.join(ROOT, 'tools', 'zoe_realtime.py')],
     { cwd: ROOT, stdio: ['ignore', vlog, vlog], windowsHide: true,
@@ -261,6 +314,10 @@ function startControlServer() {
           // the voice assistant heard "hey zoe" -> bring the window to the front
           showWindow();
           result = { handled: true, shown: true };
+        } else if (req.url === '/view' && data.view) {
+          // the voice asked to navigate to a screen (zoey/vault/graph/lab/ops)
+          switchWorkspace(String(data.view));
+          result = { handled: true, view: String(data.view) };
         }
       } catch (e) { result = { handled: false, error: String(e) }; }
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -286,6 +343,7 @@ function registerIpc() {
   ipcMain.handle('state:get', () => readState());
   // command bar -> shared pipeline (same engine as voice)
   ipcMain.handle('command:run', async (_e, text) => runCommandText(text));
+  ipcMain.handle('command:image', async (_e, { text, dataUrl }) => runImageCommand(text, dataUrl));
   ipcMain.handle('command:history', () => {
     const s = readState();
     return (s.history && s.history.last_commands) || s.last_commands || [];
@@ -351,6 +409,7 @@ else {
     globalShortcut.unregisterAll();
     if (telemetryProc) telemetryProc.kill();
     if (voiceProc) voiceProc.kill();
+    if (watcherProc) watcherProc.kill();
     if (controlServer) controlServer.close();
   });
 }

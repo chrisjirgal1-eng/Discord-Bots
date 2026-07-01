@@ -28,6 +28,41 @@ can act on the machine. NOT yet merged (PR #37 is draft); test, then merge to de
   smoke-tests on Windows. Confirmed working: app + voice + "Hey Zoe" + English + detailed replies.
 - Still to test: music (needs a track in `music/`), web browsing, the read_file/run_command fixing.
 
+## Build: Zoe Ops Loop, the autonomous arm of JARVIS (2026-06-30, OPS workspace)
+
+What it is: JARVIS on a clock. Not a separate system; it shares the same memory bank, skills, and
+north star as the /jarvis skill. The /jarvis skill is the REACTIVE brain (Chris asks, it routes and
+acts). The Ops Loop is the PROACTIVE arm: on a schedule it reads the memory bank, drafts ONE task,
+a fresh pass verifies it (verifier never the writer), logs it, and speaks a "Wide awake, sir" brief
+that recommends the next move and asks what to handle first. Files: tools/zoe_ops_loop.py (engine),
+zoe-ui/ops.html (OPS workspace, Ctrl+5), /ops routes in tools/zoe_server.py. Local, on Zoe's
+Groq/OpenAI keys, no cloud secrets.
+
+Scope: the task is configurable (Edit task in the UI), so it does double duty. Default task is
+self-evolution (work one item from the handoff backlog), but it can be pointed at any recurring task
+(a metrics brief, outreach drafts, the content pipeline). DRAFT-ONLY today: it thinks, drafts,
+verifies, and briefs, then Chris executes. ACT mode (manual Build button or `--act`, off the
+schedule) now makes ONE change on an isolated git worktree branch off HEAD, runs the 76 tests plus a
+fresh review, and commits only if green. Act never pushes, never merges, never touches the working
+tree, and has a path denylist (.env, secrets, cookies, .git, node_modules, workflows). Verified end
+to end: a clean edit ran the suite green and committed to an ops/auto-* branch; bad/ambiguous edits
+revert with no branch left behind.
+
+Always-on: Windows task "Zoe Ops Loop" (daily 9am, speaks) fires even with the app closed; the
+in-app scheduler (13:00) is the fallback, coordinated via last_run_date so they never double-fire.
+A disabled GitHub Actions version (.github/workflows/jarvis-ops.yml.disabled) is the cloud alternative.
+
+## Build: JARVIS 24/7 ops loop scaffold (2026-06-30, .github/workflows/jarvis-ops.yml.disabled)
+
+The "always-on loop" host the roadmap kept flagging as "needs Chris". A GitHub Actions cron
+workflow (daily 13:00 UTC) that runs one JARVIS skill draft-only with READ-ONLY tools, has a
+fresh agent verify the result (the verifier is never the writer), then reports to Discord via a
+Zapier Catch Hook. Four exits per verification.md: verify verdict, `--max-turns`, job
+`timeout-minutes`, and a dry-run / no-progress path. Shipped `.disabled` and safe-by-default:
+with no secrets it runs a harmless dry-run heartbeat. To go live, Chris adds two repo secrets
+(ANTHROPIC_API_KEY, DISCORD_ZAPIER_WEBHOOK), renames off `.disabled`, and watches the first
+manual `workflow_dispatch` run. Read-only tools mean it physically cannot push, post, or edit.
+
 ## Earlier: JARVIS kickoff run (2026-06-27, local Windows machine)
 
 Ran JARVIS-KICKOFF.md end to end on Chris's own PC (the persistent runtime host). All merged

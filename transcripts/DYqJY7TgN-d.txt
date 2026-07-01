@@ -1,0 +1,1 @@
+ You think the worst thing that can happen to your vibe-coded project is an API key leak? What happens when you get a DDoS attack and you didn't have rate limiting, so now your AWS invoice is $50,000? What then, buddy?

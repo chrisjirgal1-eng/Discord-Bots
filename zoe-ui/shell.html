@@ -31,16 +31,22 @@
   <div class="ws gold on" data-w="zoey" title="Zoey (Ctrl+1)"><div class="ic">◉</div><div class="lb">ZOEY</div></div>
   <div class="ws" data-w="vault" title="Obsidian (Ctrl+2)"><div class="ic">◆</div><div class="lb">VAULT</div></div>
   <div class="ws" data-w="graph" title="Memory graph (Ctrl+3)"><div class="ic">⬡</div><div class="lb">GRAPH</div></div>
+  <div class="ws" data-w="lab" title="Research Lab (Ctrl+4)"><div class="ic">⚛</div><div class="lb">LAB</div></div>
+  <div class="ws" data-w="ops" title="Ops Loop (Ctrl+5)"><div class="ic">↻</div><div class="lb">OPS</div></div>
+  <div class="ws" data-w="ecosystem" title="Zoe OS (Ctrl+6)"><div class="ic">❖</div><div class="lb">OS</div></div>
   <div class="sp"></div>
 </div>
 <div id="stage">
   <iframe id="f-zoey" class="on" src="/" title="Zoey Assistant" allow="microphone; autoplay"></iframe>
   <iframe id="f-vault" data-src="/vault" title="Obsidian Vault"></iframe>
   <iframe id="f-graph" data-src="/3d" title="Memory Graph" allow="microphone"></iframe>
-  <div id="hint">Ctrl+1 Zoey · Ctrl+2 Obsidian · Ctrl+3 Graph · Ctrl+Tab switch</div>
+  <iframe id="f-lab" data-src="/research" title="Research Lab"></iframe>
+  <iframe id="f-ops" data-src="/ops" title="Ops Loop"></iframe>
+  <iframe id="f-ecosystem" data-src="/ecosystem" title="Zoe OS"></iframe>
+  <div id="hint">Ctrl+1 Zoey · Ctrl+2 Obsidian · Ctrl+3 Graph · Ctrl+4 Lab · Ctrl+5 Ops · Ctrl+6 OS · Ctrl+Tab switch</div>
 </div>
 <script>
-  const order = ['zoey','vault','graph'];
+  const order = ['zoey','vault','graph','lab','ops','ecosystem'];
   let cur = 'zoey';
   function show(w){
     if(!order.includes(w)) return;
@@ -58,6 +64,9 @@
     if(e.ctrlKey && e.key==='1'){ e.preventDefault(); show('zoey'); }
     else if(e.ctrlKey && e.key==='2'){ e.preventDefault(); show('vault'); }
     else if(e.ctrlKey && e.key==='3'){ e.preventDefault(); show('graph'); }
+    else if(e.ctrlKey && e.key==='4'){ e.preventDefault(); show('lab'); }
+    else if(e.ctrlKey && e.key==='5'){ e.preventDefault(); show('ops'); }
+    else if(e.ctrlKey && e.key==='6'){ e.preventDefault(); show('ecosystem'); }
     else if(e.ctrlKey && e.key==='Tab'){ e.preventDefault(); cycle(e.shiftKey?-1:1); }
   });
   // let the embedded pages request a workspace switch (e.g. clicking the NETWORK panel)

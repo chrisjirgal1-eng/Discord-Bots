@@ -27,6 +27,12 @@ package-lock.json
 # Zoe runtime session state (generated; not committed)
 memory/zoe_state.json
 memory/*.tmp
+memory-bank/ops-log.jsonl
+memory-bank/ops-config.json
+memory/zoe_proactive.txt
+memory/reminders.json
+memory/progression.jsonl
+.ops-worktrees/
 
 # Obsidian memory vault: keep curated notes + README, ignore runtime churn
 vault/index.md
@@ -47,6 +53,13 @@ vault/log/
 .env
 .env.local
 
+# Instagram / browser session cookies (live login tokens, never commit)
+cookies.txt
+ig_cookies*
+*_cookies.txt
+research/Automation/ig_cookies.txt
+research/Automation/ig-cookies.py
+
 # Local-only Claude notes
 CLAUDE.local.md
 
@@ -58,3 +71,8 @@ vault/docs/
 vault/project/
 vault/skills/
 vault/plugins/
+
+# Zoe voice-extras runtime artifacts (regenerated at run)
+zoe.log
+memory/voice_metrics.jsonl
+zoe-ui/config.json

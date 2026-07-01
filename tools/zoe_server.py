@@ -6,12 +6,20 @@ Reads Chris's actual CPU, RAM, disk, and network with psutil and exposes them at
 
   python tools/zoe_server.py
 """
-import http.server, json, os, socket, sys, time, urllib.parse, psutil
+import http.server, json, os, socket, sys, threading, time, urllib.parse, psutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     import zoe_memory          # Obsidian memory API; optional
 except Exception:
     zoe_memory = None
+try:
+    import zoe_research        # bridge to the C:\Users\chris\Zoe research second-brain; optional
+except Exception:
+    zoe_research = None
+try:
+    import zoe_ops_loop        # the local ops loop engine (/ops workspace); optional
+except Exception:
+    zoe_ops_loop = None
 try:
     from jarvis_speak import load_env
     load_env()                 # so POST /command's classify has the Groq key from .env
@@ -23,6 +31,39 @@ HUD = os.path.join(ROOT, "zoe-ui", "index.html")
 HUD3D = os.path.join(ROOT, "zoe-ui", "os3d.html")
 HUDVAULT = os.path.join(ROOT, "zoe-ui", "vault.html")
 HUDSHELL = os.path.join(ROOT, "zoe-ui", "shell.html")
+HUDLAB = os.path.join(ROOT, "zoe-ui", "research.html")
+HUDOPS = os.path.join(ROOT, "zoe-ui", "ops.html")
+HUDECO = os.path.join(ROOT, "zoe-ui", "ecosystem.html")
+ECO_OS = r"C:\Users\chris\Zoe\os"   # the Zoe OS layer (registry + activity)
+
+
+def _eco_registry():
+    """Trimmed registry for the Ecosystem UI. Safe: empty on error."""
+    try:
+        with open(os.path.join(ECO_OS, "registry.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        res = [{k: r.get(k) for k in ("name", "category", "description", "tags", "launch_command", "location")}
+               for r in d.get("resources", [])]
+        return {"count": d.get("count"), "generated": d.get("generated"),
+                "by_category": d.get("by_category", {}), "flags": d.get("flags", {}), "resources": res}
+    except Exception as e:
+        return {"count": 0, "by_category": {}, "resources": [], "error": str(e)[:120]}
+
+
+def _eco_activity(n=24):
+    """Recent Zoe OS activity events, newest first. [] on error."""
+    try:
+        out = []
+        with open(os.path.join(ECO_OS, "activity.jsonl"), encoding="utf-8") as f:
+            for ln in f.read().splitlines()[-n:]:
+                try:
+                    out.append(json.loads(ln))
+                except Exception:
+                    pass
+        return list(reversed(out))
+    except Exception:
+        return []
+CONFIG_JSON = os.path.join(ROOT, "zoe-ui", "config.json")
 PORT = 7717
 
 _n = psutil.net_io_counters()
@@ -74,6 +115,17 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/stats"):
             self._json(stats())
+        elif self.path.startswith("/config"):
+            try:
+                with open(CONFIG_JSON) as f:
+                    self._json(json.load(f))
+            except FileNotFoundError:
+                # generate on-demand if config.json is missing
+                try:
+                    import zoe_status
+                    self._json(zoe_status.build())
+                except Exception as e:
+                    self._json({"error": str(e)}, 500)
         elif self.path.startswith("/memory/read"):
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [None])[0]
             self._json(zoe_memory.read(q) if zoe_memory else {"error": "memory unavailable"})
@@ -89,6 +141,35 @@ class H(http.server.BaseHTTPRequestHandler):
             self._html(HUDVAULT, b"zoe-ui/vault.html not found")
         elif self.path.startswith("/shell"):
             self._html(HUDSHELL, b"zoe-ui/shell.html not found")
+        elif self.path.startswith("/research/agents"):
+            self._json(zoe_research.agents() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/capabilities"):
+            self._json(zoe_research.capabilities() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/creators"):
+            self._json(zoe_research.creators() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/watchlist"):
+            self._json(zoe_research.watchlist() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/summary"):
+            self._json(zoe_research.summary() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/voice"):
+            self._json(zoe_research.voice() if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research/search"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
+            self._json(zoe_research.search(q) if zoe_research else {"error": "research bridge unavailable"})
+        elif self.path.startswith("/research") or self.path.startswith("/lab"):
+            self._html(HUDLAB, b"zoe-ui/research.html not found")
+        elif self.path.startswith("/ecosystem/data"):
+            self._json(_eco_registry())
+        elif self.path.startswith("/ecosystem/activity"):
+            self._json(_eco_activity())
+        elif self.path.startswith("/ecosystem") or self.path.startswith("/os"):
+            self._html(HUDECO, b"zoe-ui/ecosystem.html not found")
+        elif self.path.startswith("/ops/log"):
+            self._json({"runs": zoe_ops_loop.read_log()} if zoe_ops_loop else {"runs": [], "error": "ops loop unavailable"})
+        elif self.path.startswith("/ops/status"):
+            self._json(zoe_ops_loop.status() if zoe_ops_loop else {"error": "ops loop unavailable"})
+        elif self.path.startswith("/ops"):
+            self._html(HUDOPS, b"zoe-ui/ops.html not found")
         else:
             self._html(HUD, b"zoe-ui/index.html not found")
 
@@ -111,6 +192,18 @@ class H(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self._json({"handled": False, "parsed": "Error", "steps": [],
                             "error": str(e), "status": "failed"}, 200)
+        elif self.path.startswith("/ops/run") and zoe_ops_loop:
+            try:
+                self._json(zoe_ops_loop.run_once(data.get("task") or None))
+            except Exception as e:
+                self._json({"status": "ERROR", "error": str(e)}, 200)
+        elif self.path.startswith("/ops/config") and zoe_ops_loop:
+            self._json(zoe_ops_loop.set_config(data))
+        elif self.path.startswith("/ops/act") and zoe_ops_loop:
+            try:
+                self._json(zoe_ops_loop.act_once(data.get("task") or None))
+            except Exception as e:
+                self._json({"status": "ERROR", "error": str(e)}, 200)
         else:
             self._json({"ok": False, "error": "unknown route"}, 404)
 
@@ -124,12 +217,39 @@ class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-if __name__ == "__main__":
-    print(f"ZOE online. Open http://localhost:{PORT}  (Ctrl+C to stop)")
+def _free_port(port):
+    """Best-effort: kill any process already listening on the port (a stale Zoe server) so we can
+    bind. This is the fix for 'Backend offline' on relaunch: a leftover server held 7717 and the
+    new one could not bind, so the UI fell back to simulated stats."""
     try:
-        # threaded so a slow /command (Groq ~1s) never blocks /stats polling or the UI
-        http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
-    except OSError as e:
-        print(f"ZOE telemetry could not bind port {PORT} (already in use?): {e}")
+        for c in psutil.net_connections(kind="inet"):
+            if c.laddr and c.laddr.port == port and c.status == psutil.CONN_LISTEN and c.pid:
+                try:
+                    psutil.Process(c.pid).kill()
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
+if __name__ == "__main__":
+    # threaded so a slow /command (Groq ~1s) never blocks /stats polling or the UI
+    server = None
+    for attempt in range(4):
+        try:
+            server = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H)
+            break
+        except OSError as e:
+            print(f"port {PORT} busy ({e}); clearing a stale server and retrying...")
+            _free_port(PORT)
+            time.sleep(0.6)
+    if not server:
+        print(f"ZOE telemetry could not bind port {PORT} after retries.")
+        sys.exit(1)
+    print(f"ZOE online. Open http://localhost:{PORT}  (Ctrl+C to stop)")
+    if zoe_ops_loop:
+        threading.Thread(target=zoe_ops_loop.serve_scheduler, daemon=True).start()
+    try:
+        server.serve_forever()
     except KeyboardInterrupt:
         print("\nZOE offline.")

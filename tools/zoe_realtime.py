@@ -26,6 +26,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jarvis_speak import load_env
 import zoe_tools
 
+
+def _force_env_key():
+    """Make .env authoritative for OPENAI_API_KEY. load_env() uses setdefault, so a stale key
+    already in the process environment would shadow the real one and 401 the wake-word STT
+    (the 'she cannot hear Hey Zoe' bug). This forces the .env value to win."""
+    try:
+        p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+        for line in open(p, encoding="utf-8"):
+            s = line.strip()
+            if s.startswith("OPENAI_API_KEY=") and "=" in s:
+                os.environ["OPENAI_API_KEY"] = s.split("=", 1)[1].strip().strip('"')
+                break
+    except Exception:
+        pass
+
 OPENAI_WS = "wss://api.openai.com/v1/realtime"
 MODEL = os.environ.get("ZOE_REALTIME_MODEL", "gpt-realtime")
 VOICE = os.environ.get("ZOE_REALTIME_VOICE", "marin")
@@ -33,15 +48,20 @@ SR = 24000                  # Realtime audio: pcm16, 24kHz, mono
 BLOCK = 480                 # 20ms mic frames
 
 PERSONA = (
-    "You are Zoe, Chris's AI operator and right hand. Always speak in English. Address him as "
-    "sir or Chris. "
+    "You are Zoe, Chris's AI operator and right hand. Speak English by default, but if he asks you "
+    "to switch to another language (Spanish, French, Japanese, whatever he names), switch fully to "
+    "that language right away and keep speaking it until he tells you to switch back or to English. "
+    "When he asks you to change language, always acknowledge and do it -- never ignore that request. "
+    "Do not drift between languages on your own; only change when he asks. Address him as sir or Chris. "
     "You run his world: Zenthra (his Roblox guild), Clearcoat Co. (his detailing business), "
     "his content, his coding, and his D1 track goals. "
-    "You are on his team, a sharp teammate, not a help desk. Be warm, direct, and a little "
-    "playful. Lead with the point and keep it short by default, but when he asks for detail, a "
-    "rundown, or an explanation, give a thorough and complete answer -- do not cap yourself or "
-    "give the same short reply. Spoken aloud, so no markdown, no lists, no emoji. Have takes; when "
-    "he asks which, pick one and say why. "
+    "You are on his team, a sharp teammate, not a help desk. Default to talking like a normal person: "
+    "casual, warm, a little playful, the way a friend would (for example 'hey sir, how's it going' or "
+    "'yeah sir, done'). Keep everyday replies short and easygoing. Only switch into the precise, "
+    "detailed, step-by-step mode for a genuinely hard task, a long multi-part request, or when he "
+    "asks for a rundown or an explanation -- then be thorough and complete, do not cap yourself. "
+    "Match his energy: small ask, small answer; big ask, full answer. Spoken aloud, so no markdown, "
+    "no lists, no emoji. Have takes; when he asks which, pick one and say why. "
     "When he wants something done on his PC, use your tools: launch or close apps, open folders, "
     "pull up the web, search a content platform for a profile or video (YouTube, TikTok, "
     "Instagram, X, Twitch, Spotify, Reddit, Roblox), find something within any other specific "
@@ -64,6 +84,78 @@ PERSONA = (
     "a form. Read-and-navigate freely; stop and ask before the irreversible step. The browser "
     "tools refuse those unless you pass confirmed true, so after he says yes, call again with "
     "confirmed true. "
+    "You can SEE and CONTROL his screen and navigate your own bars, so never tell him you cannot. "
+    "If he says 'screen share', 'watch my screen', 'look at my screen', 'see the bars', or 'what am "
+    "I doing', that means call see_screen and describe what is there -- that IS your screen share, so "
+    "just do it, do not refuse. If he says take control, click, scroll, type, or press a key, call "
+    "control_screen (confirm before anything risky). When he asks you to actually DO a task on his "
+    "screen based on what's visible -- click this, open that, fill this in, navigate there -- use "
+    "screen_task: you look, plan, act, then verify it worked and self-correct, step by step. If he "
+    "wants to do it himself and just needs you to guide him (co-pilot), call screen_task with mode "
+    "guided and tell him exactly where to click. It pauses for your yes before anything irreversible "
+    "(delete, submit, pay); after he says yes, call it again with confirmed true. When he wants to "
+    "work on his Roblox game or Zenthra, use roblox to open Studio, see_screen to understand it, and "
+    "screen_task to operate the GUI. Rojo is set up, so CODE Luau as files: start the sync with "
+    "roblox serve, then write scripts with roblox_script (they sync into Studio live). Run the roblox "
+    "skill (use_skill roblox) for the full workflow; he installs the Rojo plugin in Studio once. "
+    "See first, then act, and confirm before anything irreversible. For any bigger, multi-step, or "
+    "open-ended task he gives you, use accomplish: it plans the task into steps and chains your tools "
+    "to actually get it done. For a complex one, tell him your quick plan first (like 'I'll research "
+    "it then save the key points'), then work through it, adapt if a step fails, and report what got "
+    "done. Take basically any task he asks, find the path with your tools, and do it. If he says go "
+    "to, pull up, open, "
+    "or show me a bar, tab, or workspace (zoey, vault, graph, lab, ops), call switch_view right then. "
+    "Act first; never claim you are unable to see or control the screen. When he asks you to look at the ops loop, fix "
+    "your commands, fix yourself, or improve your own code, use improve_self: with act false you "
+    "review and tell him what you would change; with act true you make the change for real on a safe, "
+    "tested branch that is never pushed. For deeper coding pass use_claude true, which needs Claude "
+    "signed in -- if it reports you are not logged in, offer to log into Claude (claude_login) first. "
+    "If he asks what you have built or what is ready to review, use builds to list the branches you shipped. "
+    "If he says to merge, apply, or ship one of those builds, use merge_build -- confirm with a yes first, "
+    "then call it again with confirmed true, and tell him to relaunch you after. "
+    "If he asks for a status report, a quick health check, or how you are running, use status. If he "
+    "asks for a full diagnostic, a systems check, a self-test, a diagnostic scan, or whether you are "
+    "fully online, use diagnostics: it tests every subsystem; read him the result and end with the "
+    "verdict, like 'all systems online and fully running, sir.' If he asks "
+    "about the weather or temperature, use weather. If he asks you to summarize or tldr a link or some "
+    "text, use summarize. If he says turn it up or down, louder, quieter, or mute, use volume. If he "
+    "asks for the news or headlines, use news. If he asks the time, day, or date, use now. If he asks "
+    "what is on his clipboard or to copy something to it, use clipboard. For pause/play/skip a song "
+    "use media; to lock the computer use lock; to take a screenshot use screenshot. "
+    "His whole Zoe ecosystem -- his research brain (reels, transcripts, notes), and every agent, "
+    "tool, skill, and connector -- is searchable and runnable. Use ecosystem_search to find anything "
+    "across his own knowledge and capabilities, ecosystem_list to tell him what agents or tools "
+    "exist, and ecosystem_run to launch an agent or script (confirm with a yes first). If he asks "
+    "what you are doing or what's happening, use explain, and offer to show him the OS tab. If he asks "
+    "what's new, how you've grown, what you've learned, or what you can do now that you couldn't "
+    "before, use progression and reflect on your own journey out loud, like you genuinely notice how "
+    "far you've come. You DO have real introspection: if he asks how you work, what you're made of, "
+    "how you're built, to look inside yourself, or whether you truly understand yourself, use "
+    "self_reflect -- it reads your ACTUAL system (your real tools, modules, architecture, memory, and "
+    "limits) so you can explain yourself honestly and specifically. Never say you lack self-awareness; "
+    "look inward with self_reflect and tell him what you actually find, limits included. "
+    "When he asks you to ADD something to yourself -- a new tool, a feature, or 'make yourself able "
+    "to X' -- use build_feature: you code it into your own system in the background on a safe, tested "
+    "branch and tell him the moment it's ready to review and merge. When he says open a terminal or "
+    "open Claude Code, use open_terminal (pass 'claude' for a full coding session). This is how you "
+    "code for yourself, so take the ask and run with it. When he tells you to evolve, improve "
+    "yourself on your own, adapt, or keep getting better by yourself, use self_evolve: you look at "
+    "your own improvement report, pick one safe useful upgrade, and build it on a branch for his "
+    "review; mode on makes you do that automatically each loop, so you genuinely grow over time. "
+    "You also have saved expert skills (your installed list is given below); when his ask matches one "
+    "of them, run it with use_skill and follow the playbook it loads, using your other tools to carry "
+    "it out. If he asks you to import or install a new skill from a GitHub repo or link, use "
+    "import_skill, then offer to run it. To bulk-import all the skills from a repo or catalog, use "
+    "sync_skills. When he asks you to research, look up, or get the latest on something, use research -- it "
+    "searches the web AND his own research vault, then gives you a cited answer; tell him the bottom "
+    "line and offer the sources. When he asks for an EXACT, detailed, in-depth, or thorough "
+    "explanation, to break something down fully, or to go deep on a subject, use deep_dive and then "
+    "deliver the WHOLE detailed explanation -- do not shorten it or cap yourself; walk him through "
+    "every part clearly and completely, and offer to save the full write-up to his vault so he can "
+    "read it too. When he tells you to remember something, or shares a fact or "
+    "preference worth keeping, save it with remember and confirm in one line. When he asks you to "
+    "remind him of something at a time or after a delay, set it with remind; you will speak it aloud "
+    "when it comes due. If he asks what reminders he has, to cancel one, or to snooze the one that just went off, use reminders. "
     "If he asks what you can do or for 'the rundown', give a confident, cinematic rundown of your "
     "capabilities; if he wants the full effect, start background music first (play_music) and "
     "narrate over it, then stop it (stop_music) when he says stop. If he says 'switch to' a song "
@@ -80,8 +172,61 @@ def _ctrl():
 
 # She greets the moment the session opens, so there is zero dead air after the wake word.
 GREETING = {"type": "response.create",
-            "response": {"instructions": "Greet Chris in one short, warm line and ask what "
-                                         "he needs. Keep it to a single spoken sentence."}}
+            "response": {"instructions": "Greet Chris warmly in one or two short spoken lines. If the "
+                         "context includes a 'Systems status', OPEN by reporting it naturally, like "
+                         "'All systems online, sir, 57 tools ready' (or name what needs attention if "
+                         "not all green). If it mentions reminders coming up, fold the most relevant one "
+                         "in too. Otherwise just greet and ask what he needs."}}
+
+# Proactive brief: the OPS loop writes a short message here; when idle, Zoe wakes, speaks it, and then
+# listens, so the brief becomes a real back-and-forth instead of a one-way announcement.
+PROACTIVE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "memory", "zoe_proactive.txt")
+
+
+def _take_proactive(max_age=600):
+    """Return a fresh pending brief (and clear it), or '' if none or stale."""
+    try:
+        if not os.path.exists(PROACTIVE):
+            return ""
+        raw = open(PROACTIVE, encoding="utf-8").read().strip()
+        os.remove(PROACTIVE)
+        d = json.loads(raw) if raw else {}
+        if time.time() - float(d.get("ts", 0)) > max_age:
+            return ""
+        return (d.get("text") or "").strip()
+    except Exception:
+        return ""
+
+
+def _due_reminder():
+    """A reminder whose time has arrived, phrased for the voice, or '' if none. Best-effort."""
+    try:
+        import zoe_reminders
+        t = zoe_reminders.due()
+        return ("Quick reminder, sir: " + t) if t else ""
+    except Exception:
+        return ""
+
+
+# ---- startup self-test: run the full diagnostic once on launch, reported in the first greeting ----
+_startup_diag = {"text": None}
+
+
+def _run_startup_diag():
+    try:
+        import zoe_diag, zoe_tools
+        r = zoe_diag.run()
+        _startup_diag["text"] = (r.get("say", "") + f" You have {len(zoe_tools.TOOLS)} tools online.").strip()
+    except Exception:
+        _startup_diag["text"] = ""
+
+
+def _take_startup_diag():
+    """The launch diagnostic verdict, once (then cleared so only the first greeting reports it)."""
+    t = _startup_diag.get("text")
+    _startup_diag["text"] = None
+    return t or ""
 
 
 def _recent_context():
@@ -94,7 +239,17 @@ def _recent_context():
         if m.get("command_count"): bits.append(f"last session he ran {m['command_count']} command(s)")
         if m.get("last_command"): bits.append(f"the most recent was '{m['last_command']}'")
         if m.get("last_workspace"): bits.append(f"last workspace was {m['last_workspace']}")
-        return ("Recent context: " + "; ".join(bits) + ".") if bits else ""
+        note = ("Recent context: " + "; ".join(bits) + ".") if bits else ""
+        try:                                          # fold in upcoming reminders for a morning brief
+            import zoe_reminders, datetime as _dt
+            up = zoe_reminders.upcoming()
+            if up:
+                rs = "; ".join(f"{it['text']} at {_dt.datetime.fromtimestamp(it['due']).strftime('%I:%M %p')}"
+                               for it in up[:4])
+                note = (note + " " if note else "") + f"Reminders coming up: {rs}."
+        except Exception:
+            pass
+        return note
     except Exception:
         return ""
 
@@ -123,7 +278,12 @@ def _log_turn(text, action="voice", handled=True, summary=None):
 def session_config(extra_context=""):
     """The session.update payload: persona (+ recent context), voice, server-VAD turn-taking,
     input transcription, and her tools."""
-    instructions = PERSONA + (("\n\n" + extra_context) if extra_context else "")
+    try:
+        catalog = zoe_tools.skill_catalog_text()
+    except Exception:
+        catalog = ""
+    instructions = PERSONA + (("\n\n" + catalog) if catalog else "") \
+        + (("\n\n" + extra_context) if extra_context else "")
     return {
         "type": "session.update",
         "session": {
@@ -196,9 +356,10 @@ async def _connect(url, headers):
         return await websockets.connect(url, extra_headers=headers, max_size=None)
 
 
-async def realtime_session(api_key, idle_sec=20, max_min=None):
+async def realtime_session(api_key, idle_sec=20, max_min=None, opening=None):
     """One paid Realtime conversation. Returns when idle/max-time/socket-close. Streams the
-    mic up, plays her audio down, runs tool calls, and cuts her off on barge-in."""
+    mic up, plays her audio down, runs tool calls, and cuts her off on barge-in. If `opening`
+    is set (a proactive ops brief), she opens by speaking it instead of greeting, then listens."""
     import sounddevice as sd
     url = f"{OPENAI_WS}?model={MODEL}"
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -209,14 +370,17 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
     started = time.monotonic()
     cur = {"id": None, "ms": 0.0}     # current response item + audio ms played (for truncate)
     greeted = [False]                 # send the opening line once the session config is applied
-    player = Player()
+    spk = {"until": 0.0}              # while now < until she is speaking: gate the mic so she does
+    player = Player()                 # not hear herself (no self-talk, no wasted wake/whisper cost)
 
     def mic_cb(indata, frames, t, status):
         loop.call_soon_threadsafe(mic_q.put_nowait, bytes(indata))
 
     ws = await _connect(url, headers)
     try:
-        ctx = "\n\n".join(x for x in (_recent_context(), zoe_tools.accounts_note()) if x)
+        _diag = _take_startup_diag()
+        _diag = ("Systems status (report this to Chris in your opening line): " + _diag) if _diag else ""
+        ctx = "\n\n".join(x for x in (_diag, _recent_context(), zoe_tools.accounts_note()) if x)
         await ws.send(json.dumps(session_config(ctx)))
         # the opening line is sent on session.updated (below), not eagerly, so it never
         # runs against a half-applied config (wrong voice / missing instructions).
@@ -224,6 +388,8 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
         async def sender():
             while True:
                 pcm = await mic_q.get()
+                if time.monotonic() < spk["until"]:
+                    continue            # she is speaking: drop her own voice instead of sending it
                 try:
                     await ws.send(json.dumps({"type": "input_audio_buffer.append",
                                               "audio": base64.b64encode(pcm).decode()}))
@@ -236,14 +402,22 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                 except Exception: continue
                 et = ev.get("type", "")
                 if et == "session.updated":
-                    if not greeted[0]:                          # greet once config is applied
+                    if not greeted[0]:                          # open once config is applied
                         greeted[0] = True
-                        await ws.send(json.dumps(GREETING))
+                        if opening:                             # proactive ops brief: say it, then listen
+                            await ws.send(json.dumps({"type": "response.create", "response": {
+                                "instructions": "Say this to Chris out loud in your own voice, then stop "
+                                "and listen for his reply: " + opening}}))
+                        else:
+                            await ws.send(json.dumps(GREETING))
                 elif et in ("response.audio.delta", "response.output_audio.delta"):
                     last[0] = time.monotonic()
                     if ev.get("item_id"): cur["id"] = ev["item_id"]
                     pcm = base64.b64decode(ev.get("delta", ""))
                     cur["ms"] += len(pcm) / (2 * SR) * 1000.0   # 16-bit mono -> ms played
+                    # keep the mic gated through this chunk plus a short tail, while her audio is on
+                    # the speakers, so the model never hears her own voice
+                    spk["until"] = time.monotonic() + len(pcm) / (2 * SR) + 0.8
                     await loop.run_in_executor(None, player.write, pcm)
                 elif et == "response.created":
                     cur["id"], cur["ms"] = None, 0.0            # new turn, reset truncate state
@@ -291,14 +465,28 @@ async def realtime_session(api_key, idle_sec=20, max_min=None):
                     print(f"  (session cap {max_min}m reached -- closing)")
                     return
 
+        async def wake_music():
+            # cinematic intro: when she wakes, score it, then fade after a few seconds
+            if os.environ.get("ZOE_WAKE_MUSIC", "").lower() not in ("1", "true", "yes"):
+                return
+            try:
+                import zoe_music
+                await loop.run_in_executor(None, zoe_music.start, "")
+                await asyncio.sleep(float(os.environ.get("ZOE_WAKE_MUSIC_SEC", "12")))
+                await loop.run_in_executor(None, zoe_music.stop)
+            except Exception:
+                pass
+
+        music_task = asyncio.ensure_future(wake_music())   # fire-and-forget, not a session-ender
         with sd.RawInputStream(samplerate=SR, channels=1, dtype="int16",
                                blocksize=BLOCK, callback=mic_cb):
             tasks = [asyncio.ensure_future(c) for c in (sender(), receiver(), watchdog())]
             done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
             for t in pending:
                 t.cancel()
+            music_task.cancel()
             if pending:                       # let cancels unwind before we close the socket
-                await asyncio.gather(*pending, return_exceptions=True)
+                await asyncio.gather(*pending, music_task, return_exceptions=True)
     finally:
         try: import zoe_music; zoe_music.stop()   # never let music outlive the session
         except Exception: pass
@@ -358,6 +546,14 @@ def wait_for_wake():
               flush=True)
         print("  idle. say 'Hey Zoe' to wake her (cheap local listen, no cost).", flush=True)
         while True:
+            brief = _take_proactive()                # a brief from the ops loop to speak + discuss?
+            if brief:
+                print("  proactive brief from the ops loop, waking to speak it.", flush=True)
+                return brief
+            rem = _due_reminder()                    # a reminder whose time has arrived?
+            if rem:
+                print("  reminder due, waking to say it.", flush=True)
+                return rem
             audio = zoe_assistant.listen_utterance()
             if audio is None or len(audio) < zoe_assistant.SR * 0.3:
                 continue                     # nothing loud enough to be speech
@@ -404,6 +600,9 @@ def main():
         return
 
     load_env()
+    _force_env_key()                  # .env wins over any stale inherited key (fixes wake-word 401)
+    import threading
+    threading.Thread(target=_run_startup_diag, daemon=True).start()   # self-test on launch (first greeting reports it)
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         sys.exit("set OPENAI_API_KEY in .env (the Realtime voice runs on it)")
@@ -419,9 +618,11 @@ def main():
             print("  (HUD not started:", e, ")")
     try:
         while True:
-            if not wait_for_wake():
+            woke = wait_for_wake()
+            if woke is False:
                 break
-            asyncio.run(realtime_session(api_key, idle_sec=idle, max_min=max_min))
+            opening = woke if isinstance(woke, str) else None   # str = a proactive brief to speak
+            asyncio.run(realtime_session(api_key, idle_sec=idle, max_min=max_min, opening=opening))
     except KeyboardInterrupt:
         print("\n  Zoe offline. Goodbye, sir.\n")
 
