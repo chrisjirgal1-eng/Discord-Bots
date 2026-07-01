@@ -473,6 +473,15 @@ TOOLS = [
          "task": {"type": "string", "description": "What to do on the screen, in plain words."},
          "max_steps": {"type": "number", "description": "Cap on actions (default 6)."}},
         "required": ["task"]}},
+    {"type": "function", "name": "accomplish",
+     "description": "Do basically ANY task: Zoe plans it and executes it step by step, chaining her own "
+                    "tools (screen, browser, research, memory, ecosystem) until it's done. Use for a "
+                    "multi-step or open-ended request that needs several tools together. Irreversible "
+                    "steps pause for his yes. For a single obvious action, just use that tool directly.",
+     "parameters": {"type": "object", "properties": {
+         "task": {"type": "string", "description": "The task to accomplish, in plain words."},
+         "max_steps": {"type": "number", "description": "Cap on steps (default 6)."}},
+        "required": ["task"]}},
 ]
 
 
@@ -1408,6 +1417,20 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "accomplish":
+            task = (args.get("task") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "accomplish"}
+            if not task:
+                return {"ok": False, "error": "no task"}
+            try:
+                import zoe_agent
+                r = zoe_agent.accomplish(task, args.get("max_steps", 6))
+                r["action"] = "accomplish"
+                return r
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1483,6 +1506,7 @@ def _selftest():
         ("self_evolve", {"mode": "now"}),
         ("diagnostics", {}),
         ("screen_task", {"task": "scroll down"}),
+        ("accomplish", {"task": "find the top AI headline and remember it"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
