@@ -492,8 +492,18 @@ TOOLS = [
                     "build in Roblox. Then pair with see_screen (to understand Studio) and screen_task "
                     "(to operate it) and the roblox skill for the workflow.",
      "parameters": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["open", "status"], "description": "open Studio or report status."}},
+         "action": {"type": "string", "enum": ["open", "status", "serve"], "description": "open Studio, report status, or start the Rojo file-sync server."}},
         "required": []}},
+    {"type": "function", "name": "roblox_script",
+     "description": "Write a Luau script as a FILE in the Rojo project so it syncs live into Studio "
+                    "(the robust way to code for Roblox). Use when Chris asks you to write or add a "
+                    "Roblox script. side is server (ServerScriptService), client (StarterPlayer), or "
+                    "shared (ReplicatedStorage). Start the sync first with roblox action serve.",
+     "parameters": {"type": "object", "properties": {
+         "name": {"type": "string", "description": "Script name, e.g. 'CoinSpawner'."},
+         "code": {"type": "string", "description": "The full Luau code."},
+         "side": {"type": "string", "enum": ["server", "client", "shared"], "description": "server, client, or shared."}},
+        "required": ["name", "code"]}},
 ]
 
 
@@ -1442,13 +1452,33 @@ def dispatch(name, args, ctrl=None, simulate=True):
                     r["action"] = "roblox"
                     r["say"] = "Opening Roblox Studio, sir." if r.get("ok") else f"Couldn't open Studio: {r.get('error')}"
                     return r
+                if act == "serve":
+                    r = zoe_roblox.serve()
+                    r["action"] = "roblox"
+                    r["say"] = ("Rojo sync is running, sir; connect the Rojo plugin in Studio and my "
+                                "scripts will sync live." if r.get("ok") else f"Couldn't start Rojo: {r.get('error')}")
+                    return r
                 s = zoe_roblox.status()
                 say = ("Roblox Studio is " + ("installed" if s["installed"] else "not installed")
-                       + (" and running" if s["running"] else "") + ", sir. "
-                       + ("Rojo is set up, so I can code Luau as files." if s["rojo"]
-                          else "No Rojo file-sync yet, so I'd build in Studio's editor through the screen. "
-                               "Want me to set up Rojo for solid script coding?"))
+                       + (" and running" if s["running"] else "") + ", sir. Rojo is "
+                       + ("set up, so I code Luau as files that sync into Studio" if s["rojo"]
+                          else "not installed") + (", sync is live" if s["serving"] else "")
+                       + ". Just install the Rojo plugin in Studio once and we're connected.")
                 return {"ok": True, "action": "roblox", "status": s, "say": say}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
+        if name == "roblox_script":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "roblox_script"}
+            try:
+                import zoe_roblox
+                r = zoe_roblox.write_script(args.get("name", ""), args.get("code", ""),
+                                            args.get("side", "server"))
+                r["action"] = "roblox_script"
+                r["say"] = (f"Wrote the {args.get('name')} script to the {r.get('side')} side, sir; "
+                            "it'll sync into Studio." if r.get("ok") else f"Couldn't write it: {r.get('error')}")
+                return r
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
@@ -1543,6 +1573,7 @@ def _selftest():
         ("screen_task", {"task": "scroll down"}),
         ("accomplish", {"task": "find the top AI headline and remember it"}),
         ("roblox", {"action": "status"}),
+        ("roblox_script", {"name": "Hello", "code": "print('hi')", "side": "server"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

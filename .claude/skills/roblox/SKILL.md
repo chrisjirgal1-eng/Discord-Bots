@@ -14,9 +14,11 @@ How Zoe builds in Roblox. Studio is installed at `%LOCALAPPDATA%\Roblox\Versions
    - Insert an object: click a part in Explorer -> right-click -> Insert Object, or use the Model/Home ribbon.
    - Open a script: double-click a Script/LocalScript in the Explorer to open the editor.
    - Run/stop: press F5 to Play (test), Shift+F5 to stop. Watch the Output window for errors.
-4. **Write Luau**:
-   - Preferred (robust): if a **Rojo** project exists, write `.luau` files with the coding tools and let Rojo sync into Studio. Not set up yet -> offer to set it up.
-   - Fallback (now): open the Script in the editor (screen_task) and type the code via `control_screen`/screen_task. Keep scripts small so it is verifiable.
+4. **Write Luau (Rojo IS set up)**:
+   - Start the sync: `roblox` action `serve` (runs `rojo serve` on `RobloxProjects/zenthra`).
+   - In Studio, connect the **Rojo plugin** once (install "Rojo" from the Studio plugin marketplace; guide Chris via screen_task if needed), then click Connect.
+   - Write scripts with `roblox_script` (name, code, side = server/client/shared). They land as files in `src/` and sync into Studio live. This is the robust path - prefer it over typing in the editor.
+   - Keep scripts small; test each.
 5. **Test + iterate**: Play (F5), read the Output via `see_screen`, fix, repeat. Confirm before publishing.
 
 ## Luau notes (so the code is correct)
@@ -27,7 +29,7 @@ How Zoe builds in Roblox. Studio is installed at `%LOCALAPPDATA%\Roblox\Versions
 - Prefer clear, commented, small scripts; test each before adding more.
 
 ## When Chris asks for a bigger system
-Recommend setting up **Rojo** (file-based sync) so Zoe can code Luau reliably as files and version it - much stronger than typing into the editor through the screen. Ask before installing/changing his workflow.
+Rojo is installed and the project exists, so build with files: `roblox_script` for each script, keep logic modular (ModuleScripts on the shared side), start `roblox serve`, and test in Studio after each change. This scales far better than editor typing.
 
 ## Safety
 Confirm before Publish, deleting instances, or anything that touches the live game. Build and test locally first.
