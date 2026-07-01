@@ -423,6 +423,15 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "topic": {"type": "string", "description": "The subject to explain in depth."}},
         "required": ["topic"]}},
+    {"type": "function", "name": "self_reflect",
+     "description": "Look INWARD at Zoe's own system and explain how she actually works -- her real "
+                    "tools, modules, architecture, memory, and limits, grounded in her actual code "
+                    "(true introspection, not a script). Use when Chris asks how you work, what you're "
+                    "made of, how you're built, to look inside yourself, or whether you truly "
+                    "understand yourself.",
+     "parameters": {"type": "object", "properties": {
+         "aspect": {"type": "string", "description": "Optional part to focus on, e.g. 'your memory' or 'how you hear me'."}},
+        "required": []}},
 ]
 
 
@@ -1235,6 +1244,17 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:250]}
 
+        if name == "self_reflect":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "self_reflect"}
+            try:
+                import zoe_self
+                r = zoe_self.reflect(args.get("aspect", ""))
+                r["action"] = "self_reflect"
+                return r
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1304,6 +1324,7 @@ def _selftest():
         ("explain", {}),
         ("progression", {}),
         ("deep_dive", {"topic": "how retrieval-augmented generation works"}),
+        ("self_reflect", {"aspect": "your memory"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
