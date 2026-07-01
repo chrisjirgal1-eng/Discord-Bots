@@ -116,3 +116,29 @@ Keep entries short. One idea per line.
 - Lesson: the realtime API moved fields across versions (session.type, audio shape). Build defensively,
   env-configurable model/voice, and read the live error rather than trusting one research snapshot.
 - Next: merge PR #37 after he's happy; he still wants to test music, browsing, and the fix-tools.
+
+## 2026-07-01
+
+- Built ZOE's loop kill switch: the `stop_loop` voice tool (PR #40, branch
+  claude/zoey-loop-control-g2x6b8, draft, NOT merged yet).
+- Why: Chris ran Zoey using Claude Code 24/7, which locked the Claude desktop app so he
+  couldn't open it ("Another program is currently using this file"). No voice way to stop it:
+  "go to sleep" only naps, and ZOE_REALTIME_GATE=always reopens the session.
+- Scope he chose (via a quick 2-question ask): kill Claude Code only, Zoey keeps listening.
+  Second answer: not sure what starts the 24/7 run, so make the kill robust.
+- Design: stop_loop kills Claude.exe + the Claude Code CLI, matched PRECISELY (entrypoint
+  patterns with a path boundary), not a bare "claude" substring. So a .claude path or a
+  claude.ai tab is not killed; browsers + Code.exe are skipped. Zoey's own process tree is
+  walked and protected (PID-reuse guard). Runs as base64 -EncodedCommand so the match can't
+  hit its own command. Emits one JSON line.
+- Honesty over over-promising: killing a child can't stop a scheduled-task/wrapper respawn,
+  so it does not claim to. It scans read-only for a scheduled task that runs Claude Code and
+  reports it; Zoey offers to disable it on his yes (confirm-first, no silent config change).
+  Unkillable-but-matched processes come back as `nokill` with ok=False.
+- Verification: a fresh Opus code-reviewer checked the kill scoping. First pass was too broad
+  (bare "claude") and over-promised respawn; both fixed in a second commit, plus elevation
+  gap, PID-reuse guard, and stdout-only JSON parsing. Selftests green, 23 tools.
+- Lesson: a process kill switch on "not sure how it starts" must match narrowly (boundaried
+  entrypoint, not a substring) and must not claim to stop a respawn source it only detected.
+- Next: get the 24/7 launch mechanism from Chris and extend detection if it's a bare loop
+  script; merge PR #40 after he tests the voice command on Windows.

@@ -2,7 +2,33 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
-## Latest: ZOE speech-to-speech voice system (2026-06-30, PR #37, branch claude/voice-realtime)
+## Latest: ZOE loop kill switch (2026-07-01, PR #40, branch claude/zoey-loop-control-g2x6b8)
+
+Chris had Zoey running Claude Code 24/7, which held a file lock on the Claude desktop app
+("Another program is currently using this file"), so he couldn't open Claude Code himself.
+There was no voice way to stop it: "go to sleep" only naps the session, and with
+ZOE_REALTIME_GATE=always it reopens. Built a voice off switch. NOT yet merged (PR #40 draft).
+
+- New tool `stop_loop` (tools/zoe_tools.py + tools/zoe_ops.py). Say "turn off the loop",
+  "let go of Claude Code", or "I want to open Claude Code" and she frees the app but keeps
+  listening. Scope Chris chose: kill Claude Code only, Zoey stays alive.
+- Kill is PRECISE, not a bare "claude" substring: the app by name (Claude.exe) + the CLI by
+  entrypoint (claude-code, \claude.exe/.cmd, \claude\...cli, a bare "claude " command). A
+  .claude config path or a claude.ai browser tab do NOT match; browsers + Code.exe skipped.
+- Zoey's own process tree (self + verified ancestors, with a PID-reuse guard) is protected.
+- Passed as base64 -EncodedCommand so the match can't hit its own command. Emits one JSON line.
+- Respawn honesty: killing a child can't stop a scheduled task / wrapper that relaunches it, so
+  it does NOT claim to. It SCANS read-only for a scheduled task whose action runs Claude Code and
+  returns it as `respawn`; she offers to disable it on his yes (confirm-first, no silent config).
+- Elevation gap surfaced: a matched-but-unkillable process comes back as `nokill` and ok=False,
+  so she never says "free to open" when it may still be locked.
+- Reviewed by a fresh Opus code-reviewer; its findings (over-broad match, respawn over-promise,
+  elevation gap, PID reuse, stdout/stderr parse) all fixed in a second commit. Selftests pass, 23 tools.
+- OPEN: Chris is not sure what launches the 24/7 run. If it's a scheduled task, stop_loop detects
+  and offers to disable it. If it's a plain .bat/.vbs loop not named "claude", detection can't see
+  it yet -- get the launch mechanism from him and extend it so the off switch is durable.
+
+## Earlier: ZOE speech-to-speech voice system (2026-06-30, PR #37, branch claude/voice-realtime)
 
 Built ZOE's realtime voice: she talks like the demo videos, runs in the Electron desktop app, and
 can act on the machine. NOT yet merged (PR #37 is draft); test, then merge to default.
