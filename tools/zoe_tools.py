@@ -486,6 +486,14 @@ TOOLS = [
          "task": {"type": "string", "description": "The task to accomplish, in plain words."},
          "max_steps": {"type": "number", "description": "Cap on steps (default 6)."}},
         "required": ["task"]}},
+    {"type": "function", "name": "roblox",
+     "description": "Work with Roblox Studio: open it, check if it's running, or report the Roblox "
+                    "setup. Use when Chris wants to work on his Roblox game (Zenthra), open Studio, or "
+                    "build in Roblox. Then pair with see_screen (to understand Studio) and screen_task "
+                    "(to operate it) and the roblox skill for the workflow.",
+     "parameters": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["open", "status"], "description": "open Studio or report status."}},
+        "required": []}},
 ]
 
 
@@ -1423,6 +1431,27 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "roblox":
+            act = (args.get("action") or "status").lower()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "roblox", "do": act}
+            try:
+                import zoe_roblox
+                if act == "open":
+                    r = zoe_roblox.launch()
+                    r["action"] = "roblox"
+                    r["say"] = "Opening Roblox Studio, sir." if r.get("ok") else f"Couldn't open Studio: {r.get('error')}"
+                    return r
+                s = zoe_roblox.status()
+                say = ("Roblox Studio is " + ("installed" if s["installed"] else "not installed")
+                       + (" and running" if s["running"] else "") + ", sir. "
+                       + ("Rojo is set up, so I can code Luau as files." if s["rojo"]
+                          else "No Rojo file-sync yet, so I'd build in Studio's editor through the screen. "
+                               "Want me to set up Rojo for solid script coding?"))
+                return {"ok": True, "action": "roblox", "status": s, "say": say}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         if name == "accomplish":
             task = (args.get("task") or "").strip()
             if simulate:
@@ -1513,6 +1542,7 @@ def _selftest():
         ("diagnostics", {}),
         ("screen_task", {"task": "scroll down"}),
         ("accomplish", {"task": "find the top AI headline and remember it"}),
+        ("roblox", {"action": "status"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
