@@ -432,6 +432,22 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "aspect": {"type": "string", "description": "Optional part to focus on, e.g. 'your memory' or 'how you hear me'."}},
         "required": []}},
+    {"type": "function", "name": "open_terminal",
+     "description": "Open a real terminal window in her repo, optionally running a command (use "
+                    "'claude' to open a full Claude Code coding session). Use when Chris says open a "
+                    "terminal, open Claude Code, or run something in a terminal.",
+     "parameters": {"type": "object", "properties": {
+         "command": {"type": "string", "description": "Optional command to run, e.g. 'claude' or 'git status'. Omit for a plain terminal."}},
+        "required": []}},
+    {"type": "function", "name": "build_feature",
+     "description": "Code a NEW capability into Zoe's OWN system when Chris asks to add something. She "
+                    "runs the Claude coding actor in the background on an isolated, tested git branch "
+                    "(never touches the live app until he merges), and tells him when it's ready to "
+                    "review. Use when he says add a feature, add a tool, make yourself able to X, or "
+                    "build X into yourself. Needs Claude signed in (claude_login).",
+     "parameters": {"type": "object", "properties": {
+         "feature": {"type": "string", "description": "What to add, in plain words."}},
+        "required": ["feature"]}},
 ]
 
 
@@ -1255,6 +1271,49 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "open_terminal":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "open_terminal"}
+            try:
+                import subprocess
+                root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                cmd = (args.get("command") or "").strip()
+                inner = f"cd /d {root}" + (f" && {cmd}" if cmd else "")
+                subprocess.Popen(["cmd", "/c", "start", "Zoe Terminal", "cmd", "/k", inner])
+                return {"ok": True, "action": "open_terminal",
+                        "say": (f"Opened a terminal running {cmd}, sir." if cmd else "Opened a terminal in your repo, sir.")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
+        if name == "build_feature":
+            feat = (args.get("feature") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "build_feature"}
+            if not feat:
+                return {"ok": False, "error": "describe the feature to add"}
+            try:
+                import subprocess
+                root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                tools_dir = os.path.join(root, "tools")
+                task = "Add this new capability to Zoe's own system, cleanly and completely: " + feat
+                code = (
+                    "import sys\n"
+                    "sys.path.insert(0, r%r)\n"
+                    "import zoe_ops_loop as o\n"
+                    "rec = o.act_once(%r, speak=False, actor='claude')\n"
+                    "st = rec.get('status')\n"
+                    "if st == 'PASS':\n"
+                    "    o._queue_voice('Done, sir. I built ' + %r + ' on a branch. Say merge that build to make it live.')\n"
+                    "else:\n"
+                    "    o._queue_voice('I tried to build ' + %r + ' but could not finish it: ' + (rec.get('result') or rec.get('error') or '')[:140])\n"
+                ) % (tools_dir, task, feat[:60], feat[:60])
+                subprocess.Popen([sys.executable, "-c", code], cwd=root, creationflags=0x00000008)  # DETACHED
+                return {"ok": True, "action": "build_feature",
+                        "say": "On it, sir. I'm coding that into myself now on a safe branch, and I'll "
+                               "tell you the moment it's ready to review."}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1325,6 +1384,8 @@ def _selftest():
         ("progression", {}),
         ("deep_dive", {"topic": "how retrieval-augmented generation works"}),
         ("self_reflect", {"aspect": "your memory"}),
+        ("open_terminal", {"command": "git status"}),
+        ("build_feature", {"feature": "a tool that flips a coin"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
