@@ -149,6 +149,34 @@ def summarize(target):
         return {"ok": False, "error": str(e)[:200]}
 
 
+def deep_dive(topic):
+    """An exact, deep, structured explanation: merges Chris's own research vault + the web + reasoning
+    into an exhaustive breakdown with citations. Returns {ok, answer, sources, vault}."""
+    load_env()
+    q = (topic or "").strip()
+    if not q:
+        return {"ok": False, "error": "no topic"}
+    sources = _ddg(q, 6)
+    vault = _local(q, 5)
+    src = [f"[{i + 1}] {s['title']} -- {s['url']}\n{s['snippet']}" for i, s in enumerate(sources)]
+    src += [f"[V{j + 1}] (Chris's own research vault) {v['title']} -- {v['path']}"
+            for j, v in enumerate(vault)]
+    try:
+        ans = _openai([
+            {"role": "system", "content":
+             "You are Zoe giving Chris an EXACT, DEEP, DETAILED explanation. Be exhaustive and precise, "
+             "not brief. Structure it: (1) what it is, (2) how it works step by step, (3) the key parts "
+             "or mechanisms, (4) why it matters and when to use it, (5) common pitfalls, (6) a concrete "
+             "example. Use his own research vault where relevant; cite the web with [n] and his vault "
+             "with [Vn]. Do not cap the length; go as deep as the topic needs. Plain prose with short "
+             "section headers."},
+            {"role": "user", "content": f"Give an exact, detailed explanation of: {q}\n\nSOURCES:\n" + "\n".join(src)}],
+            max_tokens=1800)
+        return {"ok": True, "answer": ans, "sources": sources, "vault": vault}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
+
 def news(topic="", n=6):
     """Top headlines from Google News RSS (no key). Returns {ok, headlines}."""
     try:

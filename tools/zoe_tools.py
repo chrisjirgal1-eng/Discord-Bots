@@ -415,6 +415,14 @@ TOOLS = [
                     "Chris asks what's new, how you've grown, what you've learned, what you can do now "
                     "that you couldn't before, or what's been added lately. Speak about it naturally.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "deep_dive",
+     "description": "Give Chris an exact, deep, DETAILED explanation of a topic -- exhaustive and "
+                    "structured, drawing on his own research vault, the web (with citations), and "
+                    "reasoning. Use when he asks for an exact, detailed, in-depth, or thorough "
+                    "explanation, to break something down fully, or to go deep on a subject.",
+     "parameters": {"type": "object", "properties": {
+         "topic": {"type": "string", "description": "The subject to explain in depth."}},
+        "required": ["topic"]}},
 ]
 
 
@@ -1209,6 +1217,24 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "deep_dive":
+            topic = (args.get("topic") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "deep_dive"}
+            if not topic:
+                return {"ok": False, "error": "no topic"}
+            try:
+                import zoe_deep_research as dr
+                out = dr.deep_dive(topic)
+                if out.get("ok"):
+                    return {"ok": True, "action": "deep_dive", "answer": out["answer"][:6000],
+                            "sources": [{"n": i + 1, "title": s["title"], "url": s["url"]}
+                                        for i, s in enumerate(out.get("sources", [])[:6])],
+                            "vault": out.get("vault", [])}
+                return {"ok": False, "error": out.get("error", "deep dive failed")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:250]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1277,6 +1303,7 @@ def _selftest():
         ("ecosystem_run", {"resource": "capabilities"}),
         ("explain", {}),
         ("progression", {}),
+        ("deep_dive", {"topic": "how retrieval-augmented generation works"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
