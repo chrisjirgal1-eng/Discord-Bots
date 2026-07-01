@@ -464,14 +464,18 @@ TOOLS = [
                     "self-test, or whether she's fully online. Report each subsystem, then the verdict.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
     {"type": "function", "name": "screen_task",
-     "description": "SEE the screen and DO a task on it, step by step (a vision-guided click/type/scroll "
-                    "loop). Use when Chris asks you to actually do something on his screen based on "
-                    "what's visible: click this, open that, fill this in, navigate here. Handles simple "
-                    "(scroll, press a key, click a button) up to multi-step. Confirm before anything "
-                    "irreversible.",
+     "description": "SEE the screen and DO a multi-step task on it with a self-correcting Look-Plan-Act-"
+                    "Verify loop (she checks after each step and recovers if it didn't work). Use when "
+                    "Chris asks you to actually do something on his screen: click this, open that, fill "
+                    "this in, navigate here. mode 'auto' = she does it, pausing for a yes before "
+                    "anything irreversible (delete/submit/pay); mode 'guided' = she tells him where to "
+                    "click without touching it (co-pilot). After a yes to a risky step, call again with "
+                    "confirmed true.",
      "parameters": {"type": "object", "properties": {
          "task": {"type": "string", "description": "What to do on the screen, in plain words."},
-         "max_steps": {"type": "number", "description": "Cap on actions (default 6)."}},
+         "mode": {"type": "string", "enum": ["auto", "guided"], "description": "auto = she acts; guided = she directs him."},
+         "confirmed": {"type": "boolean", "description": "Set true after he says yes to an irreversible step."},
+         "max_steps": {"type": "number", "description": "Cap on actions (default 8)."}},
         "required": ["task"]}},
     {"type": "function", "name": "accomplish",
      "description": "Do basically ANY task: Zoe plans it and executes it step by step, chaining her own "
@@ -1404,13 +1408,15 @@ def dispatch(name, args, ctrl=None, simulate=True):
                 return {"ok": False, "error": "no task"}
             try:
                 import zoe_screen
-                r = zoe_screen.do_task(task, args.get("max_steps", 6))
-                n = len(r.get("steps", []))
-                if r.get("done"):
-                    say = f"Done, sir. Handled that on screen in {n} steps."
-                elif r.get("ok"):
-                    say = f"I worked through {n} steps on screen; it may need another pass or your eye."
-                else:
+                r = zoe_screen.do_task(task, args.get("max_steps", 8), args.get("mode", "auto"),
+                                       bool(args.get("confirmed")))
+                if r.get("needs_confirm"):
+                    return {"ok": False, "needs_confirm": True, "action": "screen_task", "say": r.get("say")}
+                if r.get("guided"):
+                    return {"ok": True, "action": "screen_task", "guided": True, "say": r.get("say")}
+                n = len([s for s in r.get("steps", []) if s.get("action") not in ("guide", "stop")])
+                say = r.get("say") or (f"Done, sir, in {n} steps." if r.get("done") else f"Worked through {n} steps.")
+                if not r.get("ok"):
                     say = f"Couldn't finish on screen: {r.get('error', '')}"
                 return {"ok": r.get("ok", False), "action": "screen_task", "done": r.get("done"),
                         "steps": r.get("steps", []), "say": say}

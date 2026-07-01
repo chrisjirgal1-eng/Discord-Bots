@@ -158,8 +158,46 @@ def _screen_size():
             return (1920, 1080)
 
 
-def _next_action(task, shot_path, history, size):
-    """Vision model returns the SINGLE next action toward the task, as JSON. None on failure."""
+# ---- Vision state machine: Look -> Plan -> Act -> Verify -> Repeat -----------------------------
+_RISKY_WORDS = ("delete", "remove", "submit", "pay", "purchase", "buy", "send", "checkout", "confirm",
+                "uninstall", "format", "shut down", "sign out", "log out", "post", "publish", "transfer")
+
+
+def _looks_risky(plan):
+    blob = (str(plan.get("action", "")) + " " + str(plan.get("text", "")) + " "
+            + str(plan.get("keys", "")) + " " + str(plan.get("reason", ""))).lower()
+    return bool(plan.get("risky")) or any(w in blob for w in _RISKY_WORDS)
+
+
+def _guidance(plan):
+    """Turn a planned action into a spoken directive for co-pilot (Guided) mode."""
+    act = str(plan.get("action", "")).lower()
+    reason = str(plan.get("reason", "")).strip()
+    if act in ("click", "double_click", "right_click"):
+        return f"Click {reason or 'the target'}" + (f", near the top" if (plan.get('y') or 999) < 300 else "") + "."
+    if act == "type":
+        return f"Type: {plan.get('text', '')}."
+    if act == "key":
+        return f"Press {plan.get('keys', '')}."
+    if act == "scroll":
+        return f"Scroll {plan.get('direction', 'down')}."
+    return reason or "Do the next step."
+
+
+def _log_step(task, phase, detail, status="ok"):
+    """Stream each automation step into the Zoe OS activity log (the OS-tab monitoring view)."""
+    try:
+        import json as _j, datetime as _dt
+        rec = {"ts": _dt.datetime.now().isoformat(timespec="seconds"), "resource": "screen_task",
+               "phase": str(phase)[:24], "status": status, "detail": (str(detail) + " | " + task[:40])[:200]}
+        with open(r"C:\Users\chris\Zoe\os\activity.jsonl", "a", encoding="utf-8") as f:
+            f.write(_j.dumps(rec) + "\n")
+    except Exception:
+        pass
+
+
+def _plan(task, shot_path, history, size, recover=False):
+    """Vision model returns the SINGLE next action as JSON (with a risky flag). None on failure."""
     import re, json
     try:
         import zoe_vision
@@ -167,14 +205,17 @@ def _next_action(task, shot_path, history, size):
     except Exception:
         return None
     w, h = size
-    hist = "; ".join(f"{s.get('action')} ({str(s.get('reason', ''))[:40]})" for s in history[-4:])
-    q = ("You are operating this computer to accomplish the task: '%s'. Look at the screenshot and "
-         "return the SINGLE next action as STRICT JSON ONLY, keys: action (one of click, double_click, "
-         "type, key, scroll, done), x, y (integer pixel coordinates on this %dx%d screenshot, for "
-         "click/double_click), text (for type), keys (for key, e.g. 'enter' or 'ctrl+s'), direction "
-         "(for scroll: up or down), reason (short), done (true when the task appears complete). Prefer "
-         "keyboard actions when possible. Do NOT do anything destructive. Actions so far: %s. JSON only."
-         % (task, w, h, hist or "none"))
+    hist = "; ".join(f"{s.get('action')}@({s.get('x')},{s.get('y')}) changed={s.get('changed')}"
+                     for s in history[-5:])
+    extra = ("The LAST action did NOT change the screen as expected. Choose a DIFFERENT approach now: "
+             "prefer a keyboard shortcut, Tab navigation, or a different target/coordinates. " if recover else "")
+    q = ("You are operating this computer to accomplish: '%s'. %sLook at the screenshot and return the "
+         "SINGLE next action as STRICT JSON ONLY, keys: action (click, double_click, type, key, scroll, "
+         "done), x, y (integer pixel coords on this %dx%d screenshot for clicks), text (for type), keys "
+         "(for key, e.g. 'enter','ctrl+s','tab'), direction (scroll up/down), reason (short: which "
+         "element), risky (true if irreversible: delete, submit, send, pay, post), done (true when the "
+         "task is complete). Prefer keyboard when reliable. Recent steps: %s. JSON only."
+         % (task, extra, w, h, hist or "none"))
     r = zoe_vision.answer(shot_path, q)
     txt = (r.get("answer") if isinstance(r, dict) else "") or ""
     m = re.search(r"\{.*\}", txt, re.S)
@@ -186,44 +227,108 @@ def _next_action(task, shot_path, history, size):
         return None
 
 
-def do_task(task, max_steps=6):
-    """SEE the screen and DO a task: a bounded vision -> action loop. Returns {ok, done, steps}."""
+def _verify(task, plan, after_shot):
+    """Did the screen change toward the task after the action? Best-effort bool (default True)."""
+    try:
+        import zoe_vision
+        zoe_vision.load_env()
+        q = ("For the task '%s' I just did: %s (%s). Look at the screen NOW. Did that action move the "
+             "task forward or change the screen as expected? Answer strictly YES or NO."
+             % (task, plan.get("action"), str(plan.get("reason", ""))[:60]))
+        r = zoe_vision.answer(after_shot, q)
+        txt = ((r.get("answer") if isinstance(r, dict) else "") or "").strip().lower()
+        return not txt.startswith("no")
+    except Exception:
+        return True
+
+
+def _is_loop(history, plan):
+    """True if this action repeats a recent one that did NOT change the screen (stuck)."""
+    act = str(plan.get("action", "")).lower()
+    ax, ay = plan.get("x"), plan.get("y")
+    for s in history[-3:]:
+        if s.get("action") == act and s.get("changed") is False:
+            if act not in ("click", "double_click", "right_click"):
+                return True
+            try:
+                if abs((s.get("x") or 0) - (ax or 0)) < 25 and abs((s.get("y") or 0) - (ay or 0)) < 25:
+                    return True
+            except Exception:
+                pass
+    return False
+
+
+def _execute(act, plan):
+    if act in ("click", "double_click", "right_click"):
+        return click(plan.get("x"), plan.get("y"),
+                     button=("right" if act == "right_click" else "left"), double=(act == "double_click"))
+    if act == "type":
+        return type_text(plan.get("text", ""))
+    if act == "key":
+        return press(plan.get("keys", ""))
+    if act == "scroll":
+        return scroll(plan.get("direction", "down"))
+    return {"ok": False, "error": "unknown action " + act}
+
+
+def do_task(task, max_steps=8, mode="auto", confirmed=False):
+    """Robust visual automation: Look -> Plan -> Act -> Verify -> Repeat. Keeps a 5-step history to
+    break loops, has autonomous (pause before irreversible) and guided (co-pilot) modes, and recovers
+    from failed actions by trying alternatives. Returns {ok, done, steps, say, needs_confirm?, guided?}."""
     task = (task or "").strip()
     if not task:
         return {"ok": False, "error": "no task"}
     size = _screen_size()
-    steps = []
-    for _ in range(max(1, min(int(max_steps or 6), 10))):
-        shot = capture()
+    history, fails = [], 0
+    _log_step(task, "start", f"mode={mode}", "start")
+    for _ in range(max(1, min(int(max_steps or 8), 12))):
+        shot = capture()                                            # LOOK
         if not shot:
-            return {"ok": False, "error": "could not capture the screen", "steps": steps}
-        plan = _next_action(task, shot, steps, size)
+            return {"ok": False, "error": "could not capture the screen", "steps": history}
+        plan = _plan(task, shot, history, size, recover=(fails > 0))  # PLAN
         try:
             os.remove(shot)
         except Exception:
             pass
         if not plan:
-            steps.append({"action": "stop", "reason": "could not read the screen"})
+            history.append({"action": "stop", "reason": "could not read the screen"})
             break
         act = str(plan.get("action") or "").lower()
-        if act in ("done", "", "stop") or plan.get("done"):
-            steps.append({"action": "done", "reason": str(plan.get("reason", "complete"))[:80]})
-            return {"ok": True, "done": True, "steps": steps}
-        if act in ("click", "double_click", "right_click"):
-            r = click(plan.get("x"), plan.get("y"),
-                      button=("right" if act == "right_click" else "left"), double=(act == "double_click"))
-        elif act == "type":
-            r = type_text(plan.get("text", ""))
-        elif act == "key":
-            r = press(plan.get("keys", ""))
-        elif act == "scroll":
-            r = scroll(plan.get("direction", "down"))
-        else:
-            r = {"ok": False, "error": "unknown action " + act}
-        steps.append({"action": act, "x": plan.get("x"), "y": plan.get("y"),
-                      "reason": str(plan.get("reason", ""))[:80], "ok": r.get("ok")})
-        time.sleep(0.7)
-    return {"ok": True, "done": False, "steps": steps, "note": "reached step limit"}
+        if plan.get("done") or act in ("done", "", "stop"):
+            _log_step(task, "done", plan.get("reason", ""))
+            return {"ok": True, "done": True, "steps": history, "say": str(plan.get("reason", "Done, sir."))[:120]}
+        if mode == "guided":                                        # co-pilot: direct him, don't touch
+            g = _guidance(plan)
+            history.append({"action": "guide", "reason": g})
+            _log_step(task, "guide", g)
+            return {"ok": True, "done": False, "guided": True, "steps": history, "say": g}
+        if _looks_risky(plan) and not confirmed:                    # AUTONOMOUS: pause before irreversible
+            _log_step(task, "pause", plan.get("reason", ""), "warn")
+            return {"ok": True, "done": False, "needs_confirm": True, "steps": history,
+                    "say": f"The next step looks irreversible ({plan.get('reason', '')}). Say yes and I'll do it."}
+        if _is_loop(history, plan):                                 # loop guard
+            fails += 1
+            if fails >= 3:
+                _log_step(task, "loop", "stuck", "error")
+                return {"ok": True, "done": False, "steps": history,
+                        "say": "That control isn't responding, sir; I'm looping. Want to guide me?"}
+        r = _execute(act, plan)                                     # ACT
+        after = capture()
+        changed = _verify(task, plan, after) if after else True     # VERIFY
+        try:
+            os.remove(after)
+        except Exception:
+            pass
+        history.append({"action": act, "x": plan.get("x"), "y": plan.get("y"),
+                        "reason": str(plan.get("reason", ""))[:80], "ok": r.get("ok"), "changed": changed})
+        _log_step(task, act, plan.get("reason", ""), "ok" if changed else "warn")
+        fails = 0 if changed else fails + 1                         # REPEAT / recover
+        if fails >= 3:
+            return {"ok": True, "done": False, "steps": history,
+                    "say": "I tried a few different ways but the screen isn't changing as expected, sir. "
+                           "Want to take over, or should I guide you?"}
+        time.sleep(0.6)
+    return {"ok": True, "done": False, "steps": history, "say": f"Worked through {len(history)} steps, sir."}
 
 
 if __name__ == "__main__":
