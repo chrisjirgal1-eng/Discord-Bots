@@ -381,6 +381,34 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "location": {"type": "string", "description": "City or place; omit for his current location."}},
         "required": []}},
+    {"type": "function", "name": "ecosystem_search",
+     "description": "Search Chris's entire Zoe ecosystem at once: his research brain (reels, "
+                    "transcripts, notes by meaning) plus every tool, agent, skill, and connector. Use "
+                    "when he asks you to find, look up, or recall anything from his own knowledge or "
+                    "capabilities. Returns ranked results across knowledge and tools.",
+     "parameters": {"type": "object", "properties": {
+         "query": {"type": "string", "description": "What to find."}},
+        "required": ["query"]}},
+    {"type": "function", "name": "ecosystem_list",
+     "description": "Browse what exists in the Zoe ecosystem by category (agent, tool, skill, "
+                    "connector, app, knowledge). Use when he asks what agents, tools, or skills you have.",
+     "parameters": {"type": "object", "properties": {
+         "category": {"type": "string", "description": "agent, tool, skill, connector, app, or knowledge. Omit for all."}},
+        "required": []}},
+    {"type": "function", "name": "ecosystem_run",
+     "description": "Run any resource in the ecosystem (an agent, script, automation, or app) by name. "
+                    "Use when he says run, launch, or start one. ALWAYS confirm with a yes first, then "
+                    "call again with confirmed true.",
+     "parameters": {"type": "object", "properties": {
+         "resource": {"type": "string", "description": "Name (or part of the name) of the resource to run."},
+         "args": {"type": "string", "description": "Optional extra arguments."},
+         "confirmed": {"type": "boolean", "description": "Set true only after he says yes."}},
+        "required": ["resource"]}},
+    {"type": "function", "name": "explain",
+     "description": "Explain what Zoe is doing right now across the ecosystem: the live activity, what "
+                    "just ran, and how much is indexed. Use when Chris asks 'what are you doing', "
+                    "'what's happening', or 'what's going on'. Offer to show him the OS tab.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -750,13 +778,15 @@ def dispatch(name, args, ctrl=None, simulate=True):
             view = (args.get("view") or "").strip().lower()
             view = {"zoe": "zoey", "assistant": "zoey", "home": "zoey", "chat": "zoey",
                     "obsidian": "vault", "notes": "vault", "memory": "graph", "research": "lab",
-                    "ops loop": "ops", "loop": "ops"}.get(view, view)
-            if view not in ("zoey", "vault", "graph", "lab", "ops"):
+                    "ops loop": "ops", "loop": "ops", "os": "ecosystem", "operating system": "ecosystem",
+                    "brain": "ecosystem", "ecosystem": "ecosystem"}.get(view, view)
+            if view not in ("zoey", "vault", "graph", "lab", "ops", "ecosystem"):
                 return {"ok": False, "error": f"unknown view {view}",
-                        "available": ["zoey", "vault", "graph", "lab", "ops"]}
+                        "available": ["zoey", "vault", "graph", "lab", "ops", "ecosystem"]}
             shows = {"zoey": "the assistant chat", "vault": "the Obsidian vault",
                      "graph": "the memory graph", "lab": "the research lab",
-                     "ops": "the Ops Loop and her autonomous runs"}[view]
+                     "ops": "the Ops Loop and her autonomous runs",
+                     "ecosystem": "the Zoe OS ecosystem map and live activity"}[view]
             if simulate:
                 return {"ok": True, "simulated": True, "action": "view", "view": view, "shows": shows}
             res = zoe_router._post(ctrl, "/view", {"view": view}) if ctrl else None
@@ -1107,6 +1137,61 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "ecosystem_search":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "ecosystem_search"}
+            try:
+                import zoe_ecosystem as eco
+                out = eco.search((args.get("query") or "").strip())
+                hits = out.get("results", [])[:8]
+                say = ("Nothing found, sir." if not hits else "Found: " +
+                       "; ".join(f"{h['name']} ({h['type'].split(':')[0]})" for h in hits[:6]))
+                return {"ok": out.get("ok", False), "action": "ecosystem_search", "results": hits, "say": say}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
+        if name == "ecosystem_list":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "ecosystem_list"}
+            try:
+                import zoe_ecosystem as eco
+                out = eco.list_resources(args.get("category", ""))
+                if out.get("ok"):
+                    names = [i["name"] for i in out.get("items", [])][:12]
+                    out["say"] = f"{out['count']} found. " + ", ".join(names)
+                return out
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
+        if name == "ecosystem_run":
+            res = (args.get("resource") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "ecosystem_run", "resource": res}
+            try:
+                import zoe_ecosystem as eco
+                if not args.get("confirmed"):
+                    dry = eco.run(res, args.get("args", ""), dry=True)
+                    return {"ok": False, "needs_confirm": True,
+                            "say": f"That will run: {dry.get('command', res)}. Want me to go ahead? Say yes."}
+                out = eco.run(res, args.get("args", ""), dry=False)
+                return {"ok": out.get("ok", False), "action": "ecosystem_run",
+                        "resource": out.get("resource", res), "output": (out.get("output") or "")[:400],
+                        "say": (f"Ran {out.get('resource', res)}, sir." if out.get("ok")
+                                else f"That one failed: {out.get('error', '')}")}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
+        if name == "explain":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "explain"}
+            try:
+                import zoe_ecosystem as eco
+                r = eco.explain()
+                r["action"] = "explain"
+                return r
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1170,6 +1255,10 @@ def _selftest():
         ("media", {"action": "playpause"}),
         ("lock", {}),
         ("screenshot", {}),
+        ("ecosystem_search", {"query": "viral hook"}),
+        ("ecosystem_list", {"category": "agent"}),
+        ("ecosystem_run", {"resource": "capabilities"}),
+        ("explain", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

@@ -1,0 +1,160 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Zoe OS — Ecosystem</title>
+<style>
+  :root{
+    --bg:#0a0710; --panel:#140d20; --panel2:#1b1230; --line:#2a1d44;
+    --txt:#e9e2ff; --dim:#9d8fc7; --accent:#a855f7; --accent2:#7c3aed;
+    --ok:#3ddc97; --warn:#ffcc66; --glow:#c084fc;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.5 "Segoe UI",system-ui,sans-serif;
+       height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  .top{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
+  .top h1{margin:0;font-size:15px;letter-spacing:3px;font-weight:600}
+  .top h1 b{color:var(--accent)}
+  .pill{font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:3px 10px}
+  .pill b{color:var(--ok)}
+  .grow{flex:1}
+  /* workflow */
+  .flow{display:flex;align-items:center;gap:0;padding:16px 20px;overflow-x:auto;border-bottom:1px solid var(--line)}
+  .node{flex:0 0 auto;text-align:center;min-width:92px;padding:10px 8px;border:1px solid var(--line);
+        border-radius:10px;background:var(--panel);transition:.4s;position:relative}
+  .node .n{font-size:11px;color:var(--dim);letter-spacing:.5px}
+  .node .c{font-size:18px;font-weight:700;margin-top:2px}
+  .node.live{border-color:var(--glow);background:linear-gradient(180deg,#241640,#16102a);
+             box-shadow:0 0 18px rgba(192,132,252,.45)}
+  .node.live .c{color:var(--glow)}
+  .arr{flex:0 0 auto;color:var(--accent2);font-size:16px;padding:0 4px;opacity:.7}
+  /* body */
+  .wrap{flex:1;display:grid;grid-template-columns:1fr 360px;min-height:0}
+  .map{padding:16px 20px;overflow:auto}
+  .cats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .cat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+  .cat:hover,.cat.sel{border-color:var(--accent)}
+  .cat .k{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .cat .v{font-size:20px;font-weight:700;color:var(--accent)}
+  input.q{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--txt);
+          border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .card .nm{font-weight:600}
+  .card .cat-tag{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px}
+  .card .use{font-size:11px;color:var(--dim);margin-top:4px;word-break:break-word;font-family:ui-monospace,monospace}
+  .feed{border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:14px}
+  .feed h3{margin:0 0 10px;font-size:12px;letter-spacing:2px;color:var(--dim)}
+  .ev{border-left:2px solid var(--accent2);padding:6px 10px;margin-bottom:7px;background:var(--panel2);border-radius:0 8px 8px 0}
+  .ev .r{font-weight:600;font-size:12px}
+  .ev .d{font-size:11px;color:var(--dim);word-break:break-word}
+  .ev .t{font-size:10px;color:var(--accent2)}
+  .ev.err{border-left-color:var(--warn)} .ev.err .r{color:var(--warn)}
+  .empty{color:var(--dim);font-style:italic;padding:8px}
+</style></head>
+<body>
+  <div class="top">
+    <h1><b>ZOE</b> &nbsp;OPERATING&nbsp;SYSTEM</h1>
+    <span class="pill"><b id="count">—</b> capabilities indexed</span>
+    <span class="pill" id="gen">—</span>
+    <div class="grow"></div>
+    <span class="pill" id="livedot">● live</span>
+  </div>
+
+  <div class="flow" id="flow"></div>
+
+  <div class="wrap">
+    <div class="map">
+      <div class="cats" id="cats"></div>
+      <input class="q" id="q" placeholder="Search the whole ecosystem — knowledge, tools, agents, skills…">
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="feed">
+      <h3>LIVE ACTIVITY</h3>
+      <div id="feed"></div>
+    </div>
+  </div>
+
+<script>
+const STAGES = [
+  {n:"Sources", k:["feed-watcher","ig-feed","tiktok-feed","twitter","discover"]},
+  {n:"Capture", k:["ingest","watch","pull-queue","process-inbox","resolve"]},
+  {n:"Transcript", k:["watch-batch","transcribe","video-analyst"]},
+  {n:"Index", k:["build-index","build_registry","indexer","embed"]},
+  {n:"Knowledge", k:["brain","research","vault","memory"]},
+  {n:"Synthesis", k:["synthesize","synthesist","trends","digest"]},
+  {n:"Tools", k:["search","run","capabilities","ecosystem"]},
+  {n:"Agents", k:["agent","creator-intel","github-analyst"]},
+  {n:"Zoey", k:["explain","voice","zoe_realtime","speak"]},
+];
+let REG=null, selCat="";
+
+function el(t,c,h){const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;}
+
+function drawFlow(activeStage){
+  const f=document.getElementById("flow"); f.innerHTML="";
+  STAGES.forEach((s,i)=>{
+    const node=el("div","node"+(i===activeStage?" live":""));
+    node.appendChild(el("div","n",s.n));
+    node.appendChild(el("div","c","◇"));
+    f.appendChild(node);
+    if(i<STAGES.length-1) f.appendChild(el("div","arr","→"));
+  });
+}
+function stageFor(resource){
+  const r=(resource||"").toLowerCase();
+  for(let i=0;i<STAGES.length;i++) if(STAGES[i].k.some(k=>r.includes(k))) return i;
+  return -1;
+}
+function drawCats(by){
+  const c=document.getElementById("cats"); c.innerHTML="";
+  Object.entries(by).sort().forEach(([k,v])=>{
+    const card=el("div","cat"+(selCat===k?" sel":""));
+    card.appendChild(el("div","k",k));
+    card.appendChild(el("div","v",v));
+    card.onclick=()=>{selCat=selCat===k?"":k; renderGrid(); drawCats(by);};
+    c.appendChild(card);
+  });
+}
+function renderGrid(){
+  if(!REG) return;
+  const q=document.getElementById("q").value.toLowerCase();
+  const g=document.getElementById("grid"); g.innerHTML="";
+  let rows=REG.resources;
+  if(selCat) rows=rows.filter(r=>r.category.split(":")[0]===selCat);
+  if(q) rows=rows.filter(r=>(r.name+" "+r.description+" "+(r.tags||[]).join(" ")).toLowerCase().includes(q));
+  rows.slice(0,120).forEach(r=>{
+    const card=el("div","card");
+    card.appendChild(el("div","cat-tag",r.category));
+    card.appendChild(el("div","nm",r.name));
+    if(r.description) card.appendChild(el("div","use",r.description.slice(0,90)));
+    if(r.launch_command) card.appendChild(el("div","use","▸ "+r.launch_command.slice(0,80)));
+    g.appendChild(card);
+  });
+  if(!rows.length) g.appendChild(el("div","empty","Nothing matches."));
+}
+async function loadReg(){
+  try{
+    const r=await fetch("/ecosystem/data"); REG=await r.json();
+    document.getElementById("count").textContent=REG.count;
+    document.getElementById("gen").textContent="updated "+(REG.generated||"").replace("T"," ").slice(0,16);
+    drawCats(REG.by_category||{}); renderGrid();
+  }catch(e){ document.getElementById("count").textContent="offline"; }
+}
+async function loadFeed(){
+  try{
+    const r=await fetch("/ecosystem/activity"); const evs=await r.json();
+    const f=document.getElementById("feed"); f.innerHTML="";
+    if(!evs.length){ f.appendChild(el("div","empty","Idle — nothing running.")); drawFlow(-1); return; }
+    drawFlow(stageFor(evs[0].resource));
+    evs.forEach(e=>{
+      const d=el("div","ev"+(e.status==="error"?" err":""));
+      d.appendChild(el("div","t",(e.ts||"").replace("T"," ").slice(5,16)+"  ·  "+e.phase+"  "+e.status));
+      d.appendChild(el("div","r",e.resource));
+      if(e.detail) d.appendChild(el("div","d",e.detail));
+      f.appendChild(d);
+    });
+  }catch(e){}
+}
+document.getElementById("q").addEventListener("input",renderGrid);
+drawFlow(-1); loadReg(); loadFeed();
+setInterval(loadFeed,3000); setInterval(loadReg,20000);
+</script>
+</body></html>

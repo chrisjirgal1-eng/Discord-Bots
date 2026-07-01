@@ -33,6 +33,36 @@ HUDVAULT = os.path.join(ROOT, "zoe-ui", "vault.html")
 HUDSHELL = os.path.join(ROOT, "zoe-ui", "shell.html")
 HUDLAB = os.path.join(ROOT, "zoe-ui", "research.html")
 HUDOPS = os.path.join(ROOT, "zoe-ui", "ops.html")
+HUDECO = os.path.join(ROOT, "zoe-ui", "ecosystem.html")
+ECO_OS = r"C:\Users\chris\Zoe\os"   # the Zoe OS layer (registry + activity)
+
+
+def _eco_registry():
+    """Trimmed registry for the Ecosystem UI. Safe: empty on error."""
+    try:
+        with open(os.path.join(ECO_OS, "registry.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        res = [{k: r.get(k) for k in ("name", "category", "description", "tags", "launch_command", "location")}
+               for r in d.get("resources", [])]
+        return {"count": d.get("count"), "generated": d.get("generated"),
+                "by_category": d.get("by_category", {}), "flags": d.get("flags", {}), "resources": res}
+    except Exception as e:
+        return {"count": 0, "by_category": {}, "resources": [], "error": str(e)[:120]}
+
+
+def _eco_activity(n=24):
+    """Recent Zoe OS activity events, newest first. [] on error."""
+    try:
+        out = []
+        with open(os.path.join(ECO_OS, "activity.jsonl"), encoding="utf-8") as f:
+            for ln in f.read().splitlines()[-n:]:
+                try:
+                    out.append(json.loads(ln))
+                except Exception:
+                    pass
+        return list(reversed(out))
+    except Exception:
+        return []
 CONFIG_JSON = os.path.join(ROOT, "zoe-ui", "config.json")
 PORT = 7717
 
@@ -128,6 +158,12 @@ class H(http.server.BaseHTTPRequestHandler):
             self._json(zoe_research.search(q) if zoe_research else {"error": "research bridge unavailable"})
         elif self.path.startswith("/research") or self.path.startswith("/lab"):
             self._html(HUDLAB, b"zoe-ui/research.html not found")
+        elif self.path.startswith("/ecosystem/data"):
+            self._json(_eco_registry())
+        elif self.path.startswith("/ecosystem/activity"):
+            self._json(_eco_activity())
+        elif self.path.startswith("/ecosystem") or self.path.startswith("/os"):
+            self._html(HUDECO, b"zoe-ui/ecosystem.html not found")
         elif self.path.startswith("/ops/log"):
             self._json({"runs": zoe_ops_loop.read_log()} if zoe_ops_loop else {"runs": [], "error": "ops loop unavailable"})
         elif self.path.startswith("/ops/status"):
