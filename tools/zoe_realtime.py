@@ -158,10 +158,10 @@ def _ctrl():
 # She greets the moment the session opens, so there is zero dead air after the wake word.
 GREETING = {"type": "response.create",
             "response": {"instructions": "Greet Chris warmly in one or two short spoken lines. If the "
-                         "recent-context note above mentions reminders coming up or unfinished work, "
-                         "fold the most relevant one into your greeting like a quick brief (for example "
-                         "'morning sir, you've got the coach call at five'). Otherwise just greet and "
-                         "ask what he needs."}}
+                         "context includes a 'Systems status', OPEN by reporting it naturally, like "
+                         "'All systems online, sir, 57 tools ready' (or name what needs attention if "
+                         "not all green). If it mentions reminders coming up, fold the most relevant one "
+                         "in too. Otherwise just greet and ask what he needs."}}
 
 # Proactive brief: the OPS loop writes a short message here; when idle, Zoe wakes, speaks it, and then
 # listens, so the brief becomes a real back-and-forth instead of a one-way announcement.
@@ -192,6 +192,26 @@ def _due_reminder():
         return ("Quick reminder, sir: " + t) if t else ""
     except Exception:
         return ""
+
+
+# ---- startup self-test: run the full diagnostic once on launch, reported in the first greeting ----
+_startup_diag = {"text": None}
+
+
+def _run_startup_diag():
+    try:
+        import zoe_diag, zoe_tools
+        r = zoe_diag.run()
+        _startup_diag["text"] = (r.get("say", "") + f" You have {len(zoe_tools.TOOLS)} tools online.").strip()
+    except Exception:
+        _startup_diag["text"] = ""
+
+
+def _take_startup_diag():
+    """The launch diagnostic verdict, once (then cleared so only the first greeting reports it)."""
+    t = _startup_diag.get("text")
+    _startup_diag["text"] = None
+    return t or ""
 
 
 def _recent_context():
@@ -343,7 +363,9 @@ async def realtime_session(api_key, idle_sec=20, max_min=None, opening=None):
 
     ws = await _connect(url, headers)
     try:
-        ctx = "\n\n".join(x for x in (_recent_context(), zoe_tools.accounts_note()) if x)
+        _diag = _take_startup_diag()
+        _diag = ("Systems status (report this to Chris in your opening line): " + _diag) if _diag else ""
+        ctx = "\n\n".join(x for x in (_diag, _recent_context(), zoe_tools.accounts_note()) if x)
         await ws.send(json.dumps(session_config(ctx)))
         # the opening line is sent on session.updated (below), not eagerly, so it never
         # runs against a half-applied config (wrong voice / missing instructions).
@@ -564,6 +586,8 @@ def main():
 
     load_env()
     _force_env_key()                  # .env wins over any stale inherited key (fixes wake-word 401)
+    import threading
+    threading.Thread(target=_run_startup_diag, daemon=True).start()   # self-test on launch (first greeting reports it)
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         sys.exit("set OPENAI_API_KEY in .env (the Realtime voice runs on it)")
