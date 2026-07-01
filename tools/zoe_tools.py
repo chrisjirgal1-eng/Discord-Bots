@@ -463,6 +463,16 @@ TOOLS = [
                     "actor, and system load. Use when Chris asks for a diagnostic, a systems check, a "
                     "self-test, or whether she's fully online. Report each subsystem, then the verdict.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "screen_task",
+     "description": "SEE the screen and DO a task on it, step by step (a vision-guided click/type/scroll "
+                    "loop). Use when Chris asks you to actually do something on his screen based on "
+                    "what's visible: click this, open that, fill this in, navigate here. Handles simple "
+                    "(scroll, press a key, click a button) up to multi-step. Confirm before anything "
+                    "irreversible.",
+     "parameters": {"type": "object", "properties": {
+         "task": {"type": "string", "description": "What to do on the screen, in plain words."},
+         "max_steps": {"type": "number", "description": "Cap on actions (default 6)."}},
+        "required": ["task"]}},
 ]
 
 
@@ -1377,6 +1387,27 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "screen_task":
+            task = (args.get("task") or "").strip()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "screen_task"}
+            if not task:
+                return {"ok": False, "error": "no task"}
+            try:
+                import zoe_screen
+                r = zoe_screen.do_task(task, args.get("max_steps", 6))
+                n = len(r.get("steps", []))
+                if r.get("done"):
+                    say = f"Done, sir. Handled that on screen in {n} steps."
+                elif r.get("ok"):
+                    say = f"I worked through {n} steps on screen; it may need another pass or your eye."
+                else:
+                    say = f"Couldn't finish on screen: {r.get('error', '')}"
+                return {"ok": r.get("ok", False), "action": "screen_task", "done": r.get("done"),
+                        "steps": r.get("steps", []), "say": say}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1451,6 +1482,7 @@ def _selftest():
         ("build_feature", {"feature": "a tool that flips a coin"}),
         ("self_evolve", {"mode": "now"}),
         ("diagnostics", {}),
+        ("screen_task", {"task": "scroll down"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

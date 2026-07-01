@@ -146,9 +146,92 @@ def save_screenshot():
         return {"ok": False, "error": str(e)[:200]}
 
 
+def _screen_size():
+    try:
+        import pyautogui
+        return pyautogui.size()
+    except Exception:
+        try:
+            from PIL import ImageGrab
+            return ImageGrab.grab().size
+        except Exception:
+            return (1920, 1080)
+
+
+def _next_action(task, shot_path, history, size):
+    """Vision model returns the SINGLE next action toward the task, as JSON. None on failure."""
+    import re, json
+    try:
+        import zoe_vision
+        zoe_vision.load_env()
+    except Exception:
+        return None
+    w, h = size
+    hist = "; ".join(f"{s.get('action')} ({str(s.get('reason', ''))[:40]})" for s in history[-4:])
+    q = ("You are operating this computer to accomplish the task: '%s'. Look at the screenshot and "
+         "return the SINGLE next action as STRICT JSON ONLY, keys: action (one of click, double_click, "
+         "type, key, scroll, done), x, y (integer pixel coordinates on this %dx%d screenshot, for "
+         "click/double_click), text (for type), keys (for key, e.g. 'enter' or 'ctrl+s'), direction "
+         "(for scroll: up or down), reason (short), done (true when the task appears complete). Prefer "
+         "keyboard actions when possible. Do NOT do anything destructive. Actions so far: %s. JSON only."
+         % (task, w, h, hist or "none"))
+    r = zoe_vision.answer(shot_path, q)
+    txt = (r.get("answer") if isinstance(r, dict) else "") or ""
+    m = re.search(r"\{.*\}", txt, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except Exception:
+        return None
+
+
+def do_task(task, max_steps=6):
+    """SEE the screen and DO a task: a bounded vision -> action loop. Returns {ok, done, steps}."""
+    task = (task or "").strip()
+    if not task:
+        return {"ok": False, "error": "no task"}
+    size = _screen_size()
+    steps = []
+    for _ in range(max(1, min(int(max_steps or 6), 10))):
+        shot = capture()
+        if not shot:
+            return {"ok": False, "error": "could not capture the screen", "steps": steps}
+        plan = _next_action(task, shot, steps, size)
+        try:
+            os.remove(shot)
+        except Exception:
+            pass
+        if not plan:
+            steps.append({"action": "stop", "reason": "could not read the screen"})
+            break
+        act = str(plan.get("action") or "").lower()
+        if act in ("done", "", "stop") or plan.get("done"):
+            steps.append({"action": "done", "reason": str(plan.get("reason", "complete"))[:80]})
+            return {"ok": True, "done": True, "steps": steps}
+        if act in ("click", "double_click", "right_click"):
+            r = click(plan.get("x"), plan.get("y"),
+                      button=("right" if act == "right_click" else "left"), double=(act == "double_click"))
+        elif act == "type":
+            r = type_text(plan.get("text", ""))
+        elif act == "key":
+            r = press(plan.get("keys", ""))
+        elif act == "scroll":
+            r = scroll(plan.get("direction", "down"))
+        else:
+            r = {"ok": False, "error": "unknown action " + act}
+        steps.append({"action": act, "x": plan.get("x"), "y": plan.get("y"),
+                      "reason": str(plan.get("reason", ""))[:80], "ok": r.get("ok")})
+        time.sleep(0.7)
+    return {"ok": True, "done": False, "steps": steps, "note": "reached step limit"}
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "see":
         print(see(" ".join(sys.argv[2:])))
+    elif len(sys.argv) > 1 and sys.argv[1] == "task":
+        import pprint
+        pprint.pprint(do_task(" ".join(sys.argv[2:])))
     else:
         p = capture()
         print({"captured": p, "exists": bool(p and os.path.isfile(p))})
