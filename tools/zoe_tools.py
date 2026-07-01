@@ -186,6 +186,17 @@ TOOLS = [
      "parameters": {"type": "object",
         "properties": {"prompt": {"type": "string", "description": "The full request for Hermes."}},
         "required": ["prompt"]}},
+    {"type": "function", "name": "stop_loop",
+     "description": "Turn off the loop that keeps Claude Code running and free the Claude Code / "
+                    "Claude desktop app so Chris can open it himself. Use when he says 'turn off the "
+                    "loop', 'stop the loop', 'kill the loop', 'let go of Claude Code', 'stop running "
+                    "Claude', or 'I want to open Claude Code'. It kills the Claude processes but "
+                    "never you -- you keep listening. No confirmation needed. The result's 'say' "
+                    "field is the line to speak. If it returns a 'respawn' task, that scheduled task "
+                    "will relaunch Claude Code, so offer to disable it and, on his yes, run "
+                    "'Disable-ScheduledTask -TaskName <name>' via run_command. If it returns "
+                    "'nokill', you found Claude but couldn't stop it (likely admin); tell him.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -471,6 +482,14 @@ def dispatch(name, args, ctrl=None, simulate=True):
             err = res.get("error") if isinstance(res, dict) else None
             return {"ok": bool(handled), "answer": (ans or "")[:600], "error": err}
 
+        if name == "stop_loop":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "stop_loop"}
+            import zoe_ops
+            r = zoe_ops.stop_loop()
+            r["action"] = "stop_loop"
+            return r
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -505,6 +524,7 @@ def _selftest():
         ("run_command", {"command": "git status"}),
         ("run_command", {"command": "rm -rf /"}),
         ("run_agent", {"prompt": "plan the KOS deploy fix"}),
+        ("stop_loop", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
