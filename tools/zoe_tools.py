@@ -457,6 +457,12 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "mode": {"type": "string", "enum": ["now", "on", "off"], "description": "now = one step; on/off = autonomous mode."}},
         "required": []}},
+    {"type": "function", "name": "diagnostics",
+     "description": "Run a FULL systems diagnostic on Zoe herself: voice and tools, API keys, wake-word "
+                    "STT, dependencies, the ecosystem OS, backend servers, memory, the self-coding "
+                    "actor, and system load. Use when Chris asks for a diagnostic, a systems check, a "
+                    "self-test, or whether she's fully online. Report each subsystem, then the verdict.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -1360,6 +1366,17 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "diagnostics":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "diagnostics"}
+            try:
+                import zoe_diag
+                r = zoe_diag.run()
+                r["action"] = "diagnostics"
+                return r
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1433,6 +1450,7 @@ def _selftest():
         ("open_terminal", {"command": "git status"}),
         ("build_feature", {"feature": "a tool that flips a coin"}),
         ("self_evolve", {"mode": "now"}),
+        ("diagnostics", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
