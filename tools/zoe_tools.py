@@ -448,6 +448,15 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {
          "feature": {"type": "string", "description": "What to add, in plain words."}},
         "required": ["feature"]}},
+    {"type": "function", "name": "self_evolve",
+     "description": "Zoe evolves HERSELF: she reads her own improvement report, picks one safe, useful "
+                    "upgrade, and builds it into her system on a tested branch (never merged without "
+                    "his review). mode 'now' does one evolution now; 'on'/'off' turns on doing it "
+                    "automatically each loop. Use when Chris says evolve, improve yourself on your own, "
+                    "adapt, or keep getting better by yourself.",
+     "parameters": {"type": "object", "properties": {
+         "mode": {"type": "string", "enum": ["now", "on", "off"], "description": "now = one step; on/off = autonomous mode."}},
+        "required": []}},
 ]
 
 
@@ -1314,6 +1323,43 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "self_evolve":
+            mode = (args.get("mode") or "now").lower()
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "self_evolve", "mode": mode}
+            try:
+                import zoe_ops_loop as ol
+                if mode in ("on", "start", "enable"):
+                    ol.set_config({"evolve": True})
+                    return {"ok": True, "action": "self_evolve",
+                            "say": "I'll evolve myself on my own from now on, sir, picking safe upgrades and "
+                                   "building them on branches for your review each loop."}
+                if mode in ("off", "stop", "disable"):
+                    ol.set_config({"evolve": False})
+                    return {"ok": True, "action": "self_evolve", "say": "Stood down from auto-evolving, sir."}
+                import subprocess
+                root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                code = (
+                    "import sys\n"
+                    "sys.path.insert(0, r%r)\n"
+                    "import zoe_ops_loop as o\n"
+                    "rec = o.evolve_once(speak=False)\n"
+                    "t = rec.get('evolve_task') or 'an improvement'\n"
+                    "st = rec.get('status')\n"
+                    "if st == 'PASS':\n"
+                    "    o._queue_voice('I evolved myself, sir: built ' + t[:70] + ' on a branch. Say merge that build to keep it.')\n"
+                    "elif st == 'SKIP':\n"
+                    "    o._queue_voice('I looked at my own system, sir, but nothing safe stood out to improve this time.')\n"
+                    "else:\n"
+                    "    o._queue_voice('I tried to evolve but could not finish it: ' + (rec.get('result') or '')[:120])\n"
+                ) % os.path.join(root, "tools")
+                subprocess.Popen([sys.executable, "-c", code], cwd=root, creationflags=0x00000008)  # DETACHED
+                return {"ok": True, "action": "self_evolve",
+                        "say": "On it, sir. I'm looking at my own system for something worth improving, "
+                               "and I'll build it and let you know."}
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1386,6 +1432,7 @@ def _selftest():
         ("self_reflect", {"aspect": "your memory"}),
         ("open_terminal", {"command": "git status"}),
         ("build_feature", {"feature": "a tool that flips a coin"}),
+        ("self_evolve", {"mode": "now"}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}

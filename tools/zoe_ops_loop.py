@@ -55,6 +55,7 @@ DEFAULTS = {
     "speak": True,                         # speak the brief aloud
     "voice_reply": True,                   # route the brief through Zoe's live voice (two-way) vs one-way TTS
     "actor": "edit",                       # "edit" = Groq find/replace (safe, tested); "claude" = claude -p
+    "evolve": False,                       # autonomous self-evolution: each loop, pick + build one safe upgrade on a branch
     "max_turns_act": 12,                   # turn cap for the claude actor
     "last_run_date": "",
 }
@@ -564,7 +565,7 @@ def status():
 
 def set_config(updates):
     cfg = load_cfg()
-    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak", "voice_reply", "actor", "max_turns_act"):
+    for k in ("paused", "task", "engine", "schedule", "max_tokens", "speak", "voice_reply", "actor", "max_turns_act", "evolve"):
         if k in updates and updates[k] is not None:
             cfg[k] = updates[k]
     save_cfg(cfg)
@@ -581,6 +582,53 @@ def _next_run_str(cfg):
     return f"today {sched}" if now < sched else "due now"
 
 
+def _evolve_task(cfg):
+    """Zoe decides ONE concrete, safe, valuable thing to build into herself next, grounded in her
+    improvement report + lessons/techniques. Returns a short imperative coding task, or ''."""
+    ctx = read_context(1500)
+    improvements = ""
+    try:
+        p = os.path.join(r"C:\Users\chris\Zoe\os", "IMPROVEMENTS.md")
+        if os.path.exists(p):
+            improvements = open(p, encoding="utf-8").read()[:2500]
+    except Exception:
+        pass
+    try:
+        draft = _chat([
+            {"role": "system", "content":
+             "You are Zoe deciding how to EVOLVE yourself next. Pick exactly ONE concrete, safe, "
+             "genuinely useful improvement or small new capability to add to your own system: a new "
+             "tool, a small feature, or a real fix. It must be buildable as an isolated, low-risk code "
+             "change. Reply with ONE short imperative task line only, what to build, nothing else."},
+            {"role": "user", "content": f"MY IMPROVEMENT REPORT:\n{improvements}\n\nCONTEXT:\n{ctx}\n\n"
+             "What one thing should I build into myself next?"}], cfg, max_tokens=120)
+        return (draft or "").strip().splitlines()[0][:200] if draft else ""
+    except Exception:
+        return ""
+
+
+def evolve_once(speak=None):
+    """Autonomous self-evolution: pick one safe improvement and build it on an isolated, tested branch
+    (never merged; Chris reviews). This is how she adapts and evolves on her own while looping."""
+    load_env()
+    cfg = load_cfg()
+    task = _evolve_task(cfg)
+    if not task:
+        rec = {"ts": datetime.datetime.now().isoformat(timespec="seconds"), "mode": "evolve",
+               "status": "SKIP", "result": "no safe evolution stood out this cycle", "task": ""}
+        try:
+            os.makedirs(os.path.dirname(LOG), exist_ok=True)
+            with open(LOG, "a", encoding="utf-8") as f:
+                f.write(json.dumps(rec) + "\n")
+        except Exception:
+            pass
+        return rec
+    rec = act_once("Evolve yourself with this improvement: " + task, speak=speak, actor="claude")
+    rec["mode"] = "evolve"
+    rec["evolve_task"] = task
+    return rec
+
+
 def should_autorun():
     cfg = load_cfg()
     if cfg.get("paused"):
@@ -595,7 +643,10 @@ def serve_scheduler():
     while True:
         try:
             if should_autorun():
-                run_once()
+                if load_cfg().get("evolve"):
+                    evolve_once()          # autonomous: build one safe upgrade on a branch, then brief
+                else:
+                    run_once()
         except Exception:
             pass
         time.sleep(60)
