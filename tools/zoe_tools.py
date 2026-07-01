@@ -409,6 +409,12 @@ TOOLS = [
                     "just ran, and how much is indexed. Use when Chris asks 'what are you doing', "
                     "'what's happening', or 'what's going on'. Offer to show him the OS tab.",
      "parameters": {"type": "object", "properties": {}, "required": []}},
+    {"type": "function", "name": "progression",
+     "description": "Reflect on Zoe's own growth: how many tools and capabilities she has now, how far "
+                    "she's come, and the latest things added (from her real change history). Use when "
+                    "Chris asks what's new, how you've grown, what you've learned, what you can do now "
+                    "that you couldn't before, or what's been added lately. Speak about it naturally.",
+     "parameters": {"type": "object", "properties": {}, "required": []}},
 ]
 
 
@@ -1192,6 +1198,17 @@ def dispatch(name, args, ctrl=None, simulate=True):
             except Exception as e:
                 return {"ok": False, "error": str(e)[:200]}
 
+        if name == "progression":
+            if simulate:
+                return {"ok": True, "simulated": True, "action": "progression"}
+            try:
+                import zoe_progression as prog
+                r = prog.summary(tool_count=len(TOOLS))
+                r["action"] = "progression"
+                return r
+            except Exception as e:
+                return {"ok": False, "error": str(e)[:200]}
+
         return {"ok": False, "error": f"unknown tool {name}"}
     except Exception as e:
         return {"ok": False, "error": str(e)[:200]}
@@ -1259,6 +1276,7 @@ def _selftest():
         ("ecosystem_list", {"category": "agent"}),
         ("ecosystem_run", {"resource": "capabilities"}),
         ("explain", {}),
+        ("progression", {}),
         ("bogus_tool", {}),
     ]
     names = {t["name"] for t in TOOLS}
