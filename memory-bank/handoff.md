@@ -75,8 +75,14 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   the neural-net canvas recolors live. Verified: 0 hardcoded accents left, balanced braces, clean scan.
 - [x] B2 DONE 2026-06-27. Added jarvis.bat at the repo root: double-click to open the command center
   UI in the default browser.
-- [ ] B3 (medium). Make the agent team real: split the content-pipeline stages (scout, hook, topic,
-  script) into discrete sub-skills the orchestrator calls, matching the UI roster and DZ_xzicxQPx.
+- [x] B3 DONE 2026-07-07. Made the agent team real: split the content-pipeline stages into four
+  discrete sub-skills matching the command-center roster: `scout` (trend + competitor scan), `topic`
+  (angle selection), `hook` (first-3-second openers), `script` (short-form drafts). content-pipeline
+  is now the orchestrator that calls them in order (scout -> topic -> hook -> script -> caption/
+  clearcoat-post) and no longer does stage work inline; each stage also runs on its own. jarvis
+  routing table + JARVIS.md map updated to route the discrete stages. Draft-only guardrails preserved
+  in every stage; scout stays read-only web search. Verified: fresh Sonnet reviewer read the raw diff
+  (PASS, no issues); 76 tests pass; banned-word/em-dash scan clean. Merged to default and pushed.
 - [ ] B4 (medium). Status generator: a script that reads the repo (skill count, test count, graph
   nodes) and writes the UI CONFIG status block, so the HUD is always accurate. Run it, verify.
 - [x] B5 DONE 2026-06-28. Full two-way VOICE is LIVE. tools/jarvis_voice.py: mic -> Deepgram (hear)
@@ -261,6 +267,13 @@ Electron app's pythonExe()/pythonwExe() do).
   END. Kernel: `zoe_versions.py` + `plugins/` + `tools/zoe_diagnostics.py` (100/100). HTTP API on
   `zoe_server.py` :7717 (/stats /3d /vault /shell /command /memory/* /session/resume). Control endpoint
   :7766 in Electron.
+
+### Next step (2026-07-07)
+B3 is done (discrete content stage sub-skills, merged + pushed). The next undone non-gated backlog
+item is **B4** (Phase B): a status generator script that reads the repo (skill count, test count,
+graph nodes) and writes the UI CONFIG status block so the HUD is always accurate, then run + verify
+it. After B4, the only remaining Phase B items are B6 and B7, both BLOCKED on Chris (24/7 host +
+secrets, and live connector creds). Internal/verified-only discipline still applies.
 
 ### PENDING for the next session
 1. **Rebuild the installer**: `npm run dist` -> `dist/Zoe Setup 0.1.0.exe`. The CURRENT installed exe
