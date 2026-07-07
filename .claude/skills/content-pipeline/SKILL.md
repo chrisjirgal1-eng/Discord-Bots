@@ -6,29 +6,36 @@ description: Run Chris's content pipeline end to end as named stages (scout, top
 # Content pipeline
 
 The goal videos show a content engine run by named specialist agents with one chat to drive
-them (DZ_xzicxQPx, and the goal reel that posts at scale). This is that pipeline, built from
-the skills that already exist. It takes a brand and a spark and returns a finished draft
-package Chris can review and post. It never posts on its own.
+them (DZ_xzicxQPx, and the goal reel that posts at scale). This is the orchestrator for that
+engine. It does not do the stage work itself; it drives the discrete stage sub-skills in
+order, matching the command-center agent roster (Scout, Topic, Hook, Script). It takes a
+brand and a spark and returns a finished draft package Chris can review and post. It never
+posts on its own.
 
 ## Inputs to ask for if missing
 
 - Brand: Zenthra (Roblox guild) or Clearcoat Co. (auto detailing).
 - Platform: TikTok, YouTube, or Instagram.
-- A spark: a topic, a clip, a result, or "find me one" (then the scout stage picks).
+- A spark: a topic, a clip, a result, or "find me one" (then the `scout` stage picks).
 
-## The stages (run in order, show each)
+## The stages (call each sub-skill in order, show each stage's output)
 
-1. **Scout** (optional). If Chris has no topic, scan what is working in the niche. Use web
-   search read-only: trending Roblox angles for Zenthra, local detailing hooks for Clearcoat.
-   Return 3 to 5 candidate angles. Read-only, never logs in or posts.
-2. **Topic**. Pick the strongest angle for the brand and platform, grounded in Chris's real
-   projects (memory-bank/projects.md), not generic. One line on why it wins.
-3. **Hook**. Write 3 first-three-second hooks for that angle. Curiosity or stakes in the first
-   line, the way the strongest reels open. Label the sharpest.
-4. **Script**. Draft the short-form script (about 15 to 40 seconds): hook, then 2 to 4 retention
-   beats, then a close with one call to action. Spoken voice, short lines.
+Each stage is its own skill so it can also be run on its own. This skill is the front that
+runs them as a sequence and threads the output of one into the next.
+
+1. **Scout** (optional). If Chris has no topic, call the `scout` skill to scan what is working
+   in the niche and return 3 to 5 candidate angles. Read-only, never logs in or posts.
+2. **Topic**. Call the `topic` skill to pick the strongest angle for the brand and platform,
+   grounded in Chris's real projects, with one line on why it wins.
+3. **Hook**. Call the `hook` skill to write 3 first-three-second hooks for that angle and
+   label the sharpest.
+4. **Script**. Call the `script` skill to draft the short-form script (about 15 to 40 seconds):
+   hook, then 2 to 4 retention beats, then a close with one call to action.
 5. **Caption**. Route to the `caption` skill for Zenthra, or `clearcoat-post` for Clearcoat, to
    get 3 caption versions with hashtags. Do not rewrite those skills, call them.
+
+Do not rewrite the stage skills inline. Call them, and pass each stage's chosen output into
+the next. If Chris wants just one stage (a hook, a script), run that sub-skill directly.
 
 ## Output: the draft package
 

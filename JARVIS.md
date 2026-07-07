@@ -30,7 +30,7 @@ never just display.
 | Reach into real services | MCP: GitHub, Supabase, Vercel, Gmail, Drive, Calendar, Notion, Slack, Stripe, Zapier | wired, credentialed |
 | Loops that act, verify, report | verification.md discipline (verifier not the writer, budget cap) | rule wired, runtime needs a host |
 | Voice in and out ("Wide awake, sir") | 11 Labs TTS + Deepgram STT (cascade), or OpenAI Realtime speech-to-speech (`tools/zoe_realtime.py`) | needs Chris's keys |
-| Content pipeline of named agents | `content-pipeline` skill: scout, topic, hook, script stages, routes to caption | wired, draft only |
+| Content pipeline of named agents | `content-pipeline` orchestrates discrete stage skills `scout`, `topic`, `hook`, `script`, then routes to `caption` | wired, draft only |
 | Always-on, 24/7 | GitHub Actions / Supabase / Zapier (a web session cannot stay alive) | needs a host |
 
 ## What runs locally today
