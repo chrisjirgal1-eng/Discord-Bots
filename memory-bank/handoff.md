@@ -83,8 +83,15 @@ applied). Remaining, ordered easiest to hardest. Same guardrails: internal/verif
   routing table + JARVIS.md map updated to route the discrete stages. Draft-only guardrails preserved
   in every stage; scout stays read-only web search. Verified: fresh Sonnet reviewer read the raw diff
   (PASS, no issues); 76 tests pass; banned-word/em-dash scan clean. Merged to default and pushed.
-- [ ] B4 (medium). Status generator: a script that reads the repo (skill count, test count, graph
-  nodes) and writes the UI CONFIG status block, so the HUD is always accurate. Run it, verify.
+- [x] B4 DONE 2026-07-08. Status generator: tools/zoe_status.py reads the repo's real counts
+  (skills 19, tests 76, graph nodes 400/545 edges, agents 164) and rewrites three marker-delimited
+  blocks (metrics, feed, status) in jarvis-ui/index.html so the HUD never drifts. Idempotent
+  (second run byte-identical); refuses to write if a marker is missing (no partial clobber); also
+  emits a zoe-ui/config.json snapshot. Fixed two stale HUD numbers live: skills 9->19, agents
+  154->164. Verified: 76 tests pass, HUD script node --check OK, banned-word/em-dash scan clean,
+  fresh Sonnet reviewer read the raw diff and empirically confirmed idempotency + marker-corruption
+  safety (PASS). Merged to default and pushed. Run `python tools/zoe_status.py` after adding
+  skills/tests/plugins to refresh the HUD.
 - [x] B5 DONE 2026-06-28. Full two-way VOICE is LIVE. tools/jarvis_voice.py: mic -> Deepgram (hear)
   -> Groq llama-3.3-70b as JARVIS (think) -> ElevenLabs Lily (speak). All three keys in .env, each
   leg verified (Deepgram transcribed the test clip; Groq+TTS answered aloud). tools/jarvis_speak.py
@@ -268,12 +275,14 @@ Electron app's pythonExe()/pythonwExe() do).
   `zoe_server.py` :7717 (/stats /3d /vault /shell /command /memory/* /session/resume). Control endpoint
   :7766 in Electron.
 
-### Next step (2026-07-07)
-B3 is done (discrete content stage sub-skills, merged + pushed). The next undone non-gated backlog
-item is **B4** (Phase B): a status generator script that reads the repo (skill count, test count,
-graph nodes) and writes the UI CONFIG status block so the HUD is always accurate, then run + verify
-it. After B4, the only remaining Phase B items are B6 and B7, both BLOCKED on Chris (24/7 host +
-secrets, and live connector creds). Internal/verified-only discipline still applies.
+### Next step (2026-07-08)
+B4 is done (status generator tools/zoe_status.py, merged + pushed). All non-gated Phase A and
+Phase B backlog items are now complete. The only remaining items are BLOCKED on Chris's
+credentials/host:
+- **B6** (24/7 automation): rename the CI template to enable; nightly jobs need secrets + a host.
+- **B7** (live connector data in the HUD): needs real booking/guild-activity creds.
+Everything else in Phase A, Phase B, Phase C, and Phase K is DONE. See "BACKLOG DRAINED" note at
+the bottom. Internal/verified-only discipline still applies to any future item.
 
 ### PENDING for the next session
 1. **Rebuild the installer**: `npm run dist` -> `dist/Zoe Setup 0.1.0.exe`. The CURRENT installed exe
@@ -297,3 +306,23 @@ secrets, and live connector creds). Internal/verified-only discipline still appl
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. The repo has a misconfigured external
   check-sql-files.py hook that errors on every write -- ignore it, files save fine.
 - A PostToolUse hook fires on every write (broken path) -- harmless.
+
+## BACKLOG DRAINED, waiting on Chris (2026-07-08)
+
+Every safe, internal, verified backlog item is done (Phase A 1-5, Phase B B1-B5 + B8-B13, Phase C
+K1-K9, and now B4). The only remaining items are BLOCKED because they need Chris's credentials,
+approval, or a host that an autonomous run must not create or guess. What Chris must provide to
+unblock them:
+
+1. Voice keys (if re-enabling the older Deepgram/11 Labs path): a live Deepgram key and an
+   ElevenLabs key in `.env`. (Note: the current realtime voice already runs on Chris's OpenAI key;
+   this is only for the legacy loop.)
+2. A 24/7 host + secrets for **B6**: somewhere to run the nightly jobs (GitHub Actions, a VPS, or
+   Zapier) plus the repo/API secrets. To turn on CI tests alone, rename
+   `.github/workflows/jarvis-ci.yml.disabled` to drop `.disabled` (that step is safe and needs no
+   secrets, but it is an outward-facing repo config change, so it is left for Chris).
+3. Auto-post approval + live connector creds for **B7**: real booking/guild-activity credentials to
+   feed live data into the HUD, and explicit sign-off before anything posts publicly.
+
+Until then the autobuild parks. Any future run: confirm this is still true, then stop without
+inventing work.
