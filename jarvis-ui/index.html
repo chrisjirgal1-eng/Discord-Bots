@@ -250,7 +250,9 @@ const CONFIG = {
   themes:[["Arc","56,189,248","34,211,238"],["Zenthra","168,85,247","192,132,252"],
           ["Clearcoat","125,211,252","56,189,248"],["Stark","245,214,123","251,191,36"]],
   taglines:["Wide awake, sir.","All systems are go.","Standing by.","What shall we build?"],
-  metrics:[["9","skills"],["154","agents"],["400","graph nodes"],["76","tests green"]],
+  /*SG:metrics*/
+  metrics:[["19","skills"],["164","agents"],["400","graph nodes"],["76","tests green"]],
+  /*SG:metrics-end*/
   // the content-pipeline team (DZ_xzicxQPx) + the orchestrator
   team:[
     ["JARVIS","orchestrator","orch","working"],
@@ -260,18 +262,22 @@ const CONFIG = {
     ["Script","short-form drafts","SR","idle"],
     ["Caption","captions + hashtags","CP","idle"],
   ],
+  /*SG:feed*/
   feed:[
-    ["MEMORY","graph synced, 400 nodes"],["AGENTS","154 specialists online"],
+    ["MEMORY","graph synced, 400 nodes"],["AGENTS","164 specialists online"],
     ["TESTS","76 passing, suite green"],["SCOUT","scanning Zenthra trends"],
-    ["ROUTER","9 skills mounted"],["MEMORY","handoff committed"],
+    ["ROUTER","19 skills mounted"],["MEMORY","handoff committed"],
     ["GRAPHIFY","content pipeline mapped to revenue"],["CORE","awaiting command"],
   ],
+  /*SG:feed-end*/
+  /*SG:status*/
   status:[
     ["ok","Memory + knowledge graph","400 nodes"],["ok","Test suite","76 green"],
-    ["ok","JARVIS router + 9 skills","wired"],["ok","154 specialist agents","loaded"],
+    ["ok","JARVIS router + 19 skills","wired"],["ok","164 specialist agents","loaded"],
     ["ok","Content pipeline","draft only"],["ok","Voice: two-way loop (Lily)","live"],
     ["warn","24/7 automation","needs a host"],["warn","Auto-posting","needs approval"],
   ],
+  /*SG:status-end*/
   connectors:["GitHub","Supabase","Vercel","Gmail","Drive","Calendar","Notion","Slack","Stripe","Zapier"],
   quickActions:[
     ["▸ Full status","jarvis, give me a full status"],
