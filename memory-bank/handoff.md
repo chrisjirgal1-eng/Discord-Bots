@@ -326,3 +326,11 @@ unblock them:
 
 Until then the autobuild parks. Any future run: confirm this is still true, then stop without
 inventing work.
+
+### Re-confirmed 2026-07-10 (autobuild run)
+Re-checked and still true. Backlog drained; B6 and B7 remain the only open items, both blocked
+on Chris (B6 needs a host + secrets or his sign-off to rename the CI template, still present as
+`.github/workflows/jarvis-ci.yml.disabled`; B7 needs live booking/guild creds + auto-post
+approval). No new safe/internal items exist. Nothing changed since 2026-07-08. Parked, no work
+invented. Next run: confirm again and stop unless Chris has added a backlog item or provided
+credentials.
