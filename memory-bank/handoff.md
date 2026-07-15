@@ -342,3 +342,17 @@ untracked files are runtime/scratch artifacts (vault notes, logs, cookies.txt, w
 not backlog work. B6 and B7 stay the sole open items, both blocked on Chris. No safe/internal item
 exists to do, so no work was invented. Next run: confirm again and stop unless Chris has added a
 backlog item or provided credentials.
+
+### Re-confirmed 2026-07-15 (autobuild run)
+Re-checked and still true. CI template is still `.github/workflows/jarvis-ci.yml.disabled` (B6 gated),
+no backlog item was added, no credentials have appeared, and the tracked tree is clean (only
+runtime/scratch untracked files). B6 and B7 remain the only open items, both blocked on Chris. No
+safe/internal item exists, so no work was invented.
+
+NOTE FOR CHRIS: the autobuild premise was "away until July 5, 2026," and today is 2026-07-15, so that
+window has passed. The safe backlog has been drained since 2026-07-08 and the last four runs have only
+been able to re-confirm that. Nothing more can move without you. To unblock, either (a) add a new
+safe/internal backlog item to this file, or (b) provide the gated inputs: a 24/7 host + secrets (or
+your sign-off to rename the CI template) for B6, and live booking/guild creds + auto-post approval for
+B7. Until one of those happens, these runs will keep parking. Consider pausing the scheduled autobuild
+now that you're back, so it stops firing no-op re-confirmations.
