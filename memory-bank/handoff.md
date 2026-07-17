@@ -356,3 +356,12 @@ safe/internal backlog item to this file, or (b) provide the gated inputs: a 24/7
 your sign-off to rename the CI template) for B6, and live booking/guild creds + auto-post approval for
 B7. Until one of those happens, these runs will keep parking. Consider pausing the scheduled autobuild
 now that you're back, so it stops firing no-op re-confirmations.
+
+### Re-confirmed 2026-07-17 (autobuild run)
+Re-checked and still true. CI template is still `.github/workflows/jarvis-ci.yml.disabled` (B6 gated),
+no backlog item was added to this file, and no credentials have appeared in `.env`. New untracked files
+since the last run (START-HERE-new-pc.md, Start-Zoey.bat, memory-bank/ops-config.json + ops-log.jsonl,
+memory/*.jsonl, research/, more vault notes) are all runtime/scratch output of the separate on-machine
+ops self-evolving loop, not autobuild backlog work. B6 and B7 remain the only open items, both blocked
+on Chris. No safe/internal item exists, so no work was invented. This is the fifth consecutive no-op
+re-confirmation; the request to pause the scheduled autobuild (above) still stands.
