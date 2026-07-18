@@ -365,3 +365,31 @@ memory/*.jsonl, research/, more vault notes) are all runtime/scratch output of t
 ops self-evolving loop, not autobuild backlog work. B6 and B7 remain the only open items, both blocked
 on Chris. No safe/internal item exists, so no work was invented. This is the fifth consecutive no-op
 re-confirmation; the request to pause the scheduled autobuild (above) still stands.
+
+### Re-confirmed 2026-07-18 (autobuild run)
+
+Re-checked and still true. Evidence gathered this run rather than assumed:
+
+- `.github/workflows/` contains only `jarvis-ci.yml.disabled`, so B6 is still gated.
+- Tracked tree is clean; the only commit since 2026-07-15 is the 07-17 re-confirmation itself.
+- No backlog item was added to this file.
+- `.env` key names are unchanged (Deepgram, ElevenLabs + voice id, Groq, OpenAI, two Zoe knobs).
+  No 24/7 host secret for B6 and no booking or guild-activity credential for B7 has appeared.
+- Health check: `python -m pytest -q` is 76 passed, so the repo is still green while parked.
+
+B6 and B7 stay the sole open items, both blocked on Chris. No work was invented.
+
+NOTE FOR CHRIS: this is the sixth consecutive no-op run. The autobuild premise was "away until
+July 5, 2026" and today is 2026-07-18, so the window closed roughly two weeks ago. These runs can
+no longer produce anything of value on their own, and each one costs a full session to write one
+paragraph confirming nothing changed. Recommended action, in order of preference:
+
+1. Delete or pause the `jarvis-autobuild` scheduled task. That is the honest fix, and it is your
+   call to make, not something an autonomous run should do to your machine settings.
+2. If you want it to keep running, add at least one new safe/internal backlog item to this file so
+   a run has something real to do.
+3. If you want B6 or B7 finished, provide the gated inputs: a 24/7 host plus secrets (or your
+   explicit sign-off to rename the CI template) for B6, and live booking/guild credentials plus
+   auto-post approval for B7.
+
+Until one of those happens, every future run will park exactly like this one.
