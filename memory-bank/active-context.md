@@ -2,6 +2,20 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
+## Latest: yt-dlp cookies for YouTube + Instagram (2026-07-19, branch claude/youtube-verification-prl55x)
+
+Verified the YouTube code (tests + selftests + diagnostics all green). The cloud 403 was an egress
+policy block, not a bug. Chris's real blocker is auth: YouTube bot-check + Instagram login. Built one
+cookies convention every yt-dlp path reads, so full-access research turns on the moment he drops a file.
+
+- New `tools/ytdlp_cookies.py`: resolves YTDLP_COOKIES -> COOKIES -> `secrets/cookies.txt` (must exist).
+- Wired into `audio.py` (Discord bot), `tools/watch_batch.py` (transcribe/research), `tools/zoe_music.py`.
+- `.gitignore` blocks `secrets/` + `cookies.txt` (a live login must never be committed).
+- `COOKIES-SETUP.md`: export steps (Get cookies.txt LOCALLY) for YouTube + Instagram, where to put it.
+- 27 tests pass (new test_ytdlp_cookies.py + 2 audio cookie tests). NOT yet merged (draft PR).
+- NEEDS CHRIS: export cookies.txt, drop at `secrets/cookies.txt` (or set YTDLP_COOKIES). Then it works.
+- OPEN: his "plugins/commands/skills auto" ask is vague; scope pending.
+
 ## Latest: ZOE loop kill switch (2026-07-01, PR #40, branch claude/zoey-loop-control-g2x6b8)
 
 Chris had Zoey running Claude Code 24/7, which held a file lock on the Claude desktop app

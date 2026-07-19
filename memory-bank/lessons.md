@@ -82,3 +82,11 @@ See `.claude/rules/learning.md` for the loop.
     or pipe data via stdin, or just use the Read tool which handles the path.
   - Prevent: when handing a path from the Bash tool to native Python, convert `/c/` to `C:/` first, or
     avoid the intermediate file and pipe through stdin.
+
+- A YouTube pull failing in the cloud sandbox is NOT the same failure as on Chris's PC.
+  - Mistake: nearly reported "YouTube works, just network-blocked" as the whole story; the block in the
+    cloud is a proxy CONNECT 403 (egress policy), which cookies cannot fix.
+  - Fix: on his local machine the recurring failure is instead YouTube's auth/bot-check ("confirm you're
+    not a bot") and Instagram login gating, which cookies.txt DO fix. Two different failures by environment.
+  - Prevent: diagnose by environment. Proxy/CONNECT 403 = network policy (cloud). Extractor auth error =
+    cookies (local). Do not conflate them, and never log "yt-dlp is broken."

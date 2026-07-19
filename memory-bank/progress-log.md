@@ -142,3 +142,19 @@ Keep entries short. One idea per line.
   entrypoint, not a substring) and must not claim to stop a respawn source it only detected.
 - Next: get the 24/7 launch mechanism from Chris and extend detection if it's a bare loop
   script; merge PR #40 after he tests the voice command on Windows.
+
+## 2026-07-19
+
+- Verified the YouTube code paths (branch claude/youtube-verification-prl55x). test_audio +
+  test_watch_batch 20/20, zoe_tools selftest, zoe_diagnostics 15/15. All green.
+- Live pull 403'd in the cloud sandbox: proxy CONNECT denial (egress policy), not a code bug.
+  Code degraded cleanly (DownloadError -> ValueError 'No results found').
+- Chris: the real recurring blocker is auth/cookies for YouTube + Instagram, wants full-access
+  research. Built one cookies convention every yt-dlp path honors.
+  - New tools/ytdlp_cookies.py resolver: YTDLP_COOKIES -> COOKIES -> secrets/cookies.txt (must exist).
+  - Wired into audio.py (Discord bot, cookiefile per-call), watch_batch.py, zoe_music.py.
+  - .gitignore blocks secrets/ + cookies.txt so a live login never gets committed.
+  - COOKIES-SETUP.md: export checklist (Get cookies.txt LOCALLY) for YouTube + Instagram.
+  - Tests: test_ytdlp_cookies.py (resolution order + existence guard) + 2 audio cookie tests. 27 pass.
+- Still needs Chris (only he can): export cookies.txt and drop it at secrets/cookies.txt. Then it just works.
+- Open: plugins/commands/skills "auto" thread from Chris is vague; asked him to scope it.
