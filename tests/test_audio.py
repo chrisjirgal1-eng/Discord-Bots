@@ -166,6 +166,41 @@ class TestFetchTracks:
                 await fetch_tracks("empty playlist")
 
 
+class TestCookies:
+    @pytest.mark.asyncio
+    async def test_cookiefile_passed_when_resolved(self):
+        # When a cookies file resolves, fetch_tracks hands it to yt-dlp as cookiefile.
+        with patch("audio.yt_dlp.YoutubeDL") as mock_ytdl_cls, \
+                patch("audio._cookies_file", return_value="/tmp/cookies.txt"):
+            mock_instance = MagicMock()
+            mock_instance.extract_info.return_value = {"title": "S", "url": "http://s"}
+            mock_instance.__enter__ = MagicMock(return_value=mock_instance)
+            mock_instance.__exit__ = MagicMock(return_value=False)
+            mock_ytdl_cls.return_value = mock_instance
+
+            await fetch_tracks("q")
+
+        opts = mock_ytdl_cls.call_args.args[0]
+        assert opts["cookiefile"] == "/tmp/cookies.txt"
+
+    @pytest.mark.asyncio
+    async def test_no_cookiefile_when_none(self):
+        # No cookies resolved -> no cookiefile key, and the base options are untouched.
+        with patch("audio.yt_dlp.YoutubeDL") as mock_ytdl_cls, \
+                patch("audio._cookies_file", return_value=None):
+            mock_instance = MagicMock()
+            mock_instance.extract_info.return_value = {"title": "S", "url": "http://s"}
+            mock_instance.__enter__ = MagicMock(return_value=mock_instance)
+            mock_instance.__exit__ = MagicMock(return_value=False)
+            mock_ytdl_cls.return_value = mock_instance
+
+            await fetch_tracks("q")
+
+        opts = mock_ytdl_cls.call_args.args[0]
+        assert "cookiefile" not in opts
+        assert "cookiefile" not in YTDL_OPTIONS  # base constant not mutated
+
+
 class TestConstants:
     def test_ytdl_options_has_expected_keys(self):
         assert YTDL_OPTIONS["format"] == "bestaudio/best"

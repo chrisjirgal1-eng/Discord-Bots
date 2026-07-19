@@ -28,6 +28,11 @@ package-lock.json
 memory/zoe_state.json
 memory/*.tmp
 
+# Auth cookies for yt-dlp (YouTube/Instagram). NEVER commit these. See COOKIES-SETUP.md
+secrets/
+cookies.txt
+*.cookies.txt
+
 # Obsidian memory vault: keep curated notes + README, ignore runtime churn
 vault/index.md
 vault/sessions/
