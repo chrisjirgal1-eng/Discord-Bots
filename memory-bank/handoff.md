@@ -393,3 +393,22 @@ paragraph confirming nothing changed. Recommended action, in order of preference
    auto-post approval for B7.
 
 Until one of those happens, every future run will park exactly like this one.
+
+### Re-confirmed 2026-07-19 (autobuild run)
+
+Still true. Evidence checked this run, not assumed:
+
+- `.github/workflows/` holds only `jarvis-ci.yml.disabled`, so B6 stays gated.
+- `.env` key names unchanged (Groq, ElevenLabs + voice id, Deepgram, OpenAI, two Zoe knobs). No
+  24/7 host secret for B6, no booking or guild-activity credential for B7.
+- No backlog item was added to this file. The only commit since 2026-07-18 is that day's
+  re-confirmation.
+- Health check: `python -m pytest -q` is 76 passed. Repo is green while parked.
+
+B6 and B7 remain the only open items, both blocked on Chris. No work was invented.
+
+NOTE FOR CHRIS: seventh consecutive no-op run, and the "away until July 5" window closed two weeks
+ago. The three options in the 2026-07-18 note still stand, in the same order: pause or delete the
+`jarvis-autobuild` scheduled task (your call, not something an autonomous run should change on your
+machine), add a safe internal backlog item, or provide the gated inputs for B6/B7. Pausing the task
+is the honest fix at this point.
