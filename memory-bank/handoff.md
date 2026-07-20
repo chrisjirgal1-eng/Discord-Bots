@@ -412,3 +412,24 @@ ago. The three options in the 2026-07-18 note still stand, in the same order: pa
 `jarvis-autobuild` scheduled task (your call, not something an autonomous run should change on your
 machine), add a safe internal backlog item, or provide the gated inputs for B6/B7. Pausing the task
 is the honest fix at this point.
+
+### Re-confirmed 2026-07-20 (autobuild run)
+
+Still true. Evidence checked this run, not assumed:
+
+- `.github/workflows/` holds only `jarvis-ci.yml.disabled`, so B6 stays gated.
+- `.env` key names unchanged (Groq, ElevenLabs + voice id, Deepgram, OpenAI, two Zoe knobs). No
+  24/7 host secret for B6, no booking or guild-activity credential for B7.
+- No backlog item was added to this file. The only commit since 2026-07-19 is that day's
+  re-confirmation.
+- Health check: `python -m pytest -q` is 76 passed. Repo is green while parked.
+
+B6 and B7 remain the only open items, both blocked on Chris. No work was invented.
+
+NOTE FOR CHRIS: eighth consecutive no-op run. The "away until July 5" window closed over two weeks
+ago, and the safe backlog has been drained since July 8, so the last eight runs have each spent a
+full session to write one paragraph confirming nothing moved. The honest fix is to pause or delete
+the `jarvis-autobuild` scheduled task. If you want it to keep running with something real to do, add
+a safe/internal backlog item here, or provide the gated inputs (a 24/7 host plus secrets or your
+sign-off to rename the CI template for B6; live booking/guild credentials plus auto-post approval
+for B7). Until one of those happens, every future run parks exactly like this one.
