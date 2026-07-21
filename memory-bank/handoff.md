@@ -433,3 +433,24 @@ the `jarvis-autobuild` scheduled task. If you want it to keep running with somet
 a safe/internal backlog item here, or provide the gated inputs (a 24/7 host plus secrets or your
 sign-off to rename the CI template for B6; live booking/guild credentials plus auto-post approval
 for B7). Until one of those happens, every future run parks exactly like this one.
+
+### Re-confirmed 2026-07-21 (autobuild run)
+
+Still true. Evidence checked this run, not assumed:
+
+- `.github/workflows/` holds only `jarvis-ci.yml.disabled`, so B6 stays gated.
+- `.env` key names unchanged (Groq, ElevenLabs + voice id, Deepgram, OpenAI, two Zoe knobs). No
+  24/7 host secret for B6, no booking or guild-activity credential for B7.
+- No backlog item was added to this file. The last five commits on this branch are all
+  re-confirmations (07-15, 07-17, 07-18, 07-19, 07-20). No feature work has landed since 07-08.
+- Health check: `python -m pytest -q` is 76 passed. Repo is green while parked.
+
+B6 and B7 remain the only open items, both blocked on Chris. No work was invented.
+
+NOTE FOR CHRIS: ninth consecutive no-op run. Git history now shows five commits in a row whose only
+content is a paragraph saying nothing changed, which is a clear signal the schedule has outlived its
+purpose. Please pause or delete the `jarvis-autobuild` scheduled task. Changing your machine's task
+settings is your call, not something an autonomous run should do. If you would rather keep it
+running, give it something real: add a safe/internal backlog item here, or provide the gated inputs
+(a 24/7 host plus secrets, or your sign-off to rename the CI template, for B6; live booking/guild
+credentials plus auto-post approval for B7).
