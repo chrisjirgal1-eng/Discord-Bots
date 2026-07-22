@@ -454,3 +454,31 @@ settings is your call, not something an autonomous run should do. If you would r
 running, give it something real: add a safe/internal backlog item here, or provide the gated inputs
 (a 24/7 host plus secrets, or your sign-off to rename the CI template, for B6; live booking/guild
 credentials plus auto-post approval for B7).
+
+### Re-confirmed 2026-07-22 (autobuild run)
+
+Still true. Evidence checked this run, not assumed:
+
+- `.github/workflows/` holds only `jarvis-ci.yml.disabled`, so B6 stays gated.
+- `.env` key names unchanged (Groq, ElevenLabs + voice id, Deepgram, OpenAI, two Zoe knobs; the
+  Deepgram key is listed twice, harmless). No 24/7 host secret for B6, no booking or
+  guild-activity credential for B7.
+- No backlog item was added to this file.
+- New since 2026-07-21: real work DID land on this branch, but from a different workflow, not the
+  autobuild. The unified yt-dlp cookies feature merged via PR #42 and #43 (`tools/ytdlp_cookies.py`,
+  `COOKIES-SETUP.md`, `tests/test_ytdlp_cookies.py`, `tests/test_audio.py`, audio.py plumbing), and
+  Chris turned it on for local runtime. That is his own change, already merged and verified there,
+  so there was nothing for this run to do with it.
+- Health check: `python -m pytest -q` is **83 passed** (up from 76; the 7 new tests come with the
+  cookies merge). Repo is green while parked.
+
+B6 and B7 remain the only open items, both blocked on Chris. No work was invented.
+
+NOTE FOR CHRIS: tenth consecutive no-op run for the autobuild. Worth saying plainly: the cookies
+work landing this week shows the repo is still moving, just not through this scheduled task. The
+autobuild has nothing safe left to do and has produced six straight commits whose only content is a
+paragraph saying so. Please pause or delete the `jarvis-autobuild` scheduled task; changing your
+machine's task settings is your call, not something an autonomous run should do. If you want it
+running, add a safe/internal backlog item here, or provide the gated inputs (a 24/7 host plus
+secrets, or your sign-off to rename the CI template, for B6; live booking/guild credentials plus
+auto-post approval for B7).
