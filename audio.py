@@ -1,9 +1,26 @@
 import asyncio
 import logging
+import os
 
 import yt_dlp
 
 log = logging.getLogger(__name__)
+
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def _cookies_file():
+    """Resolve a cookies.txt for authenticated YouTube pulls (age/bot-gated videos).
+    Same convention as tools/ytdlp_cookies.py; kept inline so the bot has no tools/ dependency.
+    Order: YTDLP_COOKIES env, COOKIES env, then <repo>/secrets/cookies.txt. See COOKIES-SETUP.md."""
+    for var in ("YTDLP_COOKIES", "COOKIES"):
+        p = os.environ.get(var)
+        if p:
+            p = os.path.expanduser(os.path.expandvars(p.strip().strip('"')))
+            if os.path.exists(p):
+                return p
+    default = os.path.join(_ROOT, "secrets", "cookies.txt")
+    return default if os.path.exists(default) else None
 
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
@@ -44,7 +61,11 @@ async def fetch_tracks(query: str) -> list[Track]:
     loop = asyncio.get_running_loop()
 
     def _extract():
-        with yt_dlp.YoutubeDL(YTDL_OPTIONS) as ytdl:
+        opts = dict(YTDL_OPTIONS)
+        cookies = _cookies_file()
+        if cookies:
+            opts['cookiefile'] = cookies
+        with yt_dlp.YoutubeDL(opts) as ytdl:
             try:
                 data = ytdl.extract_info(query, download=False)
             except yt_dlp.utils.DownloadError as exc:

@@ -55,6 +55,10 @@ def set_track(query):
     search = f"ytsearch1:{q} no copyright royalty free music"
     out = os.path.join(MUSIC_DIR, "zoe_track.%(ext)s")
     base = ["-x", "--audio-format", "mp3", "--no-playlist", "-o", out, search]
+    from ytdlp_cookies import cookies_file
+    cookies = cookies_file()
+    if cookies:
+        base += ["--cookies", cookies]         # after -m yt_dlp for both command forms (lesson: argv order)
     last = ""
     for cmd in ([sys.executable, "-m", "yt_dlp"] + base, ["yt-dlp"] + base):
         try:

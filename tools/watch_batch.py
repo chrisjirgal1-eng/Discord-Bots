@@ -8,7 +8,8 @@ Usage:
   python tools/watch_batch.py tools/video-urls.txt transcripts/ [cookies.txt]
 
 GROQ_API_KEY is read from the environment or a local .env file (gitignored).
-Cookies file path may also be given via the COOKIES env var.
+Cookies file path may also come from YTDLP_COOKIES/COOKIES env or secrets/cookies.txt
+(see COOKIES-SETUP.md).
 Image /p/ carousel posts have no audio and get marked __FAILED__. That is expected.
 """
 import os, re, sys, time, subprocess, urllib.request, json, mimetypes
@@ -68,7 +69,8 @@ def main():
     load_env()
     urls_file = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "tools", "video-urls.txt")
     out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, "transcripts")
-    cookies = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("COOKIES", "")
+    from ytdlp_cookies import cookies_file
+    cookies = sys.argv[3] if len(sys.argv) > 3 else (cookies_file() or "")
     key = os.environ.get("GROQ_API_KEY")
     if not key:
         sys.exit("set GROQ_API_KEY (env or .env)")
