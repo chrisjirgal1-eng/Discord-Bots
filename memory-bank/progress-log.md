@@ -158,3 +158,16 @@ Keep entries short. One idea per line.
   - Tests: test_ytdlp_cookies.py (resolution order + existence guard) + 2 audio cookie tests. 27 pass.
 - Still needs Chris (only he can): export cookies.txt and drop it at secrets/cookies.txt. Then it just works.
 - Open: plugins/commands/skills "auto" thread from Chris is vague; asked him to scope it.
+
+## 2026-07-22
+
+- Chris exported his YouTube + Instagram cookies. Ran a security check before anything: no cookies file
+  tracked in git, .gitignore actively blocking secrets/ + cookies.txt, file not even present in the cloud
+  session. Nothing leaked.
+- Confirmed target runtime is his LOCAL PC (Zoey/JARVIS, open network), not a cloud env. So: code ships via
+  git, cookies stay local and out of git.
+- Merged PR #42 to default (marked ready, merge commit 994de58) so his local pull gets the cookies plumbing.
+  Stopped the PR watch loop + unsubscribed (PR is terminal/merged).
+- Told Chris the safest cookie spot is OUTSIDE the repo + YTDLP_COOKIES env var (zero chance of git add).
+- NEXT FOR CHRIS: on his PC, git pull the default branch, then `python tools/ytdlp_cookies.py` to confirm
+  the file resolves. Then full authenticated YT/IG access is live on his machine.
