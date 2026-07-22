@@ -2,18 +2,21 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
-## Latest: yt-dlp cookies for YouTube + Instagram (2026-07-19, branch claude/youtube-verification-prl55x)
+## Latest: yt-dlp cookies MERGED, Chris turned it on (2026-07-22, PR #42 merged to default)
 
 Verified the YouTube code (tests + selftests + diagnostics all green). The cloud 403 was an egress
-policy block, not a bug. Chris's real blocker is auth: YouTube bot-check + Instagram login. Built one
-cookies convention every yt-dlp path reads, so full-access research turns on the moment he drops a file.
+policy block, not a bug. Chris's real blocker was auth: YouTube bot-check + Instagram login. Built one
+cookies convention every yt-dlp path reads. PR #42 MERGED to default. Chris exported his cookies.
 
 - New `tools/ytdlp_cookies.py`: resolves YTDLP_COOKIES -> COOKIES -> `secrets/cookies.txt` (must exist).
 - Wired into `audio.py` (Discord bot), `tools/watch_batch.py` (transcribe/research), `tools/zoe_music.py`.
-- `.gitignore` blocks `secrets/` + `cookies.txt` (a live login must never be committed).
+- `.gitignore` blocks `secrets/` + `cookies.txt` (a live login must never be committed). Verified: no
+  cookies file ever tracked; only the code files (ytdlp_cookies.py, its test, COOKIES-SETUP.md) are in git.
 - `COOKIES-SETUP.md`: export steps (Get cookies.txt LOCALLY) for YouTube + Instagram, where to put it.
-- 27 tests pass (new test_ytdlp_cookies.py + 2 audio cookie tests). NOT yet merged (draft PR).
-- NEEDS CHRIS: export cookies.txt, drop at `secrets/cookies.txt` (or set YTDLP_COOKIES). Then it works.
+- 27 tests pass. PR #42 merged 2026-07-22 (self-assigned, then merged on Chris's go under standing authority).
+- Chris did the export. Target runtime is his LOCAL PC (Zoey/JARVIS, open network), NOT cloud. Delivery:
+  code via git (pull default), cookies stay local (secrets/cookies.txt or YTDLP_COOKIES, never committed).
+- NEXT FOR CHRIS: on his PC, `git pull` default, confirm `python tools/ytdlp_cookies.py` prints the path.
 - OPEN: his "plugins/commands/skills auto" ask is vague; scope pending.
 
 ## Latest: ZOE loop kill switch (2026-07-01, PR #40, branch claude/zoey-loop-control-g2x6b8)
