@@ -32,6 +32,18 @@ Status as of 2026-06-27. Update when state changes.
   booking, vercel.json for static deploy). Has Google Sheets auto-tracking.
 - TikTok business verified as sole proprietor. Accepted EIN doc is the IRS 147C letter, not CP575.
 
+## Ding Dong Ditch Anime Girls (Zen Peak Studios, Roblox game)
+
+- Chris's own Roblox game, published under Zen Peak Studios. Pre-launch: 0 active, no rating.
+- Cash/Sec incremental base-tycoon, "Steal a Brainrot" lineage: ding-dong-ditch houses,
+  steal anime girls, they generate Cash/Sec, RNG for rarer girls, roll base styles for
+  cash multipliers. 10$/sec early to ~973M$/sec endgame.
+- Full game bible + Chris's LiveOps master prompt: `memory-bank/ding-dong-ditch-anime-girls.md`.
+- Google Doc mirror (motivation daily Drive account, motivationfydaily@gmail.com):
+  https://docs.google.com/document/d/1-rClvwXjovLIFF9a4iEr3z5l-mpXCOmRci5cnN4Rr0A/edit
+- NEXT: Chris sends the finalized Cowork LiveOps prompt; run it against the bible to
+  build the full Live Operations Playbook. Launch date TBD (anchor for all countdowns).
+
 ## Knowledge Operating System (KOS)
 
 - Self-hosted TypeScript platform. The "content puller."

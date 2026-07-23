@@ -25,6 +25,7 @@ start of every session.
 | `preferences.md` | Communication and content style | Every session |
 | `active-context.md` | What is in flight right now | Every session |
 | `projects.md` | Zenthra, Clearcoat, KOS, JARVIS, with status | On demand |
+| `ding-dong-ditch-anime-girls.md` | Roblox game bible + LiveOps master prompt | On demand |
 | `career.md` | D1 track and field recruitment | On demand |
 | `progress-log.md` | Dated session history | On demand |
 

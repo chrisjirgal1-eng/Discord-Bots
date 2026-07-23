@@ -25,6 +25,7 @@ In ephemeral web/cloud sessions, only committed files survive. This is the durab
 When the work calls for it, read these:
 
 - `memory-bank/projects.md` - Zenthra, Clearcoat Co., KOS, JARVIS, with live status
+- `memory-bank/ding-dong-ditch-anime-girls.md` - Roblox game bible + LiveOps master prompt (Zen Peak Studios)
 - `memory-bank/career.md` - D1 track and field recruitment
 - `memory-bank/progress-log.md` - dated session history
 - `memory-bank/token-efficiency.md` - how to conserve tokens

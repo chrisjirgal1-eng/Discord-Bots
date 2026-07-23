@@ -2,7 +2,26 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
-## Latest: yt-dlp cookies MERGED, Chris turned it on (2026-07-22, PR #42 merged to default)
+## Latest: Ding Dong Ditch Anime Girls context loaded for Cowork (2026-07-23, branch claude/ding-dong-ditch-liveops-cflg9a)
+
+Chris is prepping a LiveOps / hype / event system for his new Roblox game, Ding Dong Ditch
+Anime Girls (Zen Peak Studios). He sent 5 screenshots + a LiveOps master prompt draft. This
+session built the game bible so "Cowork" knows everything before he sends the finalized prompt.
+
+- Game bible: `memory-bank/ding-dong-ditch-anime-girls.md` (wired into CLAUDE.md on-demand
+  list, README table, projects.md). Includes his master prompt verbatim as an appendix.
+- Google Doc deliverable (he asked for a Google Doc; lives in his motivation daily account
+  motivationfydaily@gmail.com, confirmed intentional):
+  https://docs.google.com/document/d/1-rClvwXjovLIFF9a4iEr3z5l-mpXCOmRci5cnN4Rr0A/edit
+- Core loop CONFIRMED by Chris: ding-dong-ditch houses, steal anime girls, place on base
+  for Cash/Sec, RNG rarity, plus roll base styles for cash multipliers.
+- Launch date TBD. It anchors the whole countdown/hype timeline; get it from him.
+- NEXT: when his finalized Cowork prompt lands, run it against the bible to produce the
+  full Live Operations Playbook (thumbnails, event cards, countdown system, calendar,
+  templates, metrics). Open questions for him are listed in the bible (PvP vs solo,
+  unit roster, monetization, channels, brand kit, server size).
+
+## Earlier: yt-dlp cookies MERGED, Chris turned it on (2026-07-22, PR #42 merged to default)
 
 Verified the YouTube code (tests + selftests + diagnostics all green). The cloud 403 was an egress
 policy block, not a bug. Chris's real blocker was auth: YouTube bot-check + Instagram login. Built one
