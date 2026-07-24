@@ -171,3 +171,19 @@ Keep entries short. One idea per line.
 - Told Chris the safest cookie spot is OUTSIDE the repo + YTDLP_COOKIES env var (zero chance of git add).
 - NEXT FOR CHRIS: on his PC, git pull the default branch, then `python tools/ytdlp_cookies.py` to confirm
   the file resolves. Then full authenticated YT/IG access is live on his machine.
+
+## 2026-07-23
+
+- New project landed: Ding Dong Ditch Anime Girls, Chris's own Roblox game under Zen Peak
+  Studios. Pre-launch (0 active, no rating, placeholder icon).
+- Chris sent 5 screenshots (his game page + Anime Expeditions as the bar) plus a draft
+  LiveOps master prompt for "Cowork". Ask: load everything about the game before the
+  finalized prompt lands, delivered as a Google Doc.
+- Built the game bible: memory-bank/ding-dong-ditch-anime-girls.md. Core loop confirmed
+  by Chris (ditch houses, steal anime girls for Cash/Sec, RNG rarity, base-style rolls
+  give cash multipliers). His prompt stored verbatim as an appendix. Wired into CLAUDE.md
+  on-demand list, README table, projects.md.
+- Google Doc created in his motivation daily Drive (motivationfydaily@gmail.com, he
+  confirmed intentional). Content verified by read-back after upload.
+- Deferred on purpose: the full LiveOps Playbook waits for his finalized Cowork prompt.
+  Launch date TBD; it anchors every countdown, so it's the first question when he's back.
