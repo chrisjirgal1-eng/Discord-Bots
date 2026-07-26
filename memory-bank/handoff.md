@@ -526,3 +526,25 @@ task; changing your machine's task settings is your call, not something an auton
 If you want it to keep running, add a safe/internal backlog item here, or provide the gated inputs
 (a 24/7 host plus secrets, or your sign-off to rename the CI template, for B6; live booking/guild
 credentials plus auto-post approval for B7).
+
+### Re-confirmed 2026-07-26 (autobuild run)
+
+Still true. Evidence checked this run, not assumed:
+
+- `.github/workflows/` holds only `jarvis-ci.yml.disabled`, so B6 stays gated.
+- `.env` key names unchanged (Deepgram, ElevenLabs + voice id, Groq, OpenAI, two Zoe knobs:
+  ZOE_MIC_THRESHOLD and ZOE_REALTIME_IDLE_SEC). No 24/7 host secret for B6, no booking or
+  guild-activity credential for B7.
+- No backlog item was added to this file. The last three commits on this branch are all
+  re-confirmations (07-22, 07-23, 07-24); the newest feature work remains Chris's own cookies
+  merge (PR #42/#43), already merged and verified.
+- Health check: `python -m pytest -q` is 83 passed. Repo is green while parked.
+
+B6 and B7 remain the only open items, both blocked on Chris. No work was invented.
+
+NOTE FOR CHRIS: thirteenth consecutive no-op run for the autobuild. The "away until July 5" window
+closed three weeks ago, and the safe backlog has been drained since July 8. The honest fix is to
+pause or delete the `jarvis-autobuild` scheduled task; changing your machine's task settings is your
+call, not something an autonomous run should do. If you want it to keep running, add a safe/internal
+backlog item here, or provide the gated inputs (a 24/7 host plus secrets, or your sign-off to rename
+the CI template, for B6; live booking/guild credentials plus auto-post approval for B7).
