@@ -9,6 +9,7 @@
 </head>
 <body>
 <div class="wrap" id="app"></div>
+<div id="modal-root"></div>
 
 <script src="shared.js"></script>
 <script>
@@ -196,6 +197,17 @@ function memberCardHtml(m, prevDone) {
 }
 
 function renderBoard(prevDone = null) {
+  // The poll re-render rebuilds every input, so snapshot open-form typing
+  // and focus first and put them back after, or keystrokes get eaten.
+  const typed = {};
+  app.querySelectorAll("input[id], textarea[id], select[id]").forEach((f) => { typed[f.id] = f.value; });
+  const focused = document.activeElement;
+  const focusId = focused && focused.id && app.contains(focused) ? focused.id : null;
+  let selStart = null, selEnd = null;
+  if (focusId) {
+    try { selStart = focused.selectionStart; selEnd = focused.selectionEnd; } catch { /* not a text control */ }
+  }
+
   const doneTasks = board.tasks
     .filter((t) => t.status === "done" && t.completed_at)
     .sort((a, b) => b.completed_at.localeCompare(a.completed_at))
@@ -263,9 +275,21 @@ function renderBoard(prevDone = null) {
           }).join("") : `<div class="feed-empty">Completions land here, newest first.</div>`}
         </div>
       </div>
-    </div>
+    </div>`;
 
-    <div id="modal-root"></div>`;
+  for (const [id, v] of Object.entries(typed)) {
+    const f = document.getElementById(id);
+    if (f) f.value = v;
+  }
+  if (focusId) {
+    const f = document.getElementById(focusId);
+    if (f) {
+      f.focus();
+      if (selStart !== null) {
+        try { f.setSelectionRange(selStart, selEnd); } catch { /* date/select inputs refuse this */ }
+      }
+    }
+  }
 
   wireBoardEvents();
 }
