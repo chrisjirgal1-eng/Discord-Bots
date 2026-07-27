@@ -1,7 +1,7 @@
 // Admin API for the Zenthra team dashboard.
 // Every call authenticates with the x-admin-code header checked against the
 // sha256 hash stored in app_config (key: admin_code_hash). Until that row is
-// seeded, every call is rejected — locked by default, never open by default.
+// seeded, every call is rejected: locked by default, never open by default.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 

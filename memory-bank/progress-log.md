@@ -171,3 +171,21 @@ Keep entries short. One idea per line.
 - Told Chris the safest cookie spot is OUTSIDE the repo + YTDLP_COOKIES env var (zero chance of git add).
 - NEXT FOR CHRIS: on his PC, git pull the default branch, then `python tools/ytdlp_cookies.py` to confirm
   the file resolves. Then full authenticated YT/IG access is live on his machine.
+
+## 2026-07-27
+
+- Built the Zenthra dev team task dashboard end to end (Chris's ask: manage the dev team, tasks
+  per Discord username, proof-picture check-off, Discord ping to him, timezones + schedules).
+- New Supabase project zenthra-team-dashboard (free, $0): members/tasks/app_config with RLS
+  deny-all, proofs bucket, admin + member Edge Functions. All writes server-verified (sha256
+  passcode + per-member access codes). Inverts the clearcoat client-side-password mistake.
+- Frontend team-dashboard/ (static, no build): member board (login once, own tasks, weekly
+  schedule in own tz, proof-required completion modal with client-side image compression,
+  team progress) + admin board (member cards, live local clocks, schedule grids, progress bars,
+  task CRUD, access-code modal shown once, completions feed, ping-failed badge + resend).
+- 35/35 e2e tests green, run in-database via the Postgres http extension because the sandbox
+  egress blocks the new supabase.co domain. Test data cleaned, security advisors clean.
+- Hosting is the one open piece: Vercel MCP deploy is approval-gated (interactive tap only) and
+  Supabase refuses to render HTML on its own domain. Two 2-minute paths documented in the README.
+- PR #45 (draft). Admin passcode seeded and handed to Chris in chat. Weekly keep-alive Routine
+  armed so the free-tier project does not pause. 3 new lessons appended to lessons.md.
