@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zenthra Admin - Team Board</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script src="shared.js"></script>
+<script>
+const app = document.getElementById("app");
+let adminCode = sessionStorage.getItem("zen_admin_code") || "";
+let board = null;   // { members, tasks, webhook_configured }
+let pollTimer = null;
+let openForms = {}; // formKey -> true, survives re-render
+
+const adminApi = (body) => api("admin", body, { "x-admin-code": adminCode });
+
+/* ---------- gate ---------- */
+
+function renderGate(msg = "") {
+  app.innerHTML = `
+    <div class="card login-box">
+      <h1>Zenthra <span style="color:var(--accent-2)">Admin</span></h1>
+      <p>Enter the admin passcode to open the team board.</p>
+      <label>Admin passcode</label>
+      <input type="password" id="gate-code" autocomplete="current-password">
+      <div class="error" id="gate-error">${escapeHtml(msg)}</div>
+      <button id="gate-btn" style="width:100%">Unlock</button>
+    </div>`;
+  const tryUnlock = async () => {
+    const code = document.getElementById("gate-code").value.trim();
+    const errEl = document.getElementById("gate-error");
+    const btn = document.getElementById("gate-btn");
+    if (!code) { errEl.textContent = "Enter the passcode."; return; }
+    btn.disabled = true; btn.textContent = "Checking...";
+    adminCode = code;
+    try {
+      board = await adminApi({ action: "list_all" });
+      sessionStorage.setItem("zen_admin_code", code);
+      startBoard();
+    } catch (e) {
+      adminCode = "";
+      errEl.textContent = e.message;
+      btn.disabled = false; btn.textContent = "Unlock";
+    }
+  };
+  document.getElementById("gate-btn").onclick = tryUnlock;
+  document.getElementById("gate-code").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") tryUnlock();
+  });
+}
+
+function lock() {
+  sessionStorage.removeItem("zen_admin_code");
+  adminCode = ""; board = null;
+  if (pollTimer) clearInterval(pollTimer);
+  renderGate();
+}
+
+/* ---------- board ---------- */
+
+async function refreshBoard() {
+  if (!adminCode) return;
+  try {
+    const fresh = await adminApi({ action: "list_all" });
+    const prevDone = new Set((board?.tasks || []).filter(t => t.status === "done").map(t => t.id));
+    board = fresh;
+    renderBoard(prevDone);
+  } catch (e) {
+    if (e.status === 401) lock();
+  }
+}
+
+function startBoard() {
+  renderBoard();
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(refreshBoard, 10000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && adminCode) refreshBoard();
+  });
+}
+
+function tzOptionsHtml(selected) {
+  const zones = (typeof Intl.supportedValuesOf === "function")
+    ? Intl.supportedValuesOf("timeZone")
+    : ["America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Europe/London", "UTC"];
+  return zones.map((z) =>
+    `<option value="${escapeHtml(z)}"${z === selected ? " selected" : ""}>${escapeHtml(z)}</option>`).join("");
+}
+
+function dayInputsHtml(prefix, schedule = {}) {
+  return `<div class="form-days">` + DAYS.map((d) => `
+    <div>
+      <label>${DAY_LABELS[d]}</label>
+      <input type="text" id="${prefix}-${d}" placeholder="-" value="${escapeHtml(schedule[d] || "")}">
+    </div>`).join("") + `</div>`;
+}
+
+function readSchedule(prefix) {
+  const out = {};
+  for (const d of DAYS) {
+    const v = document.getElementById(`${prefix}-${d}`).value.trim();
+    if (v) out[d] = v;
+  }
+  return out;
+}
+
+function adminTaskHtml(t, m, newlyDone) {
+  const overdue = t.status === "open" && t.due_date && isOverdue(t.due_date, m.timezone);
+  const pingFailed = t.status === "done" && !t.ping_sent_at;
+  return `
+    <div class="task ${t.status}${newlyDone ? " flash" : ""}">
+      <div class="task-top">
+        <div class="status-dot"></div>
+        <div style="flex:1;min-width:0">
+          <div class="task-title">${escapeHtml(t.title)}</div>
+          ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ""}
+          <div class="task-meta">
+            ${t.due_date ? `<span class="badge ${overdue ? "overdue" : "due"}">${overdue ? "OVERDUE " : "due "}${fmtDue(t.due_date)}</span>` : ""}
+            ${t.status === "done" ? `<span class="badge done">done ${t.completed_at ? timeAgo(t.completed_at) : ""}</span>` : ""}
+            ${pingFailed ? `<span class="badge ping-fail">ping failed</span> <button class="small ghost" data-resend="${t.id}">Resend ping</button>` : ""}
+          </div>
+        </div>
+        ${t.status === "done" && t.proof_image_url
+          ? `<img class="proof-thumb" src="${escapeHtml(t.proof_image_url)}" alt="proof" data-zoom="${escapeHtml(t.proof_image_url)}">`
+          : ""}
+        <div class="task-actions">
+          ${t.status === "done" ? `<button class="small ghost" data-reopen="${t.id}">Reopen</button>` : ""}
+          <button class="small danger" data-del-task="${t.id}">✕</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function memberCardHtml(m, prevDone) {
+  const mTasks = board.tasks.filter((t) => t.member_id === m.id);
+  const done = mTasks.filter((t) => t.status === "done").length;
+  const addKey = `add-task-${m.id}`;
+  const editKey = `edit-member-${m.id}`;
+  return `
+    <div class="card member-card${m.active ? "" : "\" style=\"opacity:0.6"}">
+      <div class="member-head">
+        <span class="member-name">${escapeHtml(m.display_name || m.discord_username)}</span>
+        <span class="member-user">@${escapeHtml(m.discord_username)}</span>
+        ${m.role ? `<span class="member-role">${escapeHtml(m.role)}</span>` : ""}
+        ${m.active ? "" : `<span class="inactive-badge">inactive</span>`}
+        <span class="member-clock" data-clock="${escapeHtml(m.timezone)}">🕒 <b>${timeIn(m.timezone)}</b></span>
+      </div>
+      ${scheduleGridHtml(m.schedule, m.timezone)}
+      ${progressBarHtml(done, mTasks.length)}
+      <div class="task-list">
+        ${mTasks.map((t) => adminTaskHtml(t, m, prevDone && t.status === "done" && !prevDone.has(t.id))).join("")}
+      </div>
+
+      ${openForms[addKey] ? `
+      <div class="inline-form">
+        <div class="row2">
+          <div><label>Task title</label><input type="text" id="nt-title-${m.id}" placeholder="What needs to get done"></div>
+          <div><label>Due date (optional)</label><input type="date" id="nt-due-${m.id}"></div>
+        </div>
+        <div><label>Details (optional)</label><textarea id="nt-desc-${m.id}" placeholder="Links, specs, where to put it..."></textarea></div>
+        <div class="error" id="nt-error-${m.id}"></div>
+        <div style="display:flex;gap:8px">
+          <button class="small" data-save-task="${m.id}">Add task</button>
+          <button class="small ghost" data-toggle="${addKey}">Cancel</button>
+        </div>
+      </div>` : ""}
+
+      ${openForms[editKey] ? `
+      <div class="inline-form">
+        <div class="row2">
+          <div><label>Display name</label><input type="text" id="em-name-${m.id}" value="${escapeHtml(m.display_name || "")}"></div>
+          <div><label>Role</label><input type="text" id="em-role-${m.id}" value="${escapeHtml(m.role || "")}" placeholder="builder, scripter..."></div>
+        </div>
+        <div><label>Timezone</label><select id="em-tz-${m.id}">${tzOptionsHtml(m.timezone)}</select></div>
+        <div><label>Schedule (free text per day)</label>${dayInputsHtml(`em-day-${m.id}`, m.schedule)}</div>
+        <div class="error" id="em-error-${m.id}"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="small" data-save-member="${m.id}">Save</button>
+          <button class="small ghost" data-toggle="${editKey}">Cancel</button>
+          <span class="spacer"></span>
+          <button class="small ghost" data-regen="${m.id}">New access code</button>
+          <button class="small ${m.active ? "danger" : ""}" data-toggle-active="${m.id}">${m.active ? "Deactivate" : "Reactivate"}</button>
+        </div>
+      </div>` : ""}
+
+      <div style="display:flex;gap:8px">
+        <button class="small ghost" data-toggle="${addKey}">＋ Add task</button>
+        <button class="small ghost" data-toggle="${editKey}">Edit member</button>
+      </div>
+    </div>`;
+}
+
+function renderBoard(prevDone = null) {
+  const doneTasks = board.tasks
+    .filter((t) => t.status === "done" && t.completed_at)
+    .sort((a, b) => b.completed_at.localeCompare(a.completed_at))
+    .slice(0, 15);
+  const memberById = Object.fromEntries(board.members.map((m) => [m.id, m]));
+
+  app.innerHTML = `
+    <header class="top">
+      <div>
+        <div class="brand"><span class="zen">Zenthra</span> Admin</div>
+        <div class="tagline">Zenith of Power - team board</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="ghost small" id="test-ping">Test Discord ping</button>
+      <button class="ghost small" id="lock-btn">Lock</button>
+    </header>
+
+    ${board.webhook_configured ? "" : `
+    <div class="notice">Discord pings are not connected yet. Task completions still work,
+    but nothing lands in Discord until the webhook is set up (see the README / ask Claude to seed it).</div>`}
+
+    <div class="layout">
+      <div>
+        <h2 class="mt0">Team (${board.members.filter((m) => m.active).length} active)</h2>
+        <div class="grid" style="grid-template-columns:1fr">
+          ${board.members.map((m) => memberCardHtml(m, prevDone)).join("")}
+        </div>
+
+        ${openForms["add-member"] ? `
+        <div class="inline-form" style="margin-top:14px">
+          <div class="row2">
+            <div><label>Discord username *</label><input type="text" id="am-user" placeholder="their_discord_name"></div>
+            <div><label>Display name</label><input type="text" id="am-name" placeholder="What you call them"></div>
+          </div>
+          <div class="row2">
+            <div><label>Role</label><input type="text" id="am-role" placeholder="builder, scripter, UI..."></div>
+            <div><label>Timezone</label><select id="am-tz">${tzOptionsHtml("America/Chicago")}</select></div>
+          </div>
+          <div><label>Schedule (free text per day, e.g. "4-7pm")</label>${dayInputsHtml("am-day")}</div>
+          <div class="error" id="am-error"></div>
+          <div style="display:flex;gap:8px">
+            <button class="small" id="am-save">Add member & get code</button>
+            <button class="small ghost" data-toggle="add-member">Cancel</button>
+          </div>
+        </div>` : `
+        <div style="margin-top:14px">
+          <button data-toggle="add-member">＋ Add team member</button>
+        </div>`}
+      </div>
+
+      <div>
+        <h2 class="mt0">Recent completions</h2>
+        <div class="card feed">
+          ${doneTasks.length ? doneTasks.map((t) => {
+            const m = memberById[t.member_id];
+            return `
+            <div class="feed-item">
+              ${t.proof_image_url ? `<img class="proof-thumb" src="${escapeHtml(t.proof_image_url)}" alt="proof" data-zoom="${escapeHtml(t.proof_image_url)}">` : ""}
+              <div class="who">
+                <b>${escapeHtml(m ? (m.display_name || m.discord_username) : "?")}</b>
+                finished <b>${escapeHtml(t.title)}</b><br>
+                ${timeAgo(t.completed_at)}${t.ping_sent_at ? " · pinged ✅" : " · <span style='color:var(--warn)'>ping failed</span>"}
+              </div>
+            </div>`;
+          }).join("") : `<div class="feed-empty">Completions land here, newest first.</div>`}
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-root"></div>`;
+
+  wireBoardEvents();
+}
+
+function wireBoardEvents() {
+  document.getElementById("lock-btn").onclick = lock;
+  document.getElementById("test-ping").onclick = async (e) => {
+    const btn = e.target;
+    btn.disabled = true; btn.textContent = "Pinging...";
+    try {
+      const r = await adminApi({ action: "test_ping" });
+      btn.textContent = r.ping_sent ? "Ping landed ✅" : "Ping failed ✗";
+    } catch (err) {
+      btn.textContent = err.message.includes("webhook") ? "No webhook yet" : "Ping failed ✗";
+    }
+    setTimeout(() => { btn.disabled = false; btn.textContent = "Test Discord ping"; }, 2500);
+  };
+
+  app.querySelectorAll("[data-toggle]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const k = b.dataset.toggle;
+      openForms[k] = !openForms[k];
+      renderBoard();
+    }));
+
+  app.querySelectorAll("[data-zoom]").forEach((img) =>
+    img.addEventListener("click", () => openZoom(img.dataset.zoom)));
+
+  const el = (id) => document.getElementById(id);
+
+  const amSave = el("am-save");
+  if (amSave) amSave.onclick = async () => {
+    const errEl = el("am-error");
+    amSave.disabled = true;
+    try {
+      const r = await adminApi({
+        action: "add_member",
+        discord_username: el("am-user").value,
+        display_name: el("am-name").value.trim() || null,
+        role: el("am-role").value.trim() || null,
+        timezone: el("am-tz").value,
+        schedule: readSchedule("am-day"),
+      });
+      openForms["add-member"] = false;
+      await refreshBoard();
+      showCodeModal(r.member, r.access_code);
+    } catch (e) {
+      errEl.textContent = e.message;
+      amSave.disabled = false;
+    }
+  };
+
+  app.querySelectorAll("[data-save-task]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.saveTask;
+    const errEl = el(`nt-error-${id}`);
+    b.disabled = true;
+    try {
+      await adminApi({
+        action: "create_task",
+        member_id: id,
+        title: el(`nt-title-${id}`).value,
+        description: el(`nt-desc-${id}`).value.trim() || null,
+        due_date: el(`nt-due-${id}`).value || null,
+      });
+      openForms[`add-task-${id}`] = false;
+      await refreshBoard();
+    } catch (e) { errEl.textContent = e.message; b.disabled = false; }
+  });
+
+  app.querySelectorAll("[data-save-member]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.saveMember;
+    const errEl = el(`em-error-${id}`);
+    b.disabled = true;
+    try {
+      await adminApi({
+        action: "update_member",
+        member_id: id,
+        display_name: el(`em-name-${id}`).value.trim() || null,
+        role: el(`em-role-${id}`).value.trim() || null,
+        timezone: el(`em-tz-${id}`).value,
+        schedule: readSchedule(`em-day-${id}`),
+      });
+      openForms[`edit-member-${id}`] = false;
+      await refreshBoard();
+    } catch (e) { errEl.textContent = e.message; b.disabled = false; }
+  });
+
+  app.querySelectorAll("[data-regen]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.regen;
+    if (!confirm("Generate a new access code? Their old code stops working immediately.")) return;
+    try {
+      const r = await adminApi({ action: "regen_code", member_id: id });
+      showCodeModal(r.member, r.access_code);
+    } catch (e) { alert(e.message); }
+  });
+
+  app.querySelectorAll("[data-toggle-active]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.toggleActive;
+    const m = board.members.find((x) => x.id === id);
+    if (m.active && !confirm(`Deactivate ${m.display_name || m.discord_username}? They lose board access until reactivated.`)) return;
+    try {
+      await adminApi({ action: "update_member", member_id: id, active: !m.active });
+      await refreshBoard();
+    } catch (e) { alert(e.message); }
+  });
+
+  app.querySelectorAll("[data-del-task]").forEach((b) => b.onclick = async () => {
+    if (!confirm("Delete this task? This also removes its proof picture.")) return;
+    try {
+      await adminApi({ action: "delete_task", task_id: b.dataset.delTask });
+      await refreshBoard();
+    } catch (e) { alert(e.message); }
+  });
+
+  app.querySelectorAll("[data-reopen]").forEach((b) => b.onclick = async () => {
+    if (!confirm("Reopen this task? The proof picture is cleared and they redo it.")) return;
+    try {
+      await adminApi({ action: "update_task", task_id: b.dataset.reopen, status: "open" });
+      await refreshBoard();
+    } catch (e) { alert(e.message); }
+  });
+
+  app.querySelectorAll("[data-resend]").forEach((b) => b.onclick = async () => {
+    b.disabled = true; b.textContent = "Sending...";
+    try {
+      const r = await adminApi({ action: "resend_ping", task_id: b.dataset.resend });
+      if (!r.ping_sent) alert("Still failing. Check the webhook URL (README has the fix).");
+      await refreshBoard();
+    } catch (e) { alert(e.message); b.disabled = false; }
+  });
+}
+
+function showCodeModal(member, code) {
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-overlay" id="code-overlay">
+      <div class="modal">
+        <h3>Access code for @${escapeHtml(member.discord_username)}</h3>
+        <p class="sub">DM this to them on Discord. It is shown ONCE - it can't be looked up later, only regenerated.</p>
+        <div class="code-box"><span style="flex:1">${escapeHtml(code)}</span>
+          <button class="small" id="copy-code">Copy</button></div>
+        <div class="actions"><button id="code-done">Done</button></div>
+      </div>
+    </div>`;
+  document.getElementById("copy-code").onclick = (e) => {
+    navigator.clipboard.writeText(code).then(() => { e.target.textContent = "Copied ✅"; });
+  };
+  document.getElementById("code-done").onclick = () => { root.innerHTML = ""; };
+}
+
+function openZoom(url) {
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-overlay" id="zoom-overlay">
+      <img class="zoom-img" src="${escapeHtml(url)}" alt="proof">
+    </div>`;
+  document.getElementById("zoom-overlay").onclick = () => { root.innerHTML = ""; };
+}
+
+setInterval(() => {
+  document.querySelectorAll("[data-clock]").forEach((elx) => {
+    const b = elx.querySelector("b") || elx;
+    b.textContent = timeIn(elx.dataset.clock);
+  });
+}, 30000);
+
+/* ---------- boot ---------- */
+
+(async () => {
+  if (!adminCode) { renderGate(); return; }
+  try {
+    board = await adminApi({ action: "list_all" });
+    startBoard();
+  } catch (e) {
+    if (e.status === 401) { renderGate("Passcode changed. Enter it again."); sessionStorage.removeItem("zen_admin_code"); adminCode = ""; }
+    else renderGate(e.message);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+# Zenthra Team Dashboard
+
+Task board for the dev team. Chris assigns tasks per member; members check them off
+with a mandatory proof screenshot; every completion pings Chris on Discord with the picture.
+
+## URLs
+
+- Member board: `index.html` (give this URL to the team)
+- Admin board: `admin.html` (Chris only, passcode-gated)
+- Backend: Supabase project `zenthra-team-dashboard` (`rmbcnthetpiubiyasipp`), Edge Functions `admin` + `member`
+
+### Hosting status
+
+The backend is live and fully tested. The web pages are NOT hosted yet: the Vercel MCP
+deploy needs an interactive approval, and Supabase can't serve HTML on its own domain
+(it rewrites text/html to text/plain as an anti-phishing rule; the leftover `site` and
+`sitepush` functions are inert 410 stubs from discovering that).
+
+Two ways to put it live (either takes ~2 minutes):
+1. In an interactive Claude session: "deploy team-dashboard to Vercel" and approve the prompt.
+2. On your PC: `cd team-dashboard && npx vercel --prod` (log in with your Vercel account,
+   accept defaults, no build settings needed).
+
+Until then the boards work as local files: pull the repo and open
+`team-dashboard/admin.html` (or `index.html`) in a browser. The API allows any origin.
+
+## How it works
+
+- Static HTML/JS, no build step. `shared.js` holds the Supabase URL + anon key
+  (safe to ship: RLS is deny-all, the key can only invoke the two functions).
+- All reads/writes go through the Edge Functions. They run with the service role and
+  check real credentials on every call:
+  - `admin`: `x-admin-code` header, sha256-checked against `app_config.admin_code_hash`.
+  - `member`: `{username, code}` in the body, sha256-checked against `members.access_code_hash`.
+- Proof images: client compresses to <=1600px JPEG, server enforces type + 4MB cap,
+  stored in the public `proofs` bucket under unguessable UUID paths.
+- Discord ping: the `member` function POSTs to the webhook in `app_config` after each
+  completion (mention + task + member + proof image). Ping failure never blocks the
+  completion; the admin board shows a "ping failed" badge with one-click resend.
+- Live updates: the admin board polls every 10s (members every 30s) + on tab focus.
+
+## One-time setup (the three things only Chris has)
+
+Seed these into `app_config` (via Claude with the Supabase MCP, or the Supabase SQL editor):
+
+```sql
+create extension if not exists pgcrypto;
+insert into app_config (key, value) values
+  ('admin_code_hash', encode(digest('YOUR-ADMIN-PASSCODE', 'sha256'), 'hex')),
+  ('discord_webhook_url', 'https://discord.com/api/webhooks/XXXX/YYYY'),
+  ('chris_discord_id', 'YOUR-DISCORD-USER-ID')
+on conflict (key) do update set value = excluded.value;
+```
+
+1. **Discord webhook**: Server Settings > Integrations > Webhooks > New Webhook >
+   pick the channel > Copy Webhook URL.
+2. **Discord user ID** (for the @ping): Discord Settings > Advanced > Developer Mode ON,
+   then right-click your name > Copy User ID.
+3. **Admin passcode**: pick one; only its hash is stored.
+
+Until these are seeded, the admin board is locked (deny-by-default) and pings are off.
+After seeding, hit "Test Discord ping" on the admin board to prove the webhook live.
+
+## Daily flow
+
+1. Admin board > Add team member (username, timezone, schedule) > code shown once > DM it to them.
+2. Add tasks on their card (title, due date, details).
+3. They open the member board, log in once (saved on their device), check off work with a screenshot.
+4. You get the Discord ping and watch the board update live.
+
+## Runbook
+
+- **Lost member code**: Edit member > New access code > DM it again. Old code dies instantly.
+- **Member leaves**: Edit member > Deactivate (board access off, history kept).
+- **Rotate webhook / reset passcode**: rerun the seed SQL above with new values. No redeploy.
+- **"Ping failed" badge**: webhook was deleted/rotated or Discord hiccuped. Fix the URL if
+  needed, then click "Resend ping" on the task.
+- **Site dead / functions 5xx**: the free Supabase project pauses after ~1 week of inactivity.
+  Restore it from the Supabase dashboard (or ask Claude: `restore_project`). Normal use
+  (anyone opening the board) keeps it awake.
+- **Uploads failing on huge images**: client already compresses; server caps at 4 MB.
+  If it ever becomes a real limit, switch `complete_task` to a signed-upload-URL two-step
+  (create signed URL, client PUTs, then complete referencing the path).
+
+## Code layout
+
+- `team-dashboard/` - `index.html` (member), `admin.html` (Chris), `shared.js`, `style.css`
+- `supabase/migrations/20260726000000_team_dashboard_init.sql` - schema, RLS, bucket
+- `supabase/functions/admin/index.ts`, `supabase/functions/member/index.ts` - the API
