@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY =
 
 // Shown on every screen and bumped on every dashboard change, so a glance at
 // the tagline tells which code a tab is running.
-const DASH_VERSION = "v3";
+const DASH_VERSION = "v4";
 
 // Boards stay open for days but the HTML only updates on a reload, so a stale
 // tab keeps old bugs alive after a deploy. Poll our own URL's etag; when a new
@@ -125,6 +125,31 @@ function scheduleGridHtml(schedule, tz) {
       <div class="day-name">${DAY_LABELS[d]}</div>
       <div class="day-plan">${escapeHtml((schedule || {})[d] || "-")}</div>
     </div>`).join("") + `</div>`;
+}
+
+function tzOptionsHtml(selected) {
+  const zones = (typeof Intl.supportedValuesOf === "function")
+    ? Intl.supportedValuesOf("timeZone")
+    : ["America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Europe/London", "UTC"];
+  return zones.map((z) =>
+    `<option value="${escapeHtml(z)}"${z === selected ? " selected" : ""}>${escapeHtml(z)}</option>`).join("");
+}
+
+function dayInputsHtml(prefix, schedule = {}) {
+  return `<div class="form-days">` + DAYS.map((d) => `
+    <div>
+      <label>${DAY_LABELS[d]}</label>
+      <input type="text" id="${prefix}-${d}" placeholder="-" value="${escapeHtml(schedule[d] || "")}">
+    </div>`).join("") + `</div>`;
+}
+
+function readSchedule(prefix) {
+  const out = {};
+  for (const d of DAYS) {
+    const v = document.getElementById(`${prefix}-${d}`).value.trim();
+    if (v) out[d] = v;
+  }
+  return out;
 }
 
 function progressBarHtml(done, total) {

@@ -179,6 +179,7 @@ button.small { padding: 5px 10px; font-size: 12.5px; border-radius: 7px; }
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 20px; width: 100%; max-width: 440px; max-height: 92vh; overflow-y: auto;
 }
+.modal.wide { max-width: 560px; }
 .modal h3 { margin: 0 0 6px; }
 .modal .sub { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
 .modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }

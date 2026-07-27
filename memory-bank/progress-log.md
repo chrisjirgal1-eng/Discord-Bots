@@ -268,3 +268,20 @@ Keep entries short. One idea per line.
   Bump DASH_VERSION with every dashboard change (README rule).
 - 17/17 Playwright checks green (badge, no-reload-while-typing, idle reload,
   plus the full prior suite).
+
+## 2026-07-27 (members self-serve their profiles, v4)
+
+- Chris: members should edit their own timezone, name, schedule after login ("i dont
+  know them like that"), but never tasks. Built member self-service:
+  - member Edge Function v3: new update_profile action, scoped server-side to the
+    logged-in member's own row. display_name trimmed, timezone Intl-validated,
+    schedule filtered to the 7 day keys and capped 120 chars/day. Username and
+    role stay admin-only; tasks untouchable except proof-gated completion.
+  - index.html: "edit profile" link next to log out opens a prefilled modal
+    (name, timezone picker, weekly schedule grid). Modal lives outside #app so
+    polls and the version watcher never disturb it.
+  - tzOptionsHtml/dayInputsHtml/readSchedule moved from admin.html to shared.js.
+  - DASH_VERSION v4.
+- 21/21 Playwright checks green. Live API verified: update_profile 200 (no-op
+  resubmit of Chris's real values, row unchanged), invalid timezone 400,
+  get_board still 200 after the function redeploy.

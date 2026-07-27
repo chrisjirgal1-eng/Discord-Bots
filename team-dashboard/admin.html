@@ -92,31 +92,6 @@ function startBoard() {
   });
 }
 
-function tzOptionsHtml(selected) {
-  const zones = (typeof Intl.supportedValuesOf === "function")
-    ? Intl.supportedValuesOf("timeZone")
-    : ["America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Europe/London", "UTC"];
-  return zones.map((z) =>
-    `<option value="${escapeHtml(z)}"${z === selected ? " selected" : ""}>${escapeHtml(z)}</option>`).join("");
-}
-
-function dayInputsHtml(prefix, schedule = {}) {
-  return `<div class="form-days">` + DAYS.map((d) => `
-    <div>
-      <label>${DAY_LABELS[d]}</label>
-      <input type="text" id="${prefix}-${d}" placeholder="-" value="${escapeHtml(schedule[d] || "")}">
-    </div>`).join("") + `</div>`;
-}
-
-function readSchedule(prefix) {
-  const out = {};
-  for (const d of DAYS) {
-    const v = document.getElementById(`${prefix}-${d}`).value.trim();
-    if (v) out[d] = v;
-  }
-  return out;
-}
-
 function adminTaskHtml(t, m, newlyDone) {
   const overdue = t.status === "open" && t.due_date && isOverdue(t.due_date, m.timezone);
   const pingFailed = t.status === "done" && !t.ping_sent_at;
