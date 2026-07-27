@@ -1,7 +1,8 @@
 // Member API for the Zenthra team dashboard.
-// Every call authenticates with { username, code } checked against a sha256
-// hash in the members table. The browser never holds a write credential;
-// this function runs with the service role and RLS is deny-all.
+// Members authenticate with their Discord username alone (Chris's choice:
+// zero-friction login for a small trusted team). Ownership checks still stop
+// anyone from completing another member's task, and this function runs with
+// the service role while RLS stays deny-all.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -29,27 +30,6 @@ function json(status: number, body: unknown): Response {
     status,
     headers: { ...CORS, "Content-Type": "application/json" },
   });
-}
-
-function normalizeCode(code: string): string {
-  return (code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 async function getConfig(keys: string[]): Promise<Record<string, string>> {
@@ -97,20 +77,18 @@ async function sendDiscordPing(task: any, member: any): Promise<boolean> {
 }
 
 // deno-lint-ignore no-explicit-any
-async function authMember(username: string, code: string): Promise<any> {
-  if (!username || !code) return null;
+async function authMember(username: string): Promise<any> {
+  if (!username || typeof username !== "string") return null;
   // Case-insensitive exact match; escape LIKE wildcards so ilike is exact.
   const uname = username.trim().replace(/[\\%_]/g, (m) => "\\" + m);
+  if (!uname) return null;
   const { data: member } = await supabase
     .from("members")
     .select("*")
     .ilike("discord_username", uname)
     .eq("active", true)
     .maybeSingle();
-  if (!member) return null;
-  const hash = await sha256Hex(normalizeCode(code));
-  if (!safeEqual(hash, member.access_code_hash)) return null;
-  return member;
+  return member ?? null;
 }
 
 // deno-lint-ignore no-explicit-any
@@ -226,9 +204,9 @@ Deno.serve(async (req: Request) => {
     } catch {
       return json(400, { error: "Bad request." });
     }
-    const member = await authMember(body.username, body.code);
+    const member = await authMember(body.username);
     if (!member) {
-      return json(401, { error: "Wrong username or access code." });
+      return json(401, { error: "Username not on the board. Ask Chris to add you." });
     }
     switch (body.action) {
       case "get_board":

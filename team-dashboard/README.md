@@ -32,10 +32,11 @@ as a local file. The API allows any origin.
 
 - Static HTML/JS, no build step. `shared.js` holds the Supabase URL + anon key
   (safe to ship: RLS is deny-all, the key can only invoke the two functions).
-- All reads/writes go through the Edge Functions. They run with the service role and
-  check real credentials on every call:
+- All reads/writes go through the Edge Functions. They run with the service role:
   - `admin`: `x-admin-code` header, sha256-checked against `app_config.admin_code_hash`.
-  - `member`: `{username, code}` in the body, sha256-checked against `members.access_code_hash`.
+  - `member`: username-only login (Chris's choice for zero friction). Anyone who knows
+    the link and an active member's username can open that member's board; the server
+    still blocks completing anyone else's task and still requires the proof image.
 - Proof images: client compresses to <=1600px JPEG, server enforces type + 4MB cap,
   stored in the public `proofs` bucket under unguessable UUID paths.
 - Discord ping: the `member` function POSTs to the webhook in `app_config` after each
@@ -67,14 +68,14 @@ After seeding, hit "Test Discord ping" on the admin board to prove the webhook l
 
 ## Daily flow
 
-1. Admin board > Add team member (username, timezone, schedule) > code shown once > DM it to them.
+1. Admin board > Add team member (username, timezone, schedule).
 2. Add tasks on their card (title, due date, details).
-3. They open the member board, log in once (saved on their device), check off work with a screenshot.
+3. They open the member board, type their Discord username once (saved on their
+   device), and check off work with a screenshot.
 4. You get the Discord ping and watch the board update live.
 
 ## Runbook
 
-- **Lost member code**: Edit member > New access code > DM it again. Old code dies instantly.
 - **Member leaves**: Edit member > Deactivate (board access off, history kept).
 - **Rotate webhook / reset passcode**: rerun the seed SQL above with new values. No redeploy.
 - **"Ping failed" badge**: webhook was deleted/rotated or Discord hiccuped. Fix the URL if

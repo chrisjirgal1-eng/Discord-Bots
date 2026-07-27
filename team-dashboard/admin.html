@@ -184,7 +184,6 @@ function memberCardHtml(m, prevDone) {
           <button class="small" data-save-member="${m.id}">Save</button>
           <button class="small ghost" data-toggle="${editKey}">Cancel</button>
           <span class="spacer"></span>
-          <button class="small ghost" data-regen="${m.id}">New access code</button>
           <button class="small ${m.active ? "danger" : ""}" data-toggle-active="${m.id}">${m.active ? "Deactivate" : "Reactivate"}</button>
         </div>
       </div>` : ""}
@@ -238,7 +237,7 @@ function renderBoard(prevDone = null) {
           <div><label>Schedule (free text per day, e.g. "4-7pm")</label>${dayInputsHtml("am-day")}</div>
           <div class="error" id="am-error"></div>
           <div style="display:flex;gap:8px">
-            <button class="small" id="am-save">Add member & get code</button>
+            <button class="small" id="am-save">Add member</button>
             <button class="small ghost" data-toggle="add-member">Cancel</button>
           </div>
         </div>` : `
@@ -302,7 +301,7 @@ function wireBoardEvents() {
     const errEl = el("am-error");
     amSave.disabled = true;
     try {
-      const r = await adminApi({
+      await adminApi({
         action: "add_member",
         discord_username: el("am-user").value,
         display_name: el("am-name").value.trim() || null,
@@ -312,7 +311,6 @@ function wireBoardEvents() {
       });
       openForms["add-member"] = false;
       await refreshBoard();
-      showCodeModal(r.member, r.access_code);
     } catch (e) {
       errEl.textContent = e.message;
       amSave.disabled = false;
@@ -354,15 +352,6 @@ function wireBoardEvents() {
     } catch (e) { errEl.textContent = e.message; b.disabled = false; }
   });
 
-  app.querySelectorAll("[data-regen]").forEach((b) => b.onclick = async () => {
-    const id = b.dataset.regen;
-    if (!confirm("Generate a new access code? Their old code stops working immediately.")) return;
-    try {
-      const r = await adminApi({ action: "regen_code", member_id: id });
-      showCodeModal(r.member, r.access_code);
-    } catch (e) { alert(e.message); }
-  });
-
   app.querySelectorAll("[data-toggle-active]").forEach((b) => b.onclick = async () => {
     const id = b.dataset.toggleActive;
     const m = board.members.find((x) => x.id === id);
@@ -397,24 +386,6 @@ function wireBoardEvents() {
       await refreshBoard();
     } catch (e) { alert(e.message); b.disabled = false; }
   });
-}
-
-function showCodeModal(member, code) {
-  const root = document.getElementById("modal-root");
-  root.innerHTML = `
-    <div class="modal-overlay" id="code-overlay">
-      <div class="modal">
-        <h3>Access code for @${escapeHtml(member.discord_username)}</h3>
-        <p class="sub">DM this to them on Discord. It is shown ONCE - it can't be looked up later, only regenerated.</p>
-        <div class="code-box"><span style="flex:1">${escapeHtml(code)}</span>
-          <button class="small" id="copy-code">Copy</button></div>
-        <div class="actions"><button id="code-done">Done</button></div>
-      </div>
-    </div>`;
-  document.getElementById("copy-code").onclick = (e) => {
-    navigator.clipboard.writeText(code).then(() => { e.target.textContent = "Copied ✅"; });
-  };
-  document.getElementById("code-done").onclick = () => { root.innerHTML = ""; };
 }
 
 function openZoom(url) {

@@ -34,24 +34,21 @@ function renderLogin(msg = "") {
   app.innerHTML = `
     <div class="card login-box">
       <h1>Zenthra <span style="color:var(--accent-2)">Team Board</span></h1>
-      <p>Log in with your Discord username and the access code you were DM'd.</p>
+      <p>Type your Discord username to open your board.</p>
       <label>Discord username</label>
       <input type="text" id="login-user" autocomplete="username" placeholder="e.g. zen_cj">
-      <label>Access code</label>
-      <input type="text" id="login-code" autocomplete="off" placeholder="XXXX-XXXX" style="text-transform:uppercase">
       <div class="error" id="login-error">${escapeHtml(msg)}</div>
       <button id="login-btn" style="width:100%">Open my board</button>
     </div>`;
   const tryLogin = async () => {
     const username = document.getElementById("login-user").value.trim();
-    const code = document.getElementById("login-code").value.trim();
     const errEl = document.getElementById("login-error");
     const btn = document.getElementById("login-btn");
-    if (!username || !code) { errEl.textContent = "Enter your username and access code."; return; }
+    if (!username) { errEl.textContent = "Enter your Discord username."; return; }
     btn.disabled = true; btn.textContent = "Checking...";
     try {
-      board = await api("member", { action: "get_board", username, code });
-      saveCreds({ username, code });
+      board = await api("member", { action: "get_board", username });
+      saveCreds({ username });
       startBoard();
     } catch (e) {
       errEl.textContent = e.message;
@@ -68,12 +65,12 @@ function renderLogin(msg = "") {
 async function refreshBoard() {
   if (!creds) return;
   try {
-    const fresh = await api("member", { action: "get_board", username: creds.username, code: creds.code });
+    const fresh = await api("member", { action: "get_board", username: creds.username });
     const prevDone = new Set((board?.tasks || []).filter(t => t.status === "done").map(t => t.id));
     board = fresh;
     renderBoard(prevDone);
   } catch (e) {
-    if (e.status === 401) { logout(); renderLogin("Your access code changed. Log in again."); }
+    if (e.status === 401) { logout(); renderLogin("You're no longer on the board. Ask Chris."); }
   }
 }
 
@@ -239,7 +236,6 @@ function openCompleteModal(taskId) {
       await api("member", {
         action: "complete_task",
         username: creds.username,
-        code: creds.code,
         task_id: taskId,
         image_base64: prepared.base64,
         content_type: prepared.contentType,
@@ -271,7 +267,7 @@ function openZoom(url) {
 (async () => {
   if (!creds) { renderLogin(); return; }
   try {
-    board = await api("member", { action: "get_board", username: creds.username, code: creds.code });
+    board = await api("member", { action: "get_board", username: creds.username });
     startBoard();
   } catch (e) {
     if (e.status === 401) { logout(); renderLogin("Log in again."); }
