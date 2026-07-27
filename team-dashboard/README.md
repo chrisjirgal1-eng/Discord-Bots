@@ -40,6 +40,10 @@ Edge Functions `admin` + `member`.
   - `member`: username-only login (Chris's choice for zero friction). Anyone who knows
     the link and an active member's username can open that member's board; the server
     still blocks completing anyone else's task and still requires the proof image.
+  - Members self-serve their own profile ("edit profile" next to log out): display
+    name, timezone, weekly schedule. Scoped server-side to their own row
+    (`update_profile`). Username and role stay admin-only; tasks are untouchable
+    from the member side except proof-gated completion.
 - Proof images: client compresses to <=1600px JPEG, server enforces type + 4MB cap,
   stored in the public `proofs` bucket under unguessable UUID paths.
 - Discord ping: the `member` function POSTs to the webhook in `app_config` after each

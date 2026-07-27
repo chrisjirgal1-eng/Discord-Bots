@@ -76,6 +76,17 @@ async function sendDiscordPing(task: any, member: any): Promise<boolean> {
   }
 }
 
+const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+function validTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // deno-lint-ignore no-explicit-any
 async function authMember(username: string): Promise<any> {
   if (!username || typeof username !== "string") return null;
@@ -194,6 +205,45 @@ async function completeTask(member: any, body: any): Promise<Response> {
   return json(200, { ok: true, ping_sent: pinged });
 }
 
+// Members maintain their own display name, timezone, and weekly schedule.
+// Identity (discord_username) and role stay admin-only, and tasks are untouchable
+// here - the only task write a member has is complete_task with proof.
+// deno-lint-ignore no-explicit-any
+async function updateProfile(member: any, body: any): Promise<Response> {
+  const fields: Record<string, unknown> = {};
+  if ("display_name" in body) {
+    fields.display_name = String(body.display_name || "").trim() || null;
+  }
+  if ("timezone" in body) {
+    const tz = String(body.timezone || "");
+    if (!validTimezone(tz)) return json(400, { error: "Unknown timezone." });
+    fields.timezone = tz;
+  }
+  if ("schedule" in body) {
+    const raw = body.schedule && typeof body.schedule === "object" ? body.schedule : {};
+    const schedule: Record<string, string> = {};
+    for (const d of DAYS) {
+      const v = String(raw[d] ?? "").trim().slice(0, 120);
+      if (v) schedule[d] = v;
+    }
+    fields.schedule = schedule;
+  }
+  if (Object.keys(fields).length === 0) {
+    return json(400, { error: "Nothing to update." });
+  }
+  const { data: updated, error } = await supabase
+    .from("members")
+    .update(fields)
+    .eq("id", member.id)
+    .select("*")
+    .maybeSingle();
+  if (error || !updated) {
+    console.error("update_profile failed:", error);
+    return json(500, { error: "Could not save your profile." });
+  }
+  return json(200, { me: publicMember(updated) });
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(405, { error: "POST only." });
@@ -213,6 +263,8 @@ Deno.serve(async (req: Request) => {
         return await getBoard(member);
       case "complete_task":
         return await completeTask(member, body);
+      case "update_profile":
+        return await updateProfile(member, body);
       default:
         return json(400, { error: "Unknown action." });
     }

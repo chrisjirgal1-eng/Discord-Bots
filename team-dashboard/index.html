@@ -147,6 +147,7 @@ function renderBoard(prevDone = null) {
       <div class="whoami">
         <b>${escapeHtml(me.display_name || me.discord_username)}</b><br>
         Your time: <b data-clock="${escapeHtml(me.timezone)}">${timeIn(me.timezone)}</b>
+        &nbsp;<a href="#" id="edit-profile" style="color:var(--muted)">edit profile</a>
         &nbsp;<a href="#" id="logout" style="color:var(--muted)">log out</a>
       </div>
     </header>
@@ -165,6 +166,7 @@ function renderBoard(prevDone = null) {
     <div class="grid">${teamCards}</div>`;
 
   document.getElementById("logout").onclick = (e) => { e.preventDefault(); logout(); };
+  document.getElementById("edit-profile").onclick = (e) => { e.preventDefault(); openProfileModal(); };
   app.querySelectorAll("[data-complete]").forEach((b) =>
     b.addEventListener("click", () => openCompleteModal(b.dataset.complete)));
   app.querySelectorAll("[data-zoom]").forEach((img) =>
@@ -178,6 +180,52 @@ setInterval(() => {
     if (b) b.textContent = timeIn(el.dataset.clock);
   });
 }, 30000);
+
+/* ---------- edit-profile modal ---------- */
+
+// Members own their name, timezone, and weekly schedule. Username and role
+// stay admin-only, and tasks can't be touched from here.
+function openProfileModal() {
+  const me = board.me;
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-overlay" id="profile-overlay">
+      <div class="modal wide">
+        <h3>Your profile</h3>
+        <p class="sub">Set your name, timezone, and weekly hours so the team sees your real availability.</p>
+        <div><label>Display name</label><input type="text" id="pf-name" value="${escapeHtml(me.display_name || "")}" placeholder="What the team calls you"></div>
+        <div><label>Timezone</label><select id="pf-tz">${tzOptionsHtml(me.timezone)}</select></div>
+        <div><label>Schedule (free text per day, e.g. "4-7pm")</label>${dayInputsHtml("pf-day", me.schedule)}</div>
+        <div class="error" id="pf-error"></div>
+        <div class="actions">
+          <button class="ghost" id="pf-cancel">Cancel</button>
+          <button id="pf-save">Save</button>
+        </div>
+      </div>
+    </div>`;
+  const overlay = document.getElementById("profile-overlay");
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) root.innerHTML = ""; });
+  document.getElementById("pf-cancel").onclick = () => { root.innerHTML = ""; };
+  document.getElementById("pf-save").onclick = async () => {
+    const btn = document.getElementById("pf-save");
+    const errEl = document.getElementById("pf-error");
+    btn.disabled = true; btn.textContent = "Saving...";
+    try {
+      await api("member", {
+        action: "update_profile",
+        username: creds.username,
+        display_name: document.getElementById("pf-name").value.trim() || null,
+        timezone: document.getElementById("pf-tz").value,
+        schedule: readSchedule("pf-day"),
+      });
+      root.innerHTML = "";
+      await refreshBoard();
+    } catch (e) {
+      errEl.textContent = e.message;
+      btn.disabled = false; btn.textContent = "Save";
+    }
+  };
+}
 
 /* ---------- complete-with-proof modal ---------- */
 
