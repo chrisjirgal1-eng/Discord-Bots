@@ -106,6 +106,17 @@ See `.claude/rules/learning.md` for the loop.
   - Prevent: treat "-32003 requires approval" as a hard stop in autonomous runs. Design a fallback
     delivery (docs + local-file mode) instead of retrying.
 
+- GitHub Pages from a feature branch fails silently-ish; enablement needs a human admin.
+  - Mistake: expected configure-pages enablement:true to enable Pages (the workflow token
+    cannot, "Resource not accessible by integration") and expected a feature-branch deploy
+    to work (the github-pages environment rejects non-default branches with a 1-second
+    no-runner "failure" and no step logs).
+  - Fix: Chris set Settings > Pages > Source = GitHub Actions (verify with has_pages via
+    the repo API before rerunning), and the deploy ran from the default branch post-merge.
+  - Prevent: for Pages, plan both from the start: ask the admin to flip the source once,
+    and put the deploy workflow on the default branch. A 1-second failed job with
+    runner_id 0 means environment protection, not a code problem.
+
 - A YouTube pull failing in the cloud sandbox is NOT the same failure as on Chris's PC.
   - Mistake: nearly reported "YouTube works, just network-blocked" as the whole story; the block in the
     cloud is a proxy CONNECT 403 (egress policy), which cookies cannot fix.
