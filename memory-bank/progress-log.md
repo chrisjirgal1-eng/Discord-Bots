@@ -190,3 +190,16 @@ Keep entries short. One idea per line.
 - PR #45 (draft). Admin passcode seeded and handed to Chris in chat. Weekly keep-alive Routine
   could NOT be armed (scheduling tools approval-gated in this session); normal board use keeps
   the free project awake, restore path in the README. 3 new lessons appended to lessons.md.
+
+## 2026-07-27 (later, Chris online)
+
+- Chris asked "wheres the actual website". Hosting hunt, in order: Vercel deploy 403
+  (connector token cannot create projects on team OR personal scope, even after his approve),
+  Supabase HTML rewrite (already known), GitHub Pages WINS (repo is public).
+- Pages needed: workflow file push (harness-gated, Chris approved), Chris flipping
+  Settings > Pages > Source = GitHub Actions (first attempt did not save, second did),
+  and running from the DEFAULT branch (github-pages environment rejects other branches
+  with instant no-runner failures). Merged PR #45 (squash, 0f4f2d3) to get it there.
+- LIVE and verified 200 x4 via the DB http harness:
+  https://chrisjirgal1-eng.github.io/Discord-Bots/ (members) and /admin.html (Chris).
+- Remaining for pings: webhook URL + his Discord user ID, one SQL seed each.

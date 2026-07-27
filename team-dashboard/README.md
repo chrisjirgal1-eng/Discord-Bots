@@ -9,20 +9,24 @@ with a mandatory proof screenshot; every completion pings Chris on Discord with 
 - Admin board: `admin.html` (Chris only, passcode-gated)
 - Backend: Supabase project `zenthra-team-dashboard` (`rmbcnthetpiubiyasipp`), Edge Functions `admin` + `member`
 
-### Hosting status
+### Hosting
 
-The backend is live and fully tested. The web pages are NOT hosted yet: the Vercel MCP
-deploy needs an interactive approval, and Supabase can't serve HTML on its own domain
-(it rewrites text/html to text/plain as an anti-phishing rule; the leftover `site` and
-`sitepush` functions are inert 410 stubs from discovering that).
+Live on GitHub Pages (free), deployed by `.github/workflows/deploy-dashboard-pages.yml`:
 
-Two ways to put it live (either takes ~2 minutes):
-1. In an interactive Claude session: "deploy team-dashboard to Vercel" and approve the prompt.
-2. On your PC: `cd team-dashboard && npx vercel --prod` (log in with your Vercel account,
-   accept defaults, no build settings needed).
+- Member board: https://chrisjirgal1-eng.github.io/Discord-Bots/
+- Admin board: https://chrisjirgal1-eng.github.io/Discord-Bots/admin.html
 
-Until then the boards work as local files: pull the repo and open
-`team-dashboard/admin.html` (or `index.html`) in a browser. The API allows any origin.
+The workflow redeploys automatically on any push that touches `team-dashboard/`
+(this feature branch and the default branch). One-time setup already done: repo
+Settings > Pages > Source = "GitHub Actions" (needs repo admin; the workflow token
+cannot flip it).
+
+Why not the obvious hosts: the Vercel connector token cannot create projects
+(403 role denial), and Supabase cannot serve HTML on its own domain (it rewrites
+text/html to text/plain as an anti-phishing rule; the leftover `site` and
+`sitepush` Edge Functions are inert 410 stubs from discovering that).
+Fallback that always works: pull the repo and open `team-dashboard/admin.html`
+as a local file. The API allows any origin.
 
 ## How it works
 

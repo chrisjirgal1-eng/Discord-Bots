@@ -2,7 +2,25 @@
 
 What is in flight right now. Updated each session. This is the first thing to trust.
 
-## Latest: Zenthra dev team task dashboard BUILT + TESTED (2026-07-27, PR #45 draft)
+## Latest: Zenthra dev team task dashboard LIVE (2026-07-27, PR #45 MERGED)
+
+THE SITE IS LIVE on GitHub Pages (repo is public, Actions workflow deploys team-dashboard/):
+- Member board: https://chrisjirgal1-eng.github.io/Discord-Bots/
+- Admin board: https://chrisjirgal1-eng.github.io/Discord-Bots/admin.html
+All 4 assets verified 200 with correct content types. Redeploys on any push touching
+team-dashboard/ on the default branch. PR #45 squash-merged to default (0f4f2d3).
+
+Hosting saga (why not Vercel/Supabase): Vercel connector token cannot create projects
+(403 on team AND personal scope, even after Chris approved); Supabase rewrites text/html
+to text/plain on its domain. GitHub Pages needed two Chris steps: Settings > Pages >
+Source = GitHub Actions, and the deploy had to run from the DEFAULT branch (the
+github-pages environment rejects other branches, 1-second no-runner failures).
+
+STILL NEEDS CHRIS to finish pings: (1) Discord webhook URL, (2) his Discord user ID.
+One execute_sql seed each (team-dashboard/README.md has the SQL). Admin passcode is
+seeded and was delivered in chat 2026-07-27.
+
+## Original build notes (2026-07-27, superseded status lines above)
 
 Chris asked for a website to manage his dev team: members by Discord username, timezones,
 weekly schedules, tasks he assigns, check-off that REQUIRES a proof screenshot, live progress,
