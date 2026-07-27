@@ -220,3 +220,14 @@ Keep entries short. One idea per line.
   add_member no longer returns a code. Frontend login is one field now.
 - Redeployed member v2 + admin v3, 12/12 API tests green through the DB harness,
   including a real completion ping (proof image) into his Discord channel.
+
+## 2026-07-27 (URL moved to zenthra-dev-team.vercel.app)
+
+- Chris did not want his GitHub username in the site address. He imported the repo
+  into Vercel himself (dashboard: Continue with GitHub, project zenthra-dev-team,
+  Root Directory team-dashboard, framework Other, cleared the clearcoatco-website
+  output override that Vercel guessed from the root vercel.json).
+- New primary URL live and verified 200 x4: https://zenthra-dev-team.vercel.app/
+  (+ /admin.html). Git-integrated: Vercel auto-redeploys on every default-branch push,
+  so no MCP deploys or approvals are needed for the site ever again.
+- GitHub Pages URL stays live as backup. README + active-context repointed.

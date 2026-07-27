@@ -4,11 +4,14 @@ What is in flight right now. Updated each session. This is the first thing to tr
 
 ## Latest: Zenthra dev team task dashboard LIVE (2026-07-27, PR #45 MERGED)
 
-THE SITE IS LIVE on GitHub Pages (repo is public, Actions workflow deploys team-dashboard/):
-- Member board: https://chrisjirgal1-eng.github.io/Discord-Bots/
-- Admin board: https://chrisjirgal1-eng.github.io/Discord-Bots/admin.html
-All 4 assets verified 200 with correct content types. Redeploys on any push touching
-team-dashboard/ on the default branch. PR #45 squash-merged to default (0f4f2d3).
+THE SITE IS LIVE. PRIMARY URL (2026-07-27, Chris did not want his name in the address):
+- Member board: https://zenthra-dev-team.vercel.app/
+- Admin board: https://zenthra-dev-team.vercel.app/admin.html
+Vercel project zenthra-dev-team (Zen Peak Studios), created by Chris importing the
+repo in the Vercel dashboard (Root Directory team-dashboard, framework Other); it
+auto-redeploys on every push to the default branch. All 4 assets verified 200.
+BACKUP URL still live on GitHub Pages (Actions workflow, also auto-redeploys):
+https://chrisjirgal1-eng.github.io/Discord-Bots/ . PR #45 squash-merged (0f4f2d3).
 
 Hosting saga (why not Vercel/Supabase): Vercel connector token cannot create projects
 (403 on team AND personal scope, even after Chris approved); Supabase rewrites text/html
