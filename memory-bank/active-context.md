@@ -16,9 +16,11 @@ to text/plain on its domain. GitHub Pages needed two Chris steps: Settings > Pag
 Source = GitHub Actions, and the deploy had to run from the DEFAULT branch (the
 github-pages environment rejects other branches, 1-second no-runner failures).
 
-STILL NEEDS CHRIS to finish pings: (1) Discord webhook URL, (2) his Discord user ID.
-One execute_sql seed each (team-dashboard/README.md has the SQL). Admin passcode is
-seeded and was delivered in chat 2026-07-27.
+PINGS ARE LIVE (2026-07-27): Chris provided the webhook URL + his Discord user ID in
+chat; both seeded into app_config. test_ping through the deployed admin function
+returned ping_sent true. Every task completion now pings him with the proof image.
+Admin passcode is seeded and was delivered in chat 2026-07-27. NOTHING is pending on
+this build; next real step is Chris adding his first member and tasks on the admin board.
 
 ## Original build notes (2026-07-27, superseded status lines above)
 
