@@ -203,3 +203,11 @@ Keep entries short. One idea per line.
 - LIVE and verified 200 x4 via the DB http harness:
   https://chrisjirgal1-eng.github.io/Discord-Bots/ (members) and /admin.html (Chris).
 - Remaining for pings: webhook URL + his Discord user ID, one SQL seed each.
+
+## 2026-07-27 (pings wired)
+
+- Chris pasted the Discord webhook URL + his user ID in chat. Seeded both into
+  app_config, fired test_ping through the deployed admin function: ping_sent true.
+- The dashboard is now 100 percent done: site live on GitHub Pages, auth live,
+  proof-required completions live, Discord pings with @mention + proof image live.
+- Config lives only in the database (rotatable with one SQL upsert, no redeploys).
