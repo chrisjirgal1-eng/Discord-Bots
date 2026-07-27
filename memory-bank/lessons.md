@@ -83,6 +83,29 @@ See `.claude/rules/learning.md` for the loop.
   - Prevent: when handing a path from the Bash tool to native Python, convert `/c/` to `C:/` first, or
     avoid the intermediate file and pipe through stdin.
 
+- Supabase cannot serve HTML pages on its own domain.
+  - Mistake: built a static-site path on Supabase (edge function, then storage); both returned the
+    pages as text/plain, so browsers refuse to render them.
+  - Fix: the platform rewrites text/html to text/plain on *.supabase.co (anti-phishing). Host HTML
+    on Vercel or any static host; keep Supabase for API, DB, and storage only.
+  - Prevent: never plan HTML hosting on supabase.co URLs. API and images are fine, pages are not.
+
+- In-database e2e testing works when the sandbox egress blocks a domain, but transactions bite.
+  - Mistake: a DO block seeded a config row and then called the edge function; the function read the
+    OLD value because the uncommitted write was invisible to its separate connection, so all auth 401'd.
+  - Fix: split the suite into separate execute_sql calls: commit config first, then run the HTTP tests
+    (Postgres `http` extension calling the live function URLs), then restore config.
+  - Prevent: any state an external service must see has to be committed before the call, so no
+    mid-transaction config flips inside one DO block. Also guard nullable vars before http_get.
+
+- MCP write tools can be approval-gated in autonomous sessions, and AskUserQuestion does not unlock them.
+  - Mistake: retried a Vercel deploy after Chris said "approve it" via AskUserQuestion; the MCP call
+    still failed with "requires approval" because the gate needs an interactive tap, not a chat answer.
+  - Fix: shipped everything else, documented two 2-minute deploy paths in the README, left hosting
+    as Chris's one interactive step.
+  - Prevent: treat "-32003 requires approval" as a hard stop in autonomous runs. Design a fallback
+    delivery (docs + local-file mode) instead of retrying.
+
 - A YouTube pull failing in the cloud sandbox is NOT the same failure as on Chris's PC.
   - Mistake: nearly reported "YouTube works, just network-blocked" as the whole story; the block in the
     cloud is a proxy CONNECT 403 (egress policy), which cookies cannot fix.

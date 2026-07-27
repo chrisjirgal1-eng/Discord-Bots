@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zenthra Team Board</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script src="shared.js"></script>
+<script>
+const app = document.getElementById("app");
+let creds = null;   // { username, code }
+let board = null;   // { me, members, tasks }
+let pollTimer = null;
+
+try { creds = JSON.parse(localStorage.getItem("zen_member") || "null"); } catch { creds = null; }
+
+function saveCreds(c) { creds = c; localStorage.setItem("zen_member", JSON.stringify(c)); }
+function logout() {
+  localStorage.removeItem("zen_member");
+  creds = null; board = null;
+  if (pollTimer) clearInterval(pollTimer);
+  renderLogin();
+}
+
+/* ---------- login ---------- */
+
+function renderLogin(msg = "") {
+  document.title = "Zenthra Team Board";
+  app.innerHTML = `
+    <div class="card login-box">
+      <h1>Zenthra <span style="color:var(--accent-2)">Team Board</span></h1>
+      <p>Log in with your Discord username and the access code you were DM'd.</p>
+      <label>Discord username</label>
+      <input type="text" id="login-user" autocomplete="username" placeholder="e.g. zen_cj">
+      <label>Access code</label>
+      <input type="text" id="login-code" autocomplete="off" placeholder="XXXX-XXXX" style="text-transform:uppercase">
+      <div class="error" id="login-error">${escapeHtml(msg)}</div>
+      <button id="login-btn" style="width:100%">Open my board</button>
+    </div>`;
+  const tryLogin = async () => {
+    const username = document.getElementById("login-user").value.trim();
+    const code = document.getElementById("login-code").value.trim();
+    const errEl = document.getElementById("login-error");
+    const btn = document.getElementById("login-btn");
+    if (!username || !code) { errEl.textContent = "Enter your username and access code."; return; }
+    btn.disabled = true; btn.textContent = "Checking...";
+    try {
+      board = await api("member", { action: "get_board", username, code });
+      saveCreds({ username, code });
+      startBoard();
+    } catch (e) {
+      errEl.textContent = e.message;
+      btn.disabled = false; btn.textContent = "Open my board";
+    }
+  };
+  document.getElementById("login-btn").onclick = tryLogin;
+  app.querySelectorAll("input").forEach((i) =>
+    i.addEventListener("keydown", (e) => { if (e.key === "Enter") tryLogin(); }));
+}
+
+/* ---------- board ---------- */
+
+async function refreshBoard() {
+  if (!creds) return;
+  try {
+    const fresh = await api("member", { action: "get_board", username: creds.username, code: creds.code });
+    const prevDone = new Set((board?.tasks || []).filter(t => t.status === "done").map(t => t.id));
+    board = fresh;
+    renderBoard(prevDone);
+  } catch (e) {
+    if (e.status === 401) { logout(); renderLogin("Your access code changed. Log in again."); }
+  }
+}
+
+function startBoard() {
+  renderBoard();
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(refreshBoard, 30000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && creds) refreshBoard();
+  });
+}
+
+function taskHtml(t, mine, tz, newlyDone) {
+  const overdue = t.status === "open" && t.due_date && isOverdue(t.due_date, tz);
+  return `
+    <div class="task ${t.status}${newlyDone ? " flash" : ""}" data-task="${t.id}">
+      <div class="task-top">
+        <div class="status-dot"></div>
+        <div style="flex:1;min-width:0">
+          <div class="task-title">${escapeHtml(t.title)}</div>
+          ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ""}
+          <div class="task-meta">
+            ${t.due_date ? `<span class="badge ${overdue ? "overdue" : "due"}">${overdue ? "OVERDUE " : "due "}${fmtDue(t.due_date)}</span>` : ""}
+            ${t.status === "done" ? `<span class="badge done">done ${t.completed_at ? timeAgo(t.completed_at) : ""}</span>` : ""}
+          </div>
+        </div>
+        ${t.status === "done" && t.proof_image_url
+          ? `<img class="proof-thumb" src="${escapeHtml(t.proof_image_url)}" alt="proof" data-zoom="${escapeHtml(t.proof_image_url)}">`
+          : ""}
+        ${mine && t.status === "open"
+          ? `<div class="task-actions"><button class="small" data-complete="${t.id}">Mark done</button></div>`
+          : ""}
+      </div>
+    </div>`;
+}
+
+function renderBoard(prevDone = null) {
+  const me = board.me;
+  document.title = `Zenthra Board - ${me.display_name || me.discord_username}`;
+  const myTasks = board.tasks.filter((t) => t.member_id === me.id);
+  const myOpen = myTasks.filter((t) => t.status === "open");
+  const myDone = myTasks.filter((t) => t.status === "done");
+
+  const teamCards = board.members.map((m) => {
+    const mTasks = board.tasks.filter((t) => t.member_id === m.id);
+    const done = mTasks.filter((t) => t.status === "done").length;
+    const isMe = m.id === me.id;
+    return `
+      <div class="card member-card">
+        <div class="member-head">
+          <span class="member-name">${escapeHtml(m.display_name || m.discord_username)}${isMe ? " (you)" : ""}</span>
+          <span class="member-user">@${escapeHtml(m.discord_username)}</span>
+          ${m.role ? `<span class="member-role">${escapeHtml(m.role)}</span>` : ""}
+          <span class="member-clock" data-clock="${escapeHtml(m.timezone)}">🕒 <b>${timeIn(m.timezone)}</b></span>
+        </div>
+        ${progressBarHtml(done, mTasks.length)}
+        <div class="task-list">
+          ${mTasks.length
+            ? mTasks.map((t) => taskHtml(t, isMe, m.timezone, prevDone && t.status === "done" && !prevDone.has(t.id))).join("")
+            : `<span class="muted" style="font-size:13px">No tasks yet.</span>`}
+        </div>
+      </div>`;
+  }).join("");
+
+  app.innerHTML = `
+    <header class="top">
+      <div>
+        <div class="brand"><span class="zen">Zenthra</span> Team Board</div>
+        <div class="tagline">Zenith of Power</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="whoami">
+        <b>${escapeHtml(me.display_name || me.discord_username)}</b><br>
+        Your time: <b data-clock="${escapeHtml(me.timezone)}">${timeIn(me.timezone)}</b>
+        &nbsp;<a href="#" id="logout" style="color:var(--muted)">log out</a>
+      </div>
+    </header>
+
+    <h2 class="mt0">Your week</h2>
+    <div class="card">${scheduleGridHtml(me.schedule, me.timezone)}</div>
+
+    <h2>Your tasks ${myOpen.length ? `<span style="color:var(--accent-2)">(${myOpen.length} open)</span>` : "- all clear ✅"}</h2>
+    <div class="task-list">
+      ${myOpen.map((t) => taskHtml(t, true, me.timezone, false)).join("")}
+      ${myDone.map((t) => taskHtml(t, true, me.timezone, false)).join("")}
+      ${myTasks.length === 0 ? `<div class="card muted">Nothing assigned yet. Enjoy it while it lasts.</div>` : ""}
+    </div>
+
+    <h2>Team progress</h2>
+    <div class="grid">${teamCards}</div>
+
+    <div id="modal-root"></div>`;
+
+  document.getElementById("logout").onclick = (e) => { e.preventDefault(); logout(); };
+  app.querySelectorAll("[data-complete]").forEach((b) =>
+    b.addEventListener("click", () => openCompleteModal(b.dataset.complete)));
+  app.querySelectorAll("[data-zoom]").forEach((img) =>
+    img.addEventListener("click", () => openZoom(img.dataset.zoom)));
+}
+
+// Live clocks without a full re-render.
+setInterval(() => {
+  document.querySelectorAll("[data-clock]").forEach((el) => {
+    const b = el.tagName === "B" ? el : el.querySelector("b");
+    if (b) b.textContent = timeIn(el.dataset.clock);
+  });
+}, 30000);
+
+/* ---------- complete-with-proof modal ---------- */
+
+function openCompleteModal(taskId) {
+  const task = board.tasks.find((t) => t.id === taskId);
+  if (!task) return;
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-overlay" id="overlay">
+      <div class="modal">
+        <h3>Finish: ${escapeHtml(task.title)}</h3>
+        <p class="sub">A picture of the finished work is required. Chris gets pinged on Discord with it.</p>
+        <input type="file" id="proof-file" accept="image/*">
+        <img id="proof-preview" class="preview-img" style="display:none" alt="preview">
+        <div class="error" id="proof-error"></div>
+        <div class="actions">
+          <button class="ghost" id="cancel-btn">Cancel</button>
+          <button id="submit-btn" disabled>Attach a picture first</button>
+        </div>
+      </div>
+    </div>`;
+  const overlay = document.getElementById("overlay");
+  const fileInput = document.getElementById("proof-file");
+  const preview = document.getElementById("proof-preview");
+  const errEl = document.getElementById("proof-error");
+  const submit = document.getElementById("submit-btn");
+  let prepared = null;
+
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) root.innerHTML = ""; });
+  document.getElementById("cancel-btn").onclick = () => { root.innerHTML = ""; };
+
+  fileInput.addEventListener("change", async () => {
+    errEl.textContent = ""; prepared = null;
+    submit.disabled = true; submit.textContent = "Attach a picture first";
+    const file = fileInput.files[0];
+    if (!file) { preview.style.display = "none"; return; }
+    submit.textContent = "Processing picture...";
+    try {
+      prepared = await compressImage(file);
+      preview.src = `data:${prepared.contentType};base64,${prepared.base64}`;
+      preview.style.display = "block";
+      submit.disabled = false;
+      submit.textContent = "Submit proof & complete ✅";
+    } catch (e) {
+      preview.style.display = "none";
+      errEl.textContent = e.message;
+      submit.textContent = "Attach a picture first";
+    }
+  });
+
+  submit.onclick = async () => {
+    if (!prepared) return;
+    submit.disabled = true; submit.textContent = "Uploading...";
+    errEl.textContent = "";
+    try {
+      await api("member", {
+        action: "complete_task",
+        username: creds.username,
+        code: creds.code,
+        task_id: taskId,
+        image_base64: prepared.base64,
+        content_type: prepared.contentType,
+      });
+      root.innerHTML = "";
+      await refreshBoard();
+    } catch (e) {
+      errEl.textContent = e.message;
+      submit.disabled = false; submit.textContent = "Submit proof & complete ✅";
+      if (e.status === 400 && /already completed/i.test(e.message)) {
+        root.innerHTML = "";
+        await refreshBoard();
+      }
+    }
+  };
+}
+
+function openZoom(url) {
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="modal-overlay" id="zoom-overlay">
+      <img class="zoom-img" src="${escapeHtml(url)}" alt="proof">
+    </div>`;
+  document.getElementById("zoom-overlay").onclick = () => { root.innerHTML = ""; };
+}
+
+/* ---------- boot ---------- */
+
+(async () => {
+  if (!creds) { renderLogin(); return; }
+  try {
+    board = await api("member", { action: "get_board", username: creds.username, code: creds.code });
+    startBoard();
+  } catch (e) {
+    if (e.status === 401) { logout(); renderLogin("Log in again."); }
+    else renderLogin(e.message);
+  }
+})();
+</script>
+</body>
+</html>
