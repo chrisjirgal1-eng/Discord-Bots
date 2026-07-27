@@ -28,7 +28,10 @@ and a Discord ping to him on every completion. Built, deployed, 35/35 e2e tests 
   Admin passcode is already seeded (delivered to him in chat 2026-07-27, changeable any time).
 - e2e testing ran IN-DATABASE (Postgres http extension calling the live functions) because the
   sandbox egress policy blocks the new supabase.co domain. Test data cleaned; advisors clean
-  (only intentional deny-all INFOs). Weekly Supabase keep-alive Routine armed from this session.
+  (only intentional deny-all INFOs). NOTE: a weekly keep-alive Routine could NOT be armed (the
+  scheduling MCP tools are approval-gated here). Free tier pauses after ~1 week idle; normal use
+  keeps it awake, README documents restore_project, and a Routine can be armed from an
+  interactive session later.
 - PR #45 draft on branch claude/dev-team-task-dashboard-sj62bw, session subscribed and watching.
 
 ## Latest: yt-dlp cookies MERGED, Chris turned it on (2026-07-22, PR #42 merged to default)

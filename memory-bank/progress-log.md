@@ -188,4 +188,5 @@ Keep entries short. One idea per line.
 - Hosting is the one open piece: Vercel MCP deploy is approval-gated (interactive tap only) and
   Supabase refuses to render HTML on its own domain. Two 2-minute paths documented in the README.
 - PR #45 (draft). Admin passcode seeded and handed to Chris in chat. Weekly keep-alive Routine
-  armed so the free-tier project does not pause. 3 new lessons appended to lessons.md.
+  could NOT be armed (scheduling tools approval-gated in this session); normal board use keeps
+  the free project awake, restore path in the README. 3 new lessons appended to lessons.md.
