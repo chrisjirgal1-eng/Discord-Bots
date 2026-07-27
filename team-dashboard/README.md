@@ -51,9 +51,11 @@ Edge Functions `admin` + `member`.
   completion; the admin board shows a "ping failed" badge with one-click resend.
 - Live updates: the admin board polls every 10s (members every 30s) + on tab focus.
 - Versioning: `DASH_VERSION` in `shared.js` shows in every tagline and login screen.
-  BUMP IT WITH EVERY DASHBOARD CHANGE. Open tabs also watch their own URL's etag
-  and reload themselves after a deploy (only when idle: no typing, form, or modal),
-  so stale tabs stop resurrecting old bugs.
+  BUMP IT WITH EVERY DASHBOARD CHANGE, and bump the matching `?v=` query on the
+  `shared.js` and `style.css` references in BOTH html files (that is what makes a
+  plain refresh always fetch matching assets). Open tabs also watch their own
+  URL's etag and reload themselves after a deploy (only when idle: no typing,
+  form, or modal), so stale tabs stop resurrecting old bugs.
 
 ## One-time setup (the three things only Chris has)
 

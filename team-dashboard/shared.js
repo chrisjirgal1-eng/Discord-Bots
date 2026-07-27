@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY =
 
 // Shown on every screen and bumped on every dashboard change, so a glance at
 // the tagline tells which code a tab is running.
-const DASH_VERSION = "v4";
+const DASH_VERSION = "v5";
 
 // Boards stay open for days but the HTML only updates on a reload, so a stale
 // tab keeps old bugs alive after a deploy. Poll our own URL's etag; when a new
@@ -127,12 +127,124 @@ function scheduleGridHtml(schedule, tz) {
     </div>`).join("") + `</div>`;
 }
 
-function tzOptionsHtml(selected) {
-  const zones = (typeof Intl.supportedValuesOf === "function")
+/* Searchable timezone picker. The full IANA list (every country, every
+   continent) comes from the browser; IANA ids are city-based, so a small
+   country-name alias map makes searches like "india" or "nigeria" land. */
+
+function tzAllZones() {
+  return (typeof Intl.supportedValuesOf === "function")
     ? Intl.supportedValuesOf("timeZone")
     : ["America/Chicago", "America/New_York", "America/Denver", "America/Los_Angeles", "Europe/London", "UTC"];
-  return zones.map((z) =>
-    `<option value="${escapeHtml(z)}"${z === selected ? " selected" : ""}>${escapeHtml(z)}</option>`).join("");
+}
+
+const TZ_COUNTRY_ALIASES = {
+  "uk": ["Europe/London"], "england": ["Europe/London"], "britain": ["Europe/London"],
+  "ireland": ["Europe/Dublin"], "france": ["Europe/Paris"], "germany": ["Europe/Berlin"],
+  "spain": ["Europe/Madrid"], "italy": ["Europe/Rome"], "portugal": ["Europe/Lisbon"],
+  "netherlands": ["Europe/Amsterdam"], "belgium": ["Europe/Brussels"],
+  "sweden": ["Europe/Stockholm"], "norway": ["Europe/Oslo"], "denmark": ["Europe/Copenhagen"],
+  "finland": ["Europe/Helsinki"], "poland": ["Europe/Warsaw"], "greece": ["Europe/Athens"],
+  "turkey": ["Europe/Istanbul"], "ukraine": ["Europe/Kyiv"], "russia": ["Europe/Moscow"],
+  "switzerland": ["Europe/Zurich"], "austria": ["Europe/Vienna"], "czech": ["Europe/Prague"],
+  "romania": ["Europe/Bucharest"], "hungary": ["Europe/Budapest"],
+  "india": ["Asia/Kolkata"], "pakistan": ["Asia/Karachi"], "bangladesh": ["Asia/Dhaka"],
+  "sri lanka": ["Asia/Colombo"], "nepal": ["Asia/Kathmandu"], "china": ["Asia/Shanghai"],
+  "japan": ["Asia/Tokyo"], "korea": ["Asia/Seoul"], "south korea": ["Asia/Seoul"],
+  "philippines": ["Asia/Manila"], "indonesia": ["Asia/Jakarta"],
+  "malaysia": ["Asia/Kuala_Lumpur"], "thailand": ["Asia/Bangkok"],
+  "vietnam": ["Asia/Ho_Chi_Minh"], "taiwan": ["Asia/Taipei"],
+  "israel": ["Asia/Jerusalem"], "saudi arabia": ["Asia/Riyadh"], "uae": ["Asia/Dubai"],
+  "iran": ["Asia/Tehran"], "iraq": ["Asia/Baghdad"], "kazakhstan": ["Asia/Almaty"],
+  "egypt": ["Africa/Cairo"], "nigeria": ["Africa/Lagos"], "ghana": ["Africa/Accra"],
+  "kenya": ["Africa/Nairobi"], "south africa": ["Africa/Johannesburg"],
+  "morocco": ["Africa/Casablanca"], "ethiopia": ["Africa/Addis_Ababa"],
+  "tanzania": ["Africa/Dar_es_Salaam"], "algeria": ["Africa/Algiers"],
+  "tunisia": ["Africa/Tunis"], "uganda": ["Africa/Kampala"], "zimbabwe": ["Africa/Harare"],
+  "usa": ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"],
+  "united states": ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"],
+  "canada": ["America/Toronto", "America/Winnipeg", "America/Edmonton", "America/Vancouver", "America/Halifax"],
+  "mexico": ["America/Mexico_City"], "brazil": ["America/Sao_Paulo"],
+  "argentina": ["America/Argentina/Buenos_Aires"], "chile": ["America/Santiago"],
+  "colombia": ["America/Bogota"], "peru": ["America/Lima"], "venezuela": ["America/Caracas"],
+  "ecuador": ["America/Guayaquil"], "bolivia": ["America/La_Paz"],
+  "uruguay": ["America/Montevideo"], "paraguay": ["America/Asuncion"],
+  "jamaica": ["America/Jamaica"], "cuba": ["America/Havana"],
+  "dominican republic": ["America/Santo_Domingo"], "guatemala": ["America/Guatemala"],
+  "costa rica": ["America/Costa_Rica"], "panama": ["America/Panama"],
+  "honduras": ["America/Tegucigalpa"],
+  "australia": ["Australia/Sydney", "Australia/Melbourne", "Australia/Brisbane", "Australia/Adelaide", "Australia/Perth", "Australia/Darwin", "Australia/Hobart"],
+  "new zealand": ["Pacific/Auckland"], "fiji": ["Pacific/Fiji"],
+};
+
+function tzOffsetLabel(tz) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" })
+      .formatToParts(new Date());
+    const raw = (parts.find((p) => p.type === "timeZoneName") || {}).value || "";
+    return raw.replace("GMT", "UTC") || "UTC";
+  } catch { return ""; }
+}
+
+function tzSearch(query) {
+  const zones = tzAllZones();
+  const qs = query.trim().toLowerCase();
+  if (!qs) return zones;
+  const q = qs.replace(/\s+/g, "_");
+  const hits = zones.filter((z) => z.toLowerCase().includes(q));
+  if (qs.length >= 2) {
+    for (const [alias, zs] of Object.entries(TZ_COUNTRY_ALIASES)) {
+      if (!alias.startsWith(qs)) continue;
+      // No zones.includes() guard: some browsers list legacy spellings
+      // (Asia/Calcutta) while the alias targets modern ids (Asia/Kolkata);
+      // every alias target is a valid IANA id Intl accepts either way.
+      for (const z of zs) {
+        if (!hits.includes(z)) hits.unshift(z);
+      }
+    }
+  }
+  return hits;
+}
+
+// The hidden input keeps the old <select> id, so callers still read
+// document.getElementById(id).value for the committed zone.
+function tzPickerHtml(id, selected) {
+  return `
+    <div class="tz-picker" id="${id}-wrap">
+      <input type="text" id="${id}-search" value="${escapeHtml(selected)}" autocomplete="off"
+             placeholder="Search a city or country, e.g. Tokyo, India">
+      <input type="hidden" id="${id}" value="${escapeHtml(selected)}">
+      <div class="tz-list" id="${id}-list" hidden></div>
+    </div>`;
+}
+
+function wireTzPicker(id) {
+  const search = document.getElementById(`${id}-search`);
+  const hidden = document.getElementById(id);
+  const list = document.getElementById(`${id}-list`);
+  if (!search || !hidden || !list) return;
+  const render = () => {
+    const hits = tzSearch(search.value === hidden.value ? "" : search.value);
+    const shown = hits.slice(0, 80);
+    list.innerHTML = (shown.map((z) =>
+      `<div class="tz-opt${z === hidden.value ? " sel" : ""}" data-tz="${escapeHtml(z)}">${escapeHtml(z)} <span>${escapeHtml(tzOffsetLabel(z))}</span></div>`).join("")
+      + (hits.length > shown.length ? `<div class="tz-more">${hits.length - shown.length} more - keep typing to narrow it</div>` : ""))
+      || `<div class="tz-more">No match - try a big city in that country</div>`;
+    list.hidden = false;
+  };
+  search.addEventListener("focus", () => { search.select(); render(); });
+  search.addEventListener("input", render);
+  search.addEventListener("blur", () => setTimeout(() => {
+    list.hidden = true;
+    search.value = hidden.value; // never leave a half-typed non-zone showing
+  }, 150));
+  list.addEventListener("mousedown", (e) => {
+    const opt = e.target.closest("[data-tz]");
+    if (!opt) return;
+    e.preventDefault(); // keep focus so blur doesn't undo the pick
+    hidden.value = opt.dataset.tz;
+    search.value = opt.dataset.tz;
+    list.hidden = true;
+  });
 }
 
 function dayInputsHtml(prefix, schedule = {}) {
