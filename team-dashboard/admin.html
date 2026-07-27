@@ -32,6 +32,7 @@ function renderGate(msg = "") {
       <input type="password" id="gate-code" autocomplete="current-password">
       <div class="error" id="gate-error">${escapeHtml(msg)}</div>
       <button id="gate-btn" style="width:100%">Unlock</button>
+      <div style="color:var(--muted);font-size:11px;margin-top:10px">${DASH_VERSION}</div>
     </div>`;
   const tryUnlock = async () => {
     const code = document.getElementById("gate-code").value.trim();
@@ -234,7 +235,7 @@ function renderBoard(prevDone = null) {
     <header class="top">
       <div>
         <div class="brand"><span class="zen">Zenthra</span> Admin</div>
-        <div class="tagline">Zenith of Power - team board</div>
+        <div class="tagline">Zenith of Power - team board · ${DASH_VERSION}</div>
       </div>
       <div class="spacer"></div>
       <button class="ghost small" id="test-ping">Test Discord ping</button>
@@ -468,6 +469,8 @@ setInterval(() => {
 }, 30000);
 
 /* ---------- boot ---------- */
+
+const versionCheck = watchForNewVersion();
 
 (async () => {
   if (!adminCode) { renderGate(); return; }

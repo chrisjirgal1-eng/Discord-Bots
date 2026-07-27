@@ -40,6 +40,7 @@ function renderLogin(msg = "") {
       <input type="text" id="login-user" autocomplete="username" placeholder="e.g. zen_cj">
       <div class="error" id="login-error">${escapeHtml(msg)}</div>
       <button id="login-btn" style="width:100%">Open my board</button>
+      <div style="color:var(--muted);font-size:11px;margin-top:10px">${DASH_VERSION}</div>
     </div>`;
   const tryLogin = async () => {
     const username = document.getElementById("login-user").value.trim();
@@ -140,7 +141,7 @@ function renderBoard(prevDone = null) {
     <header class="top">
       <div>
         <div class="brand"><span class="zen">Zenthra</span> Team Board</div>
-        <div class="tagline">Zenith of Power</div>
+        <div class="tagline">Zenith of Power · ${DASH_VERSION}</div>
       </div>
       <div class="spacer"></div>
       <div class="whoami">
@@ -262,6 +263,8 @@ function openZoom(url) {
 }
 
 /* ---------- boot ---------- */
+
+const versionCheck = watchForNewVersion();
 
 (async () => {
   if (!creds) { renderLogin(); return; }

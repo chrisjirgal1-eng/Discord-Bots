@@ -5,6 +5,35 @@ const SUPABASE_URL = "https://rmbcnthetpiubiyasipp.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtYmNudGhldHBpdWJpeWFzaXBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMDA0NjcsImV4cCI6MjEwMDY3NjQ2N30.D7ZmX_Gi4Uj8Tk8ciI5tyIzjYhiKCSKYxf2jA4zA_gw";
 
+// Shown on every screen and bumped on every dashboard change, so a glance at
+// the tagline tells which code a tab is running.
+const DASH_VERSION = "v3";
+
+// Boards stay open for days but the HTML only updates on a reload, so a stale
+// tab keeps old bugs alive after a deploy. Poll our own URL's etag; when a new
+// deploy lands, reload once nothing on screen would be lost.
+function watchForNewVersion(intervalMs = 5 * 60 * 1000) {
+  let baseline = null;
+  const check = async () => {
+    let tag = null;
+    try {
+      const res = await fetch(location.pathname, { method: "HEAD", cache: "no-store" });
+      tag = res.headers.get("etag");
+    } catch { return; }
+    if (!tag) return;               // host without etags: watcher stays quiet
+    if (baseline === null) { baseline = tag; return; }
+    if (tag === baseline) return;
+    const a = document.activeElement;
+    if (a && a.matches && a.matches("input, textarea, select")) return;
+    if (document.querySelector("#modal-root .modal-overlay")) return;
+    if (document.querySelector(".inline-form")) return;
+    location.reload();
+  };
+  check();
+  setInterval(check, intervalMs);
+  return check;
+}
+
 const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const DAY_LABELS = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu",

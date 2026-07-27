@@ -255,3 +255,16 @@ Keep entries short. One idea per line.
   Backend already allowed it (update_task accepts due_date), frontend-only.
 - 14/14 Playwright checks green, including: poll skips render while date/text
   input focused, renders again on blur, save/clear hit update_task correctly.
+
+## 2026-07-27 (stale-tab root cause + version badge + self-updating tabs)
+
+- Chris: "due date system doesnt work". Live evidence: tasks table EMPTY, edge logs
+  100% status-200 - his saves never left the browser. Timeline showed he tested dates
+  on the in-between deploy (PR #50 fixed text boxes; the date fix was PR #51, which
+  went live minutes AFTER my "refresh and it works" message). Stale open tab.
+- Fix the class: DASH_VERSION badge ("v3") on every screen incl. login, and
+  watchForNewVersion() in shared.js - tabs HEAD-poll their own URL every 5 min and
+  reload when the etag changes, only while idle (no typing, form, or modal).
+  Bump DASH_VERSION with every dashboard change (README rule).
+- 17/17 Playwright checks green (badge, no-reload-while-typing, idle reload,
+  plus the full prior suite).
