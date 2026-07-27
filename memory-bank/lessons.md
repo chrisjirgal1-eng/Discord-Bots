@@ -134,3 +134,14 @@ See `.claude/rules/learning.md` for the loop.
   after; move modal-root outside the re-rendered element.
 - Prevention: any UI that refreshes via innerHTML must preserve in-flight user state.
   Test by typing during a forced refresh before shipping.
+
+## "Refresh and it works" raced the deploy (2026-07-27)
+
+- Mistake: told Chris the fix was live while the second fix (the one he needed) was
+  still minutes from deploying; his open tab also kept running pre-fix JS, so he
+  reported the system broken while the server was already correct.
+- Fix: version badge on every dashboard screen + tabs that etag-poll their own URL
+  and self-reload when a deploy lands (idle-only).
+- Prevention: never say "refresh and it works" without a user-visible version marker
+  to confirm against; for long-lived static pages, build the stale-tab story in from
+  day one.
