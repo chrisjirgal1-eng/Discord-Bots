@@ -211,3 +211,12 @@ Keep entries short. One idea per line.
 - The dashboard is now 100 percent done: site live on GitHub Pages, auth live,
   proof-required completions live, Discord pings with @mention + proof image live.
 - Config lives only in the database (rotatable with one SQL upsert, no redeploys).
+
+## 2026-07-27 (login simplified)
+
+- Chris: members should log in with username only, no access codes (asked explicitly,
+  confirmed the spoofing tradeoff via question). Admin passcode unchanged.
+- Changed member function auth to username lookup only, removed regen_code + code modal,
+  add_member no longer returns a code. Frontend login is one field now.
+- Redeployed member v2 + admin v3, 12/12 API tests green through the DB harness,
+  including a real completion ping (proof image) into his Discord channel.

@@ -22,6 +22,13 @@ returned ping_sent true. Every task completion now pings him with the proof imag
 Admin passcode is seeded and was delivered in chat 2026-07-27. NOTHING is pending on
 this build; next real step is Chris adding his first member and tasks on the admin board.
 
+LOGIN CHANGE (2026-07-27, Chris's explicit choice): members log in with their Discord
+USERNAME ONLY, no access codes. He accepted the tradeoff (anyone with the link + a
+username can open that member's board); ownership checks and the mandatory proof
+picture still hold server-side. ZEN-BBJ8-CCQ7 stays his ADMIN passcode, unchanged.
+regen_code action and the code modal removed. 12/12 post-change API tests green,
+including a real completion ping to his channel.
+
 ## Original build notes (2026-07-27, superseded status lines above)
 
 Chris asked for a website to manage his dev team: members by Discord username, timezones,

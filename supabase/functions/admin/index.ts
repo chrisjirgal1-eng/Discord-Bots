@@ -157,6 +157,7 @@ async function addMember(body: any): Promise<Response> {
   if (!validTimezone(timezone)) {
     return json(400, { error: "Unknown timezone." });
   }
+  // Login is username-only (Chris's choice); the hash column just stays filled.
   const code = generateCode();
   const { data: member, error } = await supabase
     .from("members")
@@ -177,7 +178,7 @@ async function addMember(body: any): Promise<Response> {
     console.error("add_member failed:", error);
     return json(500, { error: "Could not add the member." });
   }
-  return json(200, { member, access_code: code });
+  return json(200, { member });
 }
 
 // deno-lint-ignore no-explicit-any
@@ -211,20 +212,6 @@ async function updateMember(body: any): Promise<Response> {
   }
   if (!member) return json(404, { error: "Member not found." });
   return json(200, { member });
-}
-
-// deno-lint-ignore no-explicit-any
-async function regenCode(body: any): Promise<Response> {
-  if (!body.member_id) return json(400, { error: "Missing member." });
-  const code = generateCode();
-  const { data: member } = await supabase
-    .from("members")
-    .update({ access_code_hash: await sha256Hex(normalizeCode(code)) })
-    .eq("id", body.member_id)
-    .select("id, discord_username")
-    .maybeSingle();
-  if (!member) return json(404, { error: "Member not found." });
-  return json(200, { member, access_code: code });
 }
 
 // deno-lint-ignore no-explicit-any
@@ -386,8 +373,6 @@ Deno.serve(async (req: Request) => {
         return await addMember(body);
       case "update_member":
         return await updateMember(body);
-      case "regen_code":
-        return await regenCode(body);
       case "create_task":
         return await createTask(body);
       case "update_task":
