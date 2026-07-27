@@ -231,3 +231,15 @@ Keep entries short. One idea per line.
   (+ /admin.html). Git-integrated: Vercel auto-redeploys on every default-branch push,
   so no MCP deploys or approvals are needed for the site ever again.
 - GitHub Pages URL stays live as backup. README + active-context repointed.
+
+## 2026-07-27 (fix: live refresh was eating typing)
+
+- Chris: admin panel "backspaces automatically" while typing. Cause: the 10s poll
+  re-renders with innerHTML, rebuilding all inputs empty. Also found the member proof
+  modal sat inside the re-rendered container, so the 30s poll destroyed it mid-upload.
+- Fix in admin.html: snapshot values + focus + cursor of all form fields before the
+  innerHTML swap, restore after. Both files: static modal-root outside #app.
+- Verified with Playwright on the sandbox Chromium against stubbed API: 11/11 checks,
+  including typing a char between 8 consecutive forced refreshes (nothing lost) and the
+  proof modal surviving a refresh. Also removed the feature-branch trigger from the
+  Pages workflow (only the default branch can deploy; branch runs insta-failed).

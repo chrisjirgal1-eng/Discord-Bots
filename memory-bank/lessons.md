@@ -124,3 +124,13 @@ See `.claude/rules/learning.md` for the loop.
     not a bot") and Instagram login gating, which cookies.txt DO fix. Two different failures by environment.
   - Prevent: diagnose by environment. Proxy/CONNECT 403 = network policy (cloud). Extractor auth error =
     cookies (local). Do not conflate them, and never log "yt-dlp is broken."
+
+## innerHTML polling wipes user input (2026-07-27)
+
+- Mistake: dashboard boards re-render with app.innerHTML on a 10s/30s poll; every redraw
+  rebuilt inputs empty, eating Chris's typing on the admin forms, and destroyed the
+  member proof modal that lived inside the re-rendered container.
+- Fix: snapshot input/textarea/select values + focus + cursor before the swap and restore
+  after; move modal-root outside the re-rendered element.
+- Prevention: any UI that refreshes via innerHTML must preserve in-flight user state.
+  Test by typing during a forced refresh before shipping.

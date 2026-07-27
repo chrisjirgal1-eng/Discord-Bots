@@ -9,6 +9,7 @@
 </head>
 <body>
 <div class="wrap" id="app"></div>
+<div id="modal-root"></div>
 
 <script src="shared.js"></script>
 <script>
@@ -160,9 +161,7 @@ function renderBoard(prevDone = null) {
     </div>
 
     <h2>Team progress</h2>
-    <div class="grid">${teamCards}</div>
-
-    <div id="modal-root"></div>`;
+    <div class="grid">${teamCards}</div>`;
 
   document.getElementById("logout").onclick = (e) => { e.preventDefault(); logout(); };
   app.querySelectorAll("[data-complete]").forEach((b) =>

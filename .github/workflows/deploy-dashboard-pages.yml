@@ -3,7 +3,6 @@ name: Deploy team dashboard to GitHub Pages
 on:
   push:
     branches:
-      - claude/dev-team-task-dashboard-sj62bw
       - claude/vibrant-cray-tui7og
     paths:
       - "team-dashboard/**"
