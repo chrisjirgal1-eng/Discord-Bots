@@ -5,28 +5,31 @@ with a mandatory proof screenshot; every completion pings Chris on Discord with 
 
 ## URLs
 
-- Member board: `index.html` (give this URL to the team)
-- Admin board: `admin.html` (Chris only, passcode-gated)
-- Backend: Supabase project `zenthra-team-dashboard` (`rmbcnthetpiubiyasipp`), Edge Functions `admin` + `member`
+PRIMARY (Vercel, no personal name in the address - Chris's pick):
+
+- Member board: https://zenthra-dev-team.vercel.app/
+- Admin board: https://zenthra-dev-team.vercel.app/admin.html
+
+Backup (GitHub Pages, same site): https://chrisjirgal1-eng.github.io/Discord-Bots/
+
+Backend: Supabase project `zenthra-team-dashboard` (`rmbcnthetpiubiyasipp`),
+Edge Functions `admin` + `member`.
 
 ### Hosting
 
-Live on GitHub Pages (free), deployed by `.github/workflows/deploy-dashboard-pages.yml`:
-
-- Member board: https://chrisjirgal1-eng.github.io/Discord-Bots/
-- Admin board: https://chrisjirgal1-eng.github.io/Discord-Bots/admin.html
-
-The workflow redeploys automatically on any push that touches `team-dashboard/`
-(this feature branch and the default branch). One-time setup already done: repo
-Settings > Pages > Source = "GitHub Actions" (needs repo admin; the workflow token
-cannot flip it).
-
-Why not the obvious hosts: the Vercel connector token cannot create projects
-(403 role denial), and Supabase cannot serve HTML on its own domain (it rewrites
-text/html to text/plain as an anti-phishing rule; the leftover `site` and
-`sitepush` Edge Functions are inert 410 stubs from discovering that).
-Fallback that always works: pull the repo and open `team-dashboard/admin.html`
-as a local file. The API allows any origin.
+- Vercel project `zenthra-dev-team` (Zen Peak Studios team), git-imported from this
+  repo with Root Directory `team-dashboard`, framework Other, no build. It redeploys
+  automatically on every push to the default branch. Chris created the project by
+  importing the repo in the Vercel dashboard (the connector token cannot create
+  projects, 403 role denial).
+- GitHub Pages stays as a free backup, deployed by
+  `.github/workflows/deploy-dashboard-pages.yml` on pushes touching `team-dashboard/`
+  (Pages source = "GitHub Actions", set once by Chris in repo settings).
+- Supabase cannot serve HTML on its own domain (it rewrites text/html to text/plain
+  as an anti-phishing rule); the leftover `site` and `sitepush` Edge Functions are
+  inert 410 stubs from discovering that.
+- Fallback that always works: pull the repo and open `team-dashboard/admin.html`
+  as a local file. The API allows any origin.
 
 ## How it works
 
