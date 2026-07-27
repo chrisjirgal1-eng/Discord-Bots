@@ -243,3 +243,15 @@ Keep entries short. One idea per line.
   including typing a char between 8 consecutive forced refreshes (nothing lost) and the
   proof modal surviving a refresh. Also removed the feature-branch trigger from the
   Pages workflow (only the default branch can deploy; branch runs insta-failed).
+
+## 2026-07-27 (due date field fixed + due dates editable on existing tasks)
+
+- Chris's screenshot: the Add-task due date box kept resetting to mm/dd/yyyy. A
+  half-typed date input reports an EMPTY value until complete, so the PR #50
+  snapshot had nothing to save. Real fix: refreshBoard now skips the re-render
+  entirely while any form field in #app has focus (data still refreshes, the
+  redraw lands on the next poll once focus leaves).
+- New: every open task row has a "+ due" / "edit due" control (set, change, clear).
+  Backend already allowed it (update_task accepts due_date), frontend-only.
+- 14/14 Playwright checks green, including: poll skips render while date/text
+  input focused, renders again on blur, save/clear hit update_task correctly.
