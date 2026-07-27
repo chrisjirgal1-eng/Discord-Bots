@@ -71,6 +71,11 @@ async function refreshBoard() {
     const fresh = await adminApi({ action: "list_all" });
     const prevDone = new Set((board?.tasks || []).filter(t => t.status === "done").map(t => t.id));
     board = fresh;
+    // A date input has no readable value until the date is complete, so even a
+    // snapshot-restoring redraw eats it: never re-render under an active cursor.
+    // Data stays fresh; the redraw lands on the next poll once focus leaves.
+    const a = document.activeElement;
+    if (a && app.contains(a) && a.matches("input, textarea, select")) return;
     renderBoard(prevDone);
   } catch (e) {
     if (e.status === 401) lock();
@@ -123,6 +128,7 @@ function adminTaskHtml(t, m, newlyDone) {
           ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ""}
           <div class="task-meta">
             ${t.due_date ? `<span class="badge ${overdue ? "overdue" : "due"}">${overdue ? "OVERDUE " : "due "}${fmtDue(t.due_date)}</span>` : ""}
+            ${t.status === "open" ? `<button class="small ghost" data-toggle="due-${t.id}">${t.due_date ? "edit due" : "＋ due"}</button>` : ""}
             ${t.status === "done" ? `<span class="badge done">done ${t.completed_at ? timeAgo(t.completed_at) : ""}</span>` : ""}
             ${pingFailed ? `<span class="badge ping-fail">ping failed</span> <button class="small ghost" data-resend="${t.id}">Resend ping</button>` : ""}
           </div>
@@ -135,6 +141,16 @@ function adminTaskHtml(t, m, newlyDone) {
           <button class="small danger" data-del-task="${t.id}">✕</button>
         </div>
       </div>
+      ${openForms[`due-${t.id}`] ? `
+      <div class="inline-form" style="margin-top:8px">
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div><label>Due date</label><input type="date" id="due-${t.id}" value="${escapeHtml(t.due_date || "")}"></div>
+          <button class="small" data-due-save="${t.id}">Save</button>
+          ${t.due_date ? `<button class="small ghost" data-due-clear="${t.id}">Clear</button>` : ""}
+          <button class="small ghost" data-toggle="due-${t.id}">Cancel</button>
+        </div>
+        <div class="error" id="due-error-${t.id}"></div>
+      </div>` : ""}
     </div>`;
 }
 
@@ -374,6 +390,29 @@ function wireBoardEvents() {
       openForms[`edit-member-${id}`] = false;
       await refreshBoard();
     } catch (e) { errEl.textContent = e.message; b.disabled = false; }
+  });
+
+  app.querySelectorAll("[data-due-save]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.dueSave;
+    const errEl = el(`due-error-${id}`);
+    const v = el(`due-${id}`).value;
+    if (!v) { errEl.textContent = "Pick a date first."; return; }
+    b.disabled = true;
+    try {
+      await adminApi({ action: "update_task", task_id: id, due_date: v });
+      openForms[`due-${id}`] = false;
+      await refreshBoard();
+    } catch (e) { errEl.textContent = e.message; b.disabled = false; }
+  });
+
+  app.querySelectorAll("[data-due-clear]").forEach((b) => b.onclick = async () => {
+    const id = b.dataset.dueClear;
+    b.disabled = true;
+    try {
+      await adminApi({ action: "update_task", task_id: id, due_date: null });
+      openForms[`due-${id}`] = false;
+      await refreshBoard();
+    } catch (e) { el(`due-error-${id}`).textContent = e.message; b.disabled = false; }
   });
 
   app.querySelectorAll("[data-toggle-active]").forEach((b) => b.onclick = async () => {
