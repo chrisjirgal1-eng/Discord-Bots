@@ -145,3 +145,13 @@ See `.claude/rules/learning.md` for the loop.
 - Prevention: never say "refresh and it works" without a user-visible version marker
   to confirm against; for long-lived static pages, build the stale-tab story in from
   day one.
+
+## Chromium timezone list uses legacy spellings (2026-07-27)
+
+- Mistake: guarded country-alias suggestions with zones.includes(target), but
+  Chromium's Intl.supportedValuesOf("timeZone") lists Asia/Calcutta (not
+  Asia/Kolkata), silently dropping India/Vietnam/Ukraine aliases.
+- Fix: dropped the guard; every alias target is a valid IANA id that
+  Intl.DateTimeFormat accepts regardless of the listed spelling.
+- Prevention: never assume supportedValuesOf spellings match modern IANA names;
+  test alias lookups against the real browser, not the spec.

@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zenthra Admin - Team Board</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="modal-root"></div>
 
-<script src="shared.js"></script>
+<script src="shared.js?v=5"></script>
 <script>
 const app = document.getElementById("app");
 let adminCode = sessionStorage.getItem("zen_admin_code") || "";
@@ -170,7 +170,7 @@ function memberCardHtml(m, prevDone) {
           <div><label>Display name</label><input type="text" id="em-name-${m.id}" value="${escapeHtml(m.display_name || "")}"></div>
           <div><label>Role</label><input type="text" id="em-role-${m.id}" value="${escapeHtml(m.role || "")}" placeholder="builder, scripter..."></div>
         </div>
-        <div><label>Timezone</label><select id="em-tz-${m.id}">${tzOptionsHtml(m.timezone)}</select></div>
+        <div><label>Timezone (search a city or country)</label>${tzPickerHtml(`em-tz-${m.id}`, m.timezone)}</div>
         <div><label>Schedule (free text per day)</label>${dayInputsHtml(`em-day-${m.id}`, m.schedule)}</div>
         <div class="error" id="em-error-${m.id}"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -236,7 +236,7 @@ function renderBoard(prevDone = null) {
           </div>
           <div class="row2">
             <div><label>Role</label><input type="text" id="am-role" placeholder="builder, scripter, UI..."></div>
-            <div><label>Timezone</label><select id="am-tz">${tzOptionsHtml("America/Chicago")}</select></div>
+            <div><label>Timezone (search a city or country)</label>${tzPickerHtml("am-tz", "America/Chicago")}</div>
           </div>
           <div><label>Schedule (free text per day, e.g. "4-7pm")</label>${dayInputsHtml("am-day")}</div>
           <div class="error" id="am-error"></div>
@@ -309,6 +309,8 @@ function wireBoardEvents() {
 
   app.querySelectorAll("[data-zoom]").forEach((img) =>
     img.addEventListener("click", () => openZoom(img.dataset.zoom)));
+
+  app.querySelectorAll(".tz-picker input[type=hidden]").forEach((h) => wireTzPicker(h.id));
 
   const el = (id) => document.getElementById(id);
 

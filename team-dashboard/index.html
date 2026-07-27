@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zenthra Team Board</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <div id="modal-root"></div>
 
-<script src="shared.js"></script>
+<script src="shared.js?v=5"></script>
 <script>
 const app = document.getElementById("app");
 let creds = null;   // { username, code }
@@ -194,7 +194,7 @@ function openProfileModal() {
         <h3>Your profile</h3>
         <p class="sub">Set your name, timezone, and weekly hours so the team sees your real availability.</p>
         <div><label>Display name</label><input type="text" id="pf-name" value="${escapeHtml(me.display_name || "")}" placeholder="What the team calls you"></div>
-        <div><label>Timezone</label><select id="pf-tz">${tzOptionsHtml(me.timezone)}</select></div>
+        <div><label>Timezone (search a city or country)</label>${tzPickerHtml("pf-tz", me.timezone)}</div>
         <div><label>Schedule (free text per day, e.g. "4-7pm")</label>${dayInputsHtml("pf-day", me.schedule)}</div>
         <div class="error" id="pf-error"></div>
         <div class="actions">
@@ -204,6 +204,7 @@ function openProfileModal() {
       </div>
     </div>`;
   const overlay = document.getElementById("profile-overlay");
+  wireTzPicker("pf-tz");
   overlay.addEventListener("click", (e) => { if (e.target === overlay) root.innerHTML = ""; });
   document.getElementById("pf-cancel").onclick = () => { root.innerHTML = ""; };
   document.getElementById("pf-save").onclick = async () => {

@@ -285,3 +285,18 @@ Keep entries short. One idea per line.
 - 21/21 Playwright checks green. Live API verified: update_profile 200 (no-op
   resubmit of Chris's real values, row unchanged), invalid timezone 400,
   get_board still 200 after the function redeploy.
+
+## 2026-07-27 (searchable worldwide timezone picker, v5)
+
+- Chris: every country's timezone, a search bar, and plain-refresh updates.
+- Replaced the giant <select> with a searchable picker (shared.js: tzPickerHtml/
+  wireTzPicker/tzSearch) used in admin add-member, admin edit-member, and the
+  member profile modal. Full IANA list (~418 zones) + ~90 country-name aliases
+  (india -> Asia/Kolkata, multi-zone countries list all their zones) + UTC
+  offset shown per option. Hidden input keeps the old select ids so save
+  handlers did not change.
+- Browser quirk fixed: Chromium lists legacy spellings (Asia/Calcutta), so the
+  alias guard zones.includes() dropped India - removed (see lessons.md).
+- Plain refresh now always gets matching code: assets referenced as
+  shared.js?v=5 / style.css?v=5, bumped with DASH_VERSION (README rule).
+- 25/25 Playwright checks green.
