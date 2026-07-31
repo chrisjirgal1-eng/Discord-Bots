@@ -11,7 +11,8 @@ zoe_router does. See COMMAND_SYSTEM_GUIDE.md.
 import os, sys, io, json, time, wave, queue, subprocess, urllib.request, webbrowser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from jarvis_speak import load_env, tts, play
+import jarvis_speak
+from jarvis_speak import load_env
 import zoe_router   # the single command router (classify + dispatch)
 import zoe_state    # persistent continuity (memory/zoe_state.json), best-effort
 import zoe_memory   # Obsidian long-term memory vault, best-effort
@@ -129,8 +130,13 @@ def main():
         sys.exit("missing in .env: " + ", ".join(miss))
 
     def speak(s):
-        try: play(tts(s, el, voice))
-        except Exception as e: print("  (speak error:", e, ")")
+        # Stream so the first word lands in ~150-400ms (was 1-3s). Non-blocking,
+        # then wait it out so the mic does not reopen on her own voice.
+        try:
+            jarvis_speak.speak(s, el, voice)
+            jarvis_speak.wait_speech()
+        except Exception as e:
+            print("  (speak error:", e, ")")
 
     # persistent continuity: detect mode and restore the prior session (best-effort)
     try:
